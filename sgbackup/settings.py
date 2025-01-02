@@ -23,6 +23,8 @@ import sys
 from gi.repository import GLib,GObject
 
 class Settings(GObject.GObject):
+    __gtype_name__ = "Settings"
+    
     def __init__(self):
         super().__init__()
         
@@ -35,6 +37,13 @@ class Settings(GObject.GObject):
         if (os.path.isfile(self.__config_file)):
             with open(self.__config_file,'r') as conf:
                 self.__configparser.read_file(conf)
+                
+        if not os.path.isdir(self.config_dir):
+            os.makedirs(self.config_dir)
+            
+        if not os.path.isdir(self.gameconf_dir):
+            os.makedirs(self.gameconf_dir)
+            
             
     @GObject.Property(nick="parser")
     def parser(self)->ConfigParser:
@@ -61,11 +70,12 @@ class Settings(GObject.GObject):
     def backup_dir(self)->str:
         if self.parser.has_option('sgbackup','backupDirectory'):
            return self.parser.get('sgbackup','backupDirectory')
-        return GLib.build_filename(GLib.build_filename(GLib.get_home_dir(),'SavagameBackups'))
+        return os.path.join(GLib.get_home_dir(),'SavagameBackups')
     @backup_dir.setter
     def backup_dir(self,directory:str):
         if not os.path.isabs(directory):
             raise ValueError("\"backup_dir\" needs to be an absolute path!")
+        self.ensure_section('sgbackup')            
         return self.parser.set('sgbackup','backupDirectory',directory)
     
     @GObject.Property(type=str)
@@ -77,6 +87,10 @@ class Settings(GObject.GObject):
     def save(self):
         self.emit('save')
 
+    def ensure_section(self,section:str):
+        if not self.parser.has_section(section):
+            self.parser.add_section(section)
+                    
     @GObject.Signal(name='save',flags=GObject.SIGNAL_RUN_LAST,return_type=None,arg_types=())
     def do_save(self):
         with open(self.config_file,'w') as ofile:

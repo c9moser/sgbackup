@@ -19,9 +19,9 @@
 
 import logging
 from . import gui
-from .gui.application import Application
+from .gui import Application
 from .steam import SteamLibrary
-import sys
+
 
 logger=logging.getLogger(__name__)
 
@@ -37,6 +37,6 @@ def curses_main():
 
 def gui_main():
     logger.debug("Running gui_main()")
-    gui.app = Application()
-    gui.app.run()
+    gui._app = Application()
+    gui._app.run()
     return 0

@@ -1,0 +1,15 @@
+* text=auto
+
+.githooks/pre-commit text eol=lf
+
+*.yml text eol=lf
+*.sh text eol=lf
+*.py text
+*.txt text
+*.ps1 text eol=crlf
+*.ps1.in text eol=crlf
+*.bat text eol=crlf
+*.bat.in text eol=crlf
+*.cmd text eol=crlf
+*.cmd.in text eol=crlf
+

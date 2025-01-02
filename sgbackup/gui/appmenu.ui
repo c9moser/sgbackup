@@ -2,6 +2,25 @@
 <interface>
     <menu id='appmenu'>
         <section>
+            <submenu>
+                <attribute name='label' translatable='true'>_Game</attribute>
+                
+                <item>
+                    <attribute name='label' translatable='true'>_Add Game</attribute>
+                    <attribute name='action'>app.new-game</attribute>
+                </item>
+            </submenu>
+            <submenu>
+                <attribute name='label' translatable='true'>_Steam</attribute>
+            </submenu>
+            <submenu>
+                <attribute name='label' translatable='true'>_Epic</attribute>
+            </submenu>
+            <submenu>
+                <attribute name='label' translatable='true'>_GoG</attribute>
+            </submenu>
+        </section>
+        <section>
             <item>
                 <attribute name='label' translatable='true'>_Settings</attribute>
                 <attribute name='action'>app.settings</attribute>

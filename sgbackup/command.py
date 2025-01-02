@@ -17,6 +17,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.   #
 ###############################################################################
 
+
 class Command:
     def __init__(self,id:str,name:str,description:str):
         self.__id = id

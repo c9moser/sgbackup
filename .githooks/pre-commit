@@ -7,6 +7,7 @@ PROJECT_ROOT="$(dirname "$(dirname "$SELF")")" ; export PROJECT_ROOT
 
 pre_commit_d="${GITHOOKS_DIR}/pre-commit-d"
 
+# run scripts from the pre-commit.d directory
 for i in $(ls "$pre_commit_d"); do
 	script="${pre_commit_d}/$i"
 	if [ -x "$script" ]; then

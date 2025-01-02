@@ -107,6 +107,8 @@ class GameFileType(StrEnum):
         raise ValueError("Unknown GameFileType \"{}\"!".fomrat(typestring))
 
 class GameFileMatcher(GObject):
+    __gtype_name__ = "GameFileMatcher"
+    
     def __init__(self,match_type:GameFileType,match_file:str):
         GObject.__init__(self)
         self.match_type = type
@@ -165,6 +167,8 @@ class GameFileMatcher(GObject):
         return False
 
 class GameData(GObject):
+    __gtype_name__ = 'GameData'
+    
     """
     :class: GameData
     :brief: Base class for platform specific data.
@@ -226,17 +230,41 @@ class GameData(GObject):
         self.__savegame_dir = sgdir
         
     @Property
-    def variables(self):
+    def variables(self)->dict:
         return self.__variables
+    @variables.setter
+    def variables(self,vars:dict|None):
+        if not vars:
+            self.__variables = {}
+        else:
+            self.__variables = dict(vars)
     
     @Property
     def file_match(self):
         return self.__filematch
+    @file_match.setter
+    def file_match(self,fm:list[GameFileMatcher]|None):
+        if not fm:
+            self.__filematch = []
+        else:
+            for matcher in fm:
+                if not isinstance(matcher,GameFileMatcher):
+                    raise TypeError("\"file_match\" needs to be \"None\" or a list of \"GameFileMatcher\" instances!")
+            self.__filematch = list(fm)
     
     @Property
     def ignore_match(self):
         return self.__ignorematch
-    
+    @file_match.setter
+    def file_match(self,im:list[GameFileMatcher]|None):
+        if not im:
+            self.__ignorematch = []
+        else:
+            for matcher in im:
+                if not isinstance(matcher,GameFileMatcher):
+                    raise TypeError("\"ignore_match\" needs to be \"None\" or a list of \"GameFileMatcher\" instances!")
+            self.__ignorematch = list(im)
+            
     def has_variable(self,name:str)->bool:
         return (name in self.__variables)
     
@@ -535,17 +563,24 @@ class SteamGame(GameData):
         
         GameData.__init__(self,
                           sgtype,
-                          appid,
                           savegame_root,
                           savegame_dir,
                           variables,
                           file_match,
                           ignore_match)
-        self.__installdir = installdir
+        self.appid = int(appid)
+        self.installdir = installdir
         
     def get_variables(self):
         vars = super().get_variables()
         vars["INSTALLDIR"] = self.installdir if self.installdir else ""
+        
+    @Property(type=int)
+    def appid(self):
+        return self.__appid
+    @appid.setter
+    def appid(self,appid):
+        self.__appid = appid
         
     @Property
     def installdir(self):
@@ -622,6 +657,8 @@ class SteamMacOSGame(SteamGame):
 
     
 class Game(GObject):
+    __gtype_name__ = "Game"
+    
     @staticmethod
     def new_from_dict(config:str):
         logger = logger.getChild("Game.new_from_dict()")
@@ -740,15 +777,17 @@ class Game(GObject):
         with open(filename,'rt',encoding="UTF-8") as ifile:
             return Game.new_from_dict(json.loads(ifile.read()))
         
-    def __init__(self,id:str,name:str,savegame_name:str):
+    def __init__(self,key:str,name:str,savegame_name:str):
         GObject.__init__(self)
-        self.__id = id
+        self.__dbid = None
+        self.__key = key
         self.__name = name
         self.__filename = None
         self.__savegame_name = savegame_name
         self.__savegame_type = SavegameType.UNSET
         self.__active = False
         self.__live = True
+        self.__variables = dict()
         
         self.__windows = None
         self.__linux = None
@@ -762,12 +801,25 @@ class Game(GObject):
         self.__epic_linux = None
         
     @Property(type=str)
-    def id(self)->str:
+    def dbid(self)->str:
         return self.__id
-    @id.setter
+    @dbid.setter
     def id(self,id:str):
         self.__id = id
 
+    @Property(type=str)
+    def key(self)->str:
+        return self.__key
+    @key.setter
+    def key(self,key:str):
+        set_game = False
+        if self.__key in GAMES:
+            del GAMES[self.__key]
+            set_game = True
+                        
+        self.__key = key
+        if set_game:
+            GAMES[self.__key] = self
     
     @Property(type=str)
     def name(self)->str:
@@ -820,6 +872,16 @@ class Game(GObject):
         else:
             self.__filename = fn
     
+    @Property
+    def variables(self):
+        return self.__variables
+    @variables.setter
+    def variables(self,vars:dict|None):
+        if not vars:
+            self.__variables = {}
+        else:
+            self.__variables = dict(vars)
+            
     @Property
     def game_data(self):
         sgtype = self.savegame_type
@@ -917,6 +979,22 @@ class Game(GObject):
                 raise TypeError("SteamWindowsGame")
             self.__steam_macos = data
             
+    def add_variable(self,name:str,value:str):
+        self.__variables[str(name)] = str(value)
+        
+    def delete_variable(self,name):
+        if name in self.__variables:
+            del self.__variables[name]
+            
+    def get_variable(self,name):
+        vars = dict(os.environ)
+        #vars.update(settings.variables)
+        vars.update(self.__variables)
+        game_data = self.game_data
+        if (game_data is not None):
+            vars.update(game_data.variables)
+        
+            
     def serialize(self)->dict:
         ret = {
             'id': self.id,
@@ -949,9 +1027,8 @@ class Game(GObject):
         #    ret['epic_linux'] = self.epic_linux.serialize()
         
         return ret
-
+    
     def save(self):
-        data = self.serialize()
         old_path = pathlib.Path(self.filename).resolve()
         new_path = pathlib.Path(settings.gameconf_dir / '.'.join(self.id,'gameconf')).resolve()
         if (str(old_path) != str(new_path)) and old_path.is_file():
@@ -959,8 +1036,10 @@ class Game(GObject):
         if not new_path.parent.is_dir():
             os.makedirs(new_path.parent)
             
-        with open(new_path,'wt',encoding='UTF-8') as ofile:
+        with open(new_path,'wt',encoding='utf-8') as ofile:
             ofile.write(json.dumps(self.serialize(),ensure_ascii=False,indent=4))
+            
+    
         
 GAMES={}
 STEAM_GAMES={}
@@ -973,7 +1052,7 @@ def __init_games():
     if not os.path.isdir(gameconf_dir):
         return
     
-    for gcf in (os.path.join(gameconf_dir,i) for i in os.path.listdir(gameconf_dir)):
+    for gcf in (os.path.join(gameconf_dir,i) for i in os.listdir(gameconf_dir)):
         if not os.path.isfile(gcf) or not gcf.endswith('.gameconf'):
             continue
             
@@ -984,7 +1063,7 @@ def __init_games():
         except:
             continue
         
-        GAMES[game.id] = game
+        GAMES[game.key] = game
         if (game.steam_windows):
             if not game.steam_windows.appid in STEAM_GAMES:
                 STEAM_GAMES[game.steam_windows.appid] = game
@@ -1000,7 +1079,7 @@ def __init_games():
 __init_games()
 
 def add_game(game:Game):
-    GAMES[game.id] = game
+    GAMES[game.key] = game
     if game.steam_windows:
         if not game.steam_windows.appid in STEAM_GAMES:
             STEAM_GAMES[game.steam_windows.appid] = game
@@ -1013,3 +1092,4 @@ def add_game(game:Game):
         if not game.steam_macos.appid in STEAM_GAMES:
             STEAM_GAMES[game.steam_macos.appid] = game
         STEAM_MACOS_GAMES[game.steam_macos.appid] = game
+        

@@ -15,4 +15,9 @@
 #    You should have received a copy of the GNU General Public License        #
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.   #
 ###############################################################################
-from .application import Application
+
+from ._app import Application,AppWindow
+from ._settingsdialog import SettingsDialog
+from ._gamedialog import GameDialog
+
+app = None

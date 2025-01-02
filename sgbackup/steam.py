@@ -23,8 +23,11 @@ import sys
 import json
 
 from .settings import settings
+from .game import STEAM_GAMES,STEAM_WINDOWS_GAMES,STEAM_LINUX_GAMES,STEAM_MACOS_GAMES
 
 PLATFORM_WINDOWS = (sys.platform.lower() == 'win32')
+PLATFORM_LINUX = (sys.platform.lower() in ('linux','freebsd','netbsd','openbsd','dragonfly'))
+PLATFORM_MACOS = (sys.platform.lower() == 'macos')
 
 
 from gi.repository.GObject import GObject,Property,Signal
@@ -69,8 +72,6 @@ class AcfFileParser(object):
             
                 
         return line_count,ret
-                
-                
     
     def parse_file(self,acf_file)->dict:
         if not os.path.isfile(acf_file):
@@ -86,6 +87,14 @@ class AcfFileParser(object):
         raise RuntimeError("Not a acf file!")
 
 class IgnoreSteamApp(GObject):
+    __gtype_name__ = "sgbackup-steam-IgnoreSteamApp"
+    
+    def __init__(self,appid:int,name:str,reason:str):
+        GObject.__init__(self)
+        self.__appid = int(appid)
+        self.__name = name
+        self.__reason = reason
+    
     @staticmethod
     def new_from_dict(conf:dict):
         if ('appid' in conf and 'name' in conf):
@@ -95,12 +104,6 @@ class IgnoreSteamApp(GObject):
             return SteamIgnoreApp(appid,name,reason)
             
         return None
-    
-    def __init__(self,appid:int,name:str,reason:str):
-        GObject.__init__(self)
-        self.__appid = int(appid)
-        self.__name = name
-        self.__reason = reason
         
     @Property(type=int)
     def appid(self)->str:
@@ -120,7 +123,6 @@ class IgnoreSteamApp(GObject):
     def reason(self,reason:str):
         self.__reason = reason
         
-
     def serialize(self):
         return {
             'appid': self.appid,
@@ -128,7 +130,10 @@ class IgnoreSteamApp(GObject):
             'reason': self.reason,
         }
 
+
 class SteamApp(GObject):
+    __gtype_name__ = "sgbackup-steam-SteamApp"
+    
     def __init__(self,appid:int,name:str,installdir:str):
         GObject.__init__(self)
         self.__appid = int(appid)
@@ -159,8 +164,11 @@ class SteamApp(GObject):
     def __eq__(self,other):
         return self.appid == other.appid
     
+    
 
 class SteamLibrary(GObject):
+    __gtype_name__ = "sgbackup-steam-SteamLibrary"
+    
     def __init__(self,library_path:str):
         GObject.__init__(self)
         self.directory = library_path
@@ -183,7 +191,7 @@ class SteamLibrary(GObject):
         return Path(self.directory).resolve()
     
     @Property
-    def steam_apps(self)->list:
+    def steam_apps(self)->list[SteamApp]:
         parser = AcfFileParser()
         appdir = self.path / "steamapps"
         commondir = appdir / "common"
@@ -202,10 +210,12 @@ class SteamLibrary(GObject):
         return sorted(ret)
     
 class Steam(GObject):
+    __gtype_name__ = "sgbackup-steam-Steam"
+    
     def __init__(self):
         GObject.__init__(self)
         self.__libraries = []
-        self.__ignore_apps = []
+        self.__ignore_apps = {}
                 
         if not self.steamlib_list_file.is_file():
             if (PLATFORM_WINDOWS):
@@ -229,7 +239,6 @@ class Steam(GObject):
                         except:
                             pass
         
-        ignore_apps = []
         if self.ignore_apps_file.is_file():
             with open(str(self.ignore_apps_file),'r',encoding="utf-8") as ifile:
                 ignore_list = json.loads(ifile.read())
@@ -239,8 +248,8 @@ class Steam(GObject):
                 except:
                     continue
                 if ignore_app:
-                        self.__ignore_apps.append(ignore_app)
-            self.__ignore_apps = sorted(ignore_apps)            
+                        self.__ignore_apps[ignore_app.appid] = ignore_app
+            
     #__init__()     
 
     @Property
@@ -252,16 +261,20 @@ class Steam(GObject):
         return Path(settings.config_dir).resolve / 'ignore_steamapps.json'
     
     @Property
-    def libraries(self):
+    def libraries(self)->list[SteamLibrary]:
         return self.__libraries
     
     @Property
-    def ignore_apps(self):
+    def ignore_apps(self)->dict[int:IgnoreSteamApp]:
         return self.__ignore_apps
     
     def __write_steamlib_list_file(self):
         with open(self.steamlib_list_file,'w',encoding='utf-8') as ofile:
             ofile.write('\n'.join(str(sl.directory) for sl in self.libraries))
+            
+    def __write_ignore_steamapps_file(self):
+        with open(self.ignore_apps_file,'w',encoding='utf-8') as ofile:
+            ofile.write(json.dumps([i.serialize() for i in self.ignore_apps.values()]))
             
     def add_library(self,steamlib:SteamLibrary|str):
         if isinstance(steamlib,SteamLibrary):
@@ -294,3 +307,46 @@ class Steam(GObject):
             for i in sorted(delete_libs,reverse=True):
                 del self.__libraries[i]
             self.__write_steamlib_list_file()
+            
+    def add_ignore_app(self,app:IgnoreSteamApp):
+        self.__ignore_apps[app.appid] = app
+        self.__write_ignore_steamapps_file()
+        
+    def remove_ignore_app(self,app:IgnoreSteamApp|int):
+        if isinstance(app,IgnoreSteamApp):
+            appid = app.appid
+        else:
+            appid = int(app)
+        if appid in self.__ignore_apps:
+            del self.__ignore_apps[appid]
+            self.__write_ignore_steamapps_file()
+            
+    def find_new_steamapps(self)->list[SteamApp]:
+        new_apps = []
+        for lib in self.libraries:
+            for app in lib.steam_apps:
+                if not app.appid in STEAM_GAMES and not app.appid in self.ignore_apps:
+                    new_apps.append(app)
+        return sorted(new_apps)
+    
+    def update_steam_apps(self):
+        for lib in self.libraries():
+            for app in lib.steam_apps:
+                if PLATFORM_WINDOWS:
+                    if ((app.appid in STEAM_WINDOWS_GAMES) 
+                            and (STEAM_WINDOWS_GAMES[app.appid].installdir != app.installdir)):
+                        game = STEAM_WINDOWS_GAMES[app.appid]
+                        game.installdir = app.installdir
+                        game.save()
+                elif PLATFORM_LINUX:
+                    if ((app.appid in STEAM_LINUX_GAMES) 
+                            and (STEAM_LINUX_GAMES[app.appid].installdir != app.installdir)):
+                        game = STEAM_LINUX_GAMES[app.appid]
+                        game.installdir = app.installdir
+                        game.save()
+                elif PLATFORM_MACOS:
+                    if ((app.appid in STEAM_MACOS_GAMES) 
+                            and (STEAM_MACOS_GAMES[app.appid].installdir != app.installdir)):
+                        game = STEAM_MACOS_GAMES[app.appid]
+                        game.installdir = app.installdir
+                        game.save()

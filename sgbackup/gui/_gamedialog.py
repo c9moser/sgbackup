@@ -55,6 +55,42 @@ class RegistryKeyData(GObject.GObject):
     def __bool__(self):
         return bool(self.__regkey)
 
+class GameFileMatcherData(GObject.GObject):
+    def __init__(self,match_type:GameFileType,match_value:str):
+        GObject.GObject.__init__(self)
+        self.match_type = match_type
+        self.match_value = match_value
+        
+    @GObject.Property
+    def match_type(self)->GameFileType:
+        return self.__match_type
+    @match_type.setter
+    def match_type(self,type:GameFileType):
+        self.__match_type = type
+        
+    @GObject.Property(type=str)
+    def match_value(self)->str:
+        return self.__match_value
+    @match_value.setter
+    def match_value(self,value:str):
+        self.__match_value = value
+
+class GameFileTypeData(GObject.GObject):
+    def __init__(self,match_type:GameFileType,name:str):
+        GObject.GObject.__init__(self)
+        self.__match_type = match_type
+        self.__name = name
+        
+    @GObject.Property
+    def match_type(self)->GameFileType:
+        return self.__match_type
+    
+    @GObject.Property(type=str)
+    def name(self)->str:
+        return self.__name
+    
+    
+        
 class GameVariableDialog(Gtk.Dialog):
     def __init__(self,parent:Gtk.Window,columnview:Gtk.ColumnView,variable:GameVariableData|None=None):
         Gtk.Dialog.__init__(self)
@@ -122,6 +158,8 @@ class GameVariableDialog(Gtk.Dialog):
         self.hide()
         self.destroy()            
 
+       
+
 class GameDialog(Gtk.Dialog):
     def __init__(self,
                  parent:Gtk.Window|None=None,
@@ -135,9 +173,14 @@ class GameDialog(Gtk.Dialog):
             self.__game = game
         else:
             self.__game = None
-            
+        
         self.set_default_size(800,600)
         
+        self.__filematch_dropdown_model = Gio.ListStore.new(GameFileTypeData)
+        self.__filematch_dropdown_model.append(GameFileTypeData(GameFileType.FILENAME,"Filename"))
+        self.__filematch_dropdown_model.append(GameFileTypeData(GameFileType.GLOB,"Glob"))
+        self.__filematch_dropdown_model.append(GameFileTypeData(GameFileType.REGEX,"Regular expression"))
+            
         paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         paned.set_position(200)
         
@@ -271,7 +314,18 @@ class GameDialog(Gtk.Dialog):
         grid.attach(label,0,1,1,1)
         grid.attach(page.sgdir_entry,1,1,1,1)
         
+        label = Gtk.Label.new("Installation directory:")
+        page.installdir_entry = Gtk.Entry()
+        page.installdir_entry.set_hexpand(True)
+        grid.attach(label,0,2,1,1)
+        grid.attach(page.installdir_entry,1,2,1,1)
         vbox.append(grid)
+        
+        page.filematch = self.__create_filematch_widget('Match Files')
+        vbox.append(page.filematch)
+        
+        page.ignorematch = self.__create_filematch_widget('Ignore Files')
+        vbox.append(page.ignorematch)
         
         page.lookup_regkeys = self.__create_registry_key_widget("Lookup Registry keys")
         vbox.append(page.lookup_regkeys)
@@ -285,7 +339,7 @@ class GameDialog(Gtk.Dialog):
         page.set_child(vbox)
         self.__stack.add_titled(page,"windows","Windows")
         stack_page = self.__stack.get_page(page)
-        stack_page.set_icon_name("windows-svgrepo-com")
+        stack_page.set_icon_name("windows-svgrepo-com-symbolic")
         
         return page
         
@@ -315,13 +369,19 @@ class GameDialog(Gtk.Dialog):
         grid.attach(page.binary_entry,1,2,1,1)
         vbox.append(grid)
         
+        page.filematch = self.__create_filematch_widget('Match Files')
+        vbox.append(page.filematch)
+        
+        page.ignorematch = self.__create_filematch_widget('Ignore Files')
+        vbox.append(page.ignorematch)
+        
         page.variables = self.__create_variables_widget()
         vbox.append(page.variables)
         
         page.set_child(vbox)
         self.__stack.add_titled(page,"linux","Linux")
         stack_page = self.__stack.get_page(page)
-        stack_page.set_icon_name("linux-svgrepo-com")
+        stack_page.set_icon_name("linux-svgrepo-com-symbolic")
         
         return page
     
@@ -350,13 +410,19 @@ class GameDialog(Gtk.Dialog):
         grid.attach(page.binary_entry,1,2,1,1)
         vbox.append(grid)
         
+        page.filematch = self.__create_filematch_widget('Match Files')
+        vbox.append(page.filematch)
+        
+        page.ignorematch = self.__create_filematch_widget('Ignore Files')
+        vbox.append(page.ignorematch)
+        
         page.variables = self.__create_variables_widget()
         vbox.append(page.variables)
         
         page.set_child(vbox)
         self.__stack.add_titled(page,"macos","MacOS")
         stack_page = self.__stack.get_page(page)
-        stack_page.set_icon_name("apple-svgrepo-com")
+        stack_page.set_icon_name("apple-svgrepo-com-symbolic")
         
         return page
 
@@ -372,9 +438,7 @@ class GameDialog(Gtk.Dialog):
         page.appid_entry.set_hexpand(True)
         grid.attach(label,0,0,1,1)
         grid.attach(page.appid_entry,1,0,1,1)
-        vbox.append(grid)
-        
-        
+                
         label = Gtk.Label.new("Root directory:")
         page.sgroot_entry = Gtk.Entry()
         page.sgroot_entry.set_hexpand(True)
@@ -387,13 +451,26 @@ class GameDialog(Gtk.Dialog):
         grid.attach(label,0,2,1,1)
         grid.attach(page.sgdir_entry,1,2,1,1)
         
+        label = Gtk.Label.new("Installation directory:")
+        page.installdir_entry = Gtk.Entry()
+        page.installdir_entry.set_hexpand(True)
+        grid.attach(label,0,3,1,1)
+        grid.attach(page.installdir_entry,1,3,1,1)
+        vbox.append(grid)
+        
+        page.filematch = self.__create_filematch_widget('Match Files')
+        vbox.append(page.filematch)
+        
+        page.ignorematch = self.__create_filematch_widget('Ignore Files')
+        vbox.append(page.ignorematch)
+        
         page.variables = self.__create_variables_widget()
         vbox.append(page.variables)
         
         page.set_child(vbox)
         self.__stack.add_titled(page,name,title)
         stack_page = self.__stack.get_page(page)
-        stack_page.set_icon_name("steam-svgrepo-com")
+        stack_page.set_icon_name("steam-svgrepo-com-symbolic")
         
         return page
     def __set_widget_margin(self,widget,margin):
@@ -454,6 +531,51 @@ class GameDialog(Gtk.Dialog):
         vbox.append(widget.actions)
         vbox.append(widget.columnview)
         
+        widget.set_child(vbox)
+        return widget
+
+    def __create_filematch_dropdown(self,item,widget):
+        factory = Gtk.SignalListItemFactory()
+        factory.connect('setup',self._on_filematch_type_dropdown_setup)
+        factory.connect('bind',self._on_filematch_type_dropdown_bind)
+        
+        dropdown = Gtk.DropDown(model=self.__filematch_dropdown_model,factory=factory)
+        return dropdown
+        
+    def __create_filematch_widget(self,title:str):
+        widget = Gtk.Frame.new(title)
+        vbox = Gtk.Box.new(Gtk.Orientation.VERTICAL,2)
+        
+        widget.actions = Gtk.ActionBar()
+        
+        widget.add_button = Gtk.Button()
+        icon = Gtk.Image.new_from_icon_name('list-add-symbolic')
+        widget.add_button.set_child(icon)
+        widget.add_button.connect('clicked',self._on_filematch_add_button_clicked,widget)
+        widget.actions.pack_start(widget.add_button)
+        
+        model = Gio.ListStore.new(GameFileMatcherData)
+        selection = Gtk.SingleSelection.new(model)
+        selection.set_autoselect(False)
+        selection.set_can_unselect(True)
+        
+        type_factory = Gtk.SignalListItemFactory()
+        type_factory.connect('setup',self._on_filematch_type_setup,widget)
+        type_factory.connect('bind',self._on_filematch_type_bind,widget)
+        
+        value_factory = Gtk.SignalListItemFactory()
+        value_factory.connect('setup',self._on_filematch_value_setup,widget)
+        value_factory.connect('bind',self._on_filematch_value_bind,widget)
+        
+        widget.columnview = Gtk.ColumnView.new(selection)
+        type_column = Gtk.ColumnViewColumn.new("Matcher",type_factory)
+        value_column = Gtk.ColumnViewColumn.new("Match value",value_factory)
+        value_column.set_expand(True)
+        widget.columnview.append_column(type_column)
+        widget.columnview.append_column(value_column)
+        
+        vbox.append(widget.actions)
+        vbox.append(widget.columnview)
         widget.set_child(vbox)
         return widget
     
@@ -597,6 +719,19 @@ class GameDialog(Gtk.Dialog):
                     var_model.append(GameVariableData(name,value))
     # reset()
     
+    def save(self):
+        def get_steam_data(widget):
+            try: 
+                appid = int(widget.appid_entry.get_text())
+            except:
+                return None                
+                
+            if not widget.sgroot_entry.get_text() or not widget.sgdir_entry.get_text():
+                return None
+            
+            files=[]
+            #gfm_model = widget.lookup_files.
+        
     def _on_variable_name_setup(self,factory,item):
         label = Gtk.Label()
         item.set_child(label)
@@ -615,6 +750,46 @@ class GameDialog(Gtk.Dialog):
         data = item.get_item()
         data.bind_property('value',label,'label',GObject.BindingFlags.SYNC_CREATE)
         
+    def _on_filematch_dropdown_selection_changed(self,dropdown,data,item):
+        data = item.get_item()
+        data.match_type = dropdown.get_slected_item()
+    
+    def _on_filematch_type_dropdown_setup(self,factory,item):
+        label = Gtk.Label()
+        item.set_child(label)                
+    
+    def _on_filematch_type_dropdown_bind(self,factory,item):
+        label = item.get_child()
+        data = item.get_item()
+        label.set_text(data.name)
+            
+    def _on_filematch_type_setup(self,factory,item,widget):
+        item.set_child(self.__create_filematch_dropdown(item,widget))
+    
+    def _on_filematch_type_bind(self,factory,item,widget):
+        dropdown = item.get_child()
+        data = item.get_item()
+        for i in range(self.__filematch_dropdown_model.get_n_items()):
+            if (data.match_type == self.__filematch_dropdown_model.get_item(i).match_type):
+                dropdown.set_selected(i)
+                break
+        dropdown.connect('notify::selected-item',self._on_filematch_dropdown_selection_changed,item)
+        
+    def _on_filematch_value_setup(self,factory,item,widget):
+        label = Gtk.EditableLabel()
+        item.set_child(label)
+    
+    def _on_filematch_value_bind(self,factory,item,widget):
+        label = item.get_child()
+        data = item.get_item()
+        if (data.match_value):
+            label.set_text(data.match_value)
+        else:
+            label.start_editing()
+            label.grab_focus()
+        label.bind_property('text',data,'match_value',GObject.BindingFlags.DEFAULT)
+        label.connect('changed',self._on_filematch_value_label_changed,widget)
+    
     def _on_windows_regkey_setup(self,factory,item):
         label = Gtk.EditableLabel()
         item.set_child(label)
@@ -658,7 +833,21 @@ class GameDialog(Gtk.Dialog):
         else:
             var_widget.edit_button.set_sensitive(True)
             var_widget.remove_button.set_sensitive(True)
-            
+    
+    def _on_filematch_add_button_clicked(self,button,widget):
+        widget.columnview.get_model().get_model().append(GameFileMatcherData(GameFileType.GLOB,""))
+    
+    def _on_filematch_value_label_changed(self,label,widget):
+        if not label.get_text():
+            model = widget.columnview.get_model().get_model()
+            i = 0
+            while i < model.get_n_items():
+                item = model.get_item(i)
+                if not item.match_value:
+                    model.remove(i)
+                    continue
+                i += 1
+        
     def _on_windows_regkey_add_button_clicked(self,button,widget):
         widget.listview.get_model().get_model().append(RegistryKeyData())
         

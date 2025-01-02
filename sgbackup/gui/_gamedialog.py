@@ -264,7 +264,9 @@ class GameDialog(Gtk.Dialog):
         self.__stack_sidebar.select_row(self.__stack_sidebar.get_row_at_index(0))
         
         self.get_content_area().append(paned)
-        self.add_button("Apply",Gtk.ResponseType.APPLY)
+        self.__apply_button = self.add_button("Apply",Gtk.ResponseType.APPLY)
+        self.__apply_button.set_sensitive(False)
+        
         self.add_button("Cancel",Gtk.ResponseType.CANCEL)
         
         
@@ -275,22 +277,24 @@ class GameDialog(Gtk.Dialog):
         
         sgtype_data = (
             (SavegameType.UNSET,"Not set","process-stop-symbolic"),
+            
             (SavegameType.WINDOWS,"Windows native","windows-svgrepo-com-symbolic"),
-            (SavegameType.LINUX,"Linux native","linux-svgrepo-com-symbolic"),
-            (SavegameType.MACOS,"MacOS native","apple-svgrepo-com-symbolic"),
             (SavegameType.STEAM_WINDOWS,"Steam Windows","steam-svgrepo-com-symbolic"),
-            (SavegameType.STEAM_LINUX,"Steam Linux","steam-svgrepo-com-symbolic"),
-            (SavegameType.STEAM_MACOS,"Steam MacOS","steam-svgrepo-com-symbolic"),
             #(SavegameType.EPIC_WINDOWS,"Epic Windows","object-select-symbolic"),
-            #(SavegameType.EPIC_LINUX,"Epic Linux","object-select-symbolic"),
             #(SavegameType.GOG_WINDOWS,"GoG Windows","object-select-symbolic"),
+            
+            (SavegameType.LINUX,"Linux native","linux-svgrepo-com-symbolic"),
+            (SavegameType.STEAM_LINUX,"Steam Linux","steam-svgrepo-com-symbolic"),
+            #(SavegameType.EPIC_LINUX,"Epic Linux","object-select-symbolic"),
             #(SavegameType.GOG_LINUX,"GoG Linux","object-select-symbolic"),
+            
+            (SavegameType.MACOS,"MacOS native","apple-svgrepo-com-symbolic"),
+            (SavegameType.STEAM_MACOS,"Steam MacOS","steam-svgrepo-com-symbolic"),
         )
         sgtype_model = Gio.ListStore.new(SavegameTypeData)
         for data in sgtype_data:
             sgtype_model.append(SavegameTypeData(*data))
             
-        
         grid = Gtk.Grid.new()
         
         label = Gtk.Label.new("Is active?")
@@ -317,6 +321,8 @@ class GameDialog(Gtk.Dialog):
         label = Gtk.Label.new("Key:")
         self.__key_entry = Gtk.Entry()
         self.__key_entry.set_hexpand(True)
+        self.__key_entry.connect('changed',lambda w: self._on_savegame_type_changed())
+        
         grid.attach(label,0,1,1,1)
         grid.attach(self.__key_entry,1,1,1,1)
         
@@ -326,6 +332,7 @@ class GameDialog(Gtk.Dialog):
         self.__savegame_type_dropdown = Gtk.DropDown(model=sgtype_model,factory=sgtype_factory)
         self.__savegame_type_dropdown.set_selected(0)
         self.__savegame_type_dropdown.set_hexpand(True)
+        self.__savegame_type_dropdown.connect('notify::selected-item',lambda w,d: self._on_savegame_type_changed())
         label = Gtk.Label.new("Savegame Type:")
         grid.attach(label,0,2,1,1)
         grid.attach(self.__savegame_type_dropdown,1,2,1,1)
@@ -333,12 +340,14 @@ class GameDialog(Gtk.Dialog):
         label = Gtk.Label.new("Game name:")
         self.__name_entry = Gtk.Entry()
         self.__name_entry.set_hexpand(True)
+        self.__name_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,3,1,1)
         grid.attach(self.__name_entry,1,3,1,1)
         
         label = Gtk.Label.new("Savegame name:")
         self.__sgname_entry = Gtk.Entry()
         self.__sgname_entry.set_hexpand(True)
+        self.__sgname_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,4,1,1)
         grid.attach(self.__sgname_entry,1,4,1,1)
         vbox.append(grid)
@@ -363,12 +372,14 @@ class GameDialog(Gtk.Dialog):
         label = Gtk.Label.new("Root directory:")
         page.sgroot_entry = Gtk.Entry()
         page.sgroot_entry.set_hexpand(True)
+        page.sgroot_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,0,1,1)
         grid.attach(page.sgroot_entry,1,0,1,1)
         
         label = Gtk.Label.new("Backup directory:")
         page.sgdir_entry = Gtk.Entry()
         page.sgdir_entry.set_hexpand(True)
+        page.sgdir_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,1,1,1)
         grid.attach(page.sgdir_entry,1,1,1,1)
         
@@ -411,12 +422,14 @@ class GameDialog(Gtk.Dialog):
         label = Gtk.Label.new("Root directory:")
         page.sgroot_entry = Gtk.Entry()
         page.sgroot_entry.set_hexpand(True)
+        page.sgroot_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,0,1,1)
         grid.attach(page.sgroot_entry,1,0,1,1)
         
         label = Gtk.Label.new("Backup directory:")
         page.sgdir_entry = Gtk.Entry()
         page.sgdir_entry.set_hexpand(True)
+        page.sgdir_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,1,1,1)
         grid.attach(page.sgdir_entry,1,1,1,1)
         
@@ -452,12 +465,14 @@ class GameDialog(Gtk.Dialog):
         label = Gtk.Label.new("Root directory:")
         page.sgroot_entry = Gtk.Entry()
         page.sgroot_entry.set_hexpand(True)
+        page.sgroot_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,0,1,1)
         grid.attach(page.sgroot_entry,1,0,1,1)
         
         label = Gtk.Label.new("Backup directory:")
         page.sgdir_entry = Gtk.Entry()
         page.sgdir_entry.set_hexpand(True)
+        page.sgdir_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,1,1,1)
         grid.attach(page.sgdir_entry,1,1,1,1)
         
@@ -500,12 +515,14 @@ class GameDialog(Gtk.Dialog):
         label = Gtk.Label.new("Root directory:")
         page.sgroot_entry = Gtk.Entry()
         page.sgroot_entry.set_hexpand(True)
+        page.sgroot_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,1,1,1)
         grid.attach(page.sgroot_entry,1,1,1,1)
         
         label = Gtk.Label.new("Backup directory:")
         page.sgdir_entry = Gtk.Entry()
         page.sgdir_entry.set_hexpand(True)
+        page.sgdir_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,2,1,1)
         grid.attach(page.sgdir_entry,1,2,1,1)
         
@@ -873,6 +890,12 @@ class GameDialog(Gtk.Dialog):
                 
             #self.__game.save()
         
+    def get_is_valid(self):
+        if (self.__key_entry.get_text() and self.__name_entry.get_text() and self.__sgname_entry.get_text()):
+            sgtype_data = self.__savegame_type_dropdown.get_selected_item()
+            return self.get_is_valid_savegame_type(sgtype_data.savegame_type)
+        return False
+    
     def get_is_valid_savegame_type(self,sgtype:SavegameType)->bool:
         def check_is_valid(widget):
             return (bool(widget.sgroot_entry.get_text()) and bool(widget.sgdir_entry.get_text()))
@@ -914,9 +937,8 @@ class GameDialog(Gtk.Dialog):
         vbox.icon.props.icon_name = data.icon_name
         vbox.label.set_text(data.name)
         
-    def _on_savegame_type_changed(self,dropdown,data):
-        pass
-        
+    def _on_savegame_type_changed(self):
+        self.__apply_button.set_sensitive(self.get_is_valid())
         
     def _on_variable_name_setup(self,factory,item):
         label = Gtk.Label()

@@ -873,22 +873,211 @@ class GameDialog(Gtk.Dialog):
     # reset()
     
     def save(self):
-        def get_steam_data(widget):
+        def get_game_data(widget):
+            fm_model = widget.filematch.columnview.get_model().get_model()
+            im_model = widget.ignorematch.columnview.get_model().get_model()
+            var_model = widget.variables.columnview.get_model().get_model()
+            
+            filematch = []
+            ignorematch = []
             variables = {}
-            var_model = self.__game_variables.get_model().get_model()
+            
+            for i in range(fm_model.get_n_items()):
+                fm_data = fm_model.get_item(i)
+                filematch.append(GameFileMatcher(fm_data.match_type,fm_data.match_value))
+                
+            for i in range(im_model.get_n_items()):
+                fm_data = im_model.get_item(i)
+                ignorematch.append(GameFileMatcher(im_data.match_type,fm_data.match_value))
+            
             for i in range(var_model.get_n_items()):
                 var = var_model.get_item(i)
                 variables[var.name] = var.value
                 
-            if self.__game:
-                self.__game.key = self.__key_entry.get_text()
-                self.__game.name = self.__name_entry.get_text()
-                self.__game.savegame_name = self.__sgname_entry.get_text()
-                self.__game.variables = variables
-            else:
-                pass
+            return {
+                'sgroot': widget.sgroot_entry.get_text(),
+                'sgdir': widget.sgdir_entry.get_text(),
+                'filematch': filematch,
+                'ignorematch': ignorematch,
+                'variables': variables,
+            }
+            
+        def get_steam_data(widget):
+            conf = get_game_data(widget)
+            conf.update({
+                'appid': int(widget.appid_entry.get_text()),
+                'installdir': widget.installdir_entry.get_text(),
+            })
+            return conf
+            
+        if not self.get_is_valid():
+            return
+        
+        variables = {}
+        var_model = self.__game_variables.get_model().get_model()
+        for i in range(var_model.get_n_items()):
+            var = var_model.get_item(i)
+            variables[var.name] = var.value
+        key = self.__key_entry.get_text()
+        name = self.__name_entry.get_text()
+        savegame_name = self.__sgname_entry.get_text()
+        savegame_type = self.__savegame_type_dropdown.get_selected_item().savegame_type()
+        if self.__game:
+            self.__game.key = key
+            self.__game.name = name
+            self.__game.savegame_type = savegame_type
+            self.__game.savegame_name = savegame_name
+            self.__game.variables = variables
+        else:
+            self.__game = Game(key,name,savegame_name)
+            self.__game.savegame_type = savegame_type
+            self.__game.variables = variables
+        
+        if self.get_is_valid_savegame_type(SavegameType.WINDOWS):
+            data = get_game_data(self.__windows)
+            installdir = self.__windows.installdir_entry.get_text()
+            grk_model = self.__windows.lookup_regekys.listview.get_model().get_model()
+            irk_model = self.__windows.installdir_regkeys.listview.get_model().get_model()
+            grk = []
+            irk = []
+            
+            for i in range(grk_model.get_n_items()):
+                grk.append(grk_model.get_item(i).regkey)
                 
-            #self.__game.save()
+            for i in range(irk_model.get_n_items()):
+                irk.append(irk_model.get_item(i).regkey)            
+            
+            if self.__game.windows:
+                wg = self.__game.windows
+                wg.savegame_root = data['sgroot']
+                wg.savegame_dir = data['sgdir']
+                wg.variables = data['variables']
+                wg.file_match = data["filematch"]
+                wg.ignore_match = data['ignorematch']
+                wg.installdir = installdir
+                wg.game_registry_keys = grk
+                wg.installdir_registry_keys = irk
+            else:
+                self.__game.windows = WindowsGame(data['sgroot'],
+                                                  data['sgdir'],
+                                                  data['variables'],
+                                                  installdir,
+                                                  grk,
+                                                  irk,
+                                                  data['filematch'],
+                                                  data['ignorematch'])
+        elif self.__game.windows:
+            self.__game.windows = None
+            
+        if self.get_is_valid_savegame_type(SavegameType.LINUX):
+            data = get_game_data(self.__linux)
+            binary = self.__linux.binary_entry.get_text()
+            if self.__game.linux:
+                lg = self.__game.linux
+                lg.savegame_root = data['sgroot']
+                lg.savegame_dir = data['sgdir']
+                lg.variables = data['variables']
+                lg.file_match = data["filematch"]
+                lg.ignore_match = data['ignorematch']
+                lg.binary = binary
+            else:
+                self.__game.linux = LinuxGame(data["sgroot"],
+                                              data['sgdir'],
+                                              data["variables"],
+                                              binary,
+                                              data["filematch"],
+                                              data['ignorematch'])
+        elif self.__game.linux:
+            self.__game_linux = None
+            
+        if self.get_is_valid_savegame_type(SavegameType.MACOS):
+            data = get_game_data(self.__linux)
+            binary = self.__linux.binary_entry.get_text()
+            if self.__game.linux:
+                mg = self.__game.macos
+                mg.savegame_root = data['sgroot']
+                mg.savegame_dir = data['sgdir']
+                mg.variables = data['variables']
+                mg.file_match = data["filematch"]
+                mg.ignore_match = data['ignorematch']
+                mg.binary = binary
+            else:
+                self.__game.macos = MacOSGame(data["sgroot"],
+                                              data['sgdir'],
+                                              data["variables"],
+                                              binary,
+                                              data["filematch"],
+                                              data['ignorematch'])
+        elif self.__game.macos:
+            self.__game.macos = None
+            
+        if self.get_is_valid_savegame_type(SavegameType.STEAM_WINDOWS):
+            data = get_steam_data(self.__steam_windows)
+            if self.__game.steam_windows:
+                sg = self.__game.steam_windows
+                sg.savegame_root = data['sgroot']
+                sg.savegame_dir = data['sgdir']
+                sg.variables = data['variables']
+                sg.file_match = data["filematch"]
+                sg.ignore_match = data['ignorematch']
+                sg.appid = data['appid']
+                sg.installdir = data['installdir']
+            else:
+                self.__game.steam_windows = SteamWindowsGame(data['appid'],
+                                                             data['sgroot'],
+                                                             data['sgdir'],
+                                                             data['variables'],
+                                                             data['installdir'],
+                                                             data['filematch'],
+                                                             data['ignorematch'])
+        elif self.__steam_windows:
+            self.__steam_windows = None
+                
+        if self.get_is_valid_savegame_type(SavegameType.STEAM_LINUX):
+            data = get_steam_data(self.__steam_linux)
+            if self.__game.steam_linux:
+                sg = self.__game.steam_linux
+                sg.savegame_root = data['sgroot']
+                sg.savegame_dir = data['sgdir']
+                sg.variables = data['variables']
+                sg.file_match = data["filematch"]
+                sg.ignore_match = data['ignorematch']
+                sg.appid = data['appid']
+                sg.installdir = data['installdir']
+            else:
+                self.__game.steam_linux = SteamLinuxGame(data['appid'],
+                                                         data['sgroot'],
+                                                         data['sgdir'],
+                                                         data['variables'],
+                                                         data['installdir'],
+                                                         data['filematch'],
+                                                         data['ignorematch'])
+        elif self.__steam_linux:
+            self.__steam_linux = None
+            
+        if self.get_is_valid_savegame_type(SavegameType.STEAM_MACOS):
+            data = get_steam_data(self.__steam_macos)
+            if self.__game.steam_macos:
+                sg = self.__game.steam_macos
+                sg.savegame_root = data['sgroot']
+                sg.savegame_dir = data['sgdir']
+                sg.variables = data['variables']
+                sg.file_match = data["filematch"]
+                sg.ignore_match = data['ignorematch']
+                sg.appid = data['appid']
+                sg.installdir = data['installdir']
+            else:
+                self.__game.steam_macos = SteamMacOSGame(data['appid'],
+                                                         data['sgroot'],
+                                                         data['sgdir'],
+                                                         data['variables'],
+                                                         data['installdir'],
+                                                         data['filematch'],
+                                                         data['ignorematch'])
+        elif self.__steam_macos:
+            self.__steam_macos = None
+            
+        self.__game.save()
         
     def get_is_valid(self):
         if (self.__key_entry.get_text() and self.__name_entry.get_text() and self.__sgname_entry.get_text()):

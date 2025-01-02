@@ -382,7 +382,7 @@ class Application(Gtk.Application):
         icons_path = pkg_path / "icons"
         
         theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
-        theme.add_resource_path("/org/sgbackup/sgbackup/icons")
+        #theme.add_resource_path("/org/sgbackup/sgbackup/icons")
         theme.add_search_path(str(icons_path))
         
         action_about = Gio.SimpleAction.new('about',None)

@@ -17,7 +17,19 @@
 ###############################################################################
 
 from gi.repository import GObject,Gio,GLib,Gtk,Pango
-from ..game import Game,GameFileMatcher,GameFileType
+from ..game import (
+    Game,
+    GameFileMatcher,
+    GameFileType,
+    SavegameType,
+    WindowsGame,
+    LinuxGame,
+    MacOSGame,
+    SteamLinuxGame,
+    SteamWindowsGame,
+    SteamMacOSGame,
+)
+    
 
 class GameVariableData(GObject.GObject):
     def __init__(self,name:str,value:str):
@@ -88,9 +100,27 @@ class GameFileTypeData(GObject.GObject):
     @GObject.Property(type=str)
     def name(self)->str:
         return self.__name
+ 
+class SavegameTypeData(GObject.GObject):
+    def __init__(self,type:SavegameType,name:str,icon_name:str):
+        GObject.GObject.__init__(self)
+        self.__sgtype = type
+        self.__name = name
+        self.__icon_name = icon_name
     
+    @GObject.Property
+    def savegame_type(self):
+        return self.__sgtype
     
-        
+    @GObject.Property
+    def name(self):
+        return self.__name
+    
+    @GObject.Property
+    def icon_name(self)->str:
+        return self.__icon_name
+         
+ 
 class GameVariableDialog(Gtk.Dialog):
     def __init__(self,parent:Gtk.Window,columnview:Gtk.ColumnView,variable:GameVariableData|None=None):
         Gtk.Dialog.__init__(self)
@@ -243,6 +273,24 @@ class GameDialog(Gtk.Dialog):
         vbox = Gtk.Box.new(Gtk.Orientation.VERTICAL,2)
         self.__set_widget_margin(vbox,5)
         
+        sgtype_data = (
+            (SavegameType.UNSET,"Not set","process-stop-symbolic"),
+            (SavegameType.WINDOWS,"Windows native","windows-svgrepo-com-symbolic"),
+            (SavegameType.LINUX,"Linux native","linux-svgrepo-com-symbolic"),
+            (SavegameType.MACOS,"MacOS native","apple-svgrepo-com-symbolic"),
+            (SavegameType.STEAM_WINDOWS,"Steam Windows","steam-svgrepo-com-symbolic"),
+            (SavegameType.STEAM_LINUX,"Steam Linux","steam-svgrepo-com-symbolic"),
+            (SavegameType.STEAM_MACOS,"Steam MacOS","steam-svgrepo-com-symbolic"),
+            #(SavegameType.EPIC_WINDOWS,"Epic Windows","object-select-symbolic"),
+            #(SavegameType.EPIC_LINUX,"Epic Linux","object-select-symbolic"),
+            #(SavegameType.GOG_WINDOWS,"GoG Windows","object-select-symbolic"),
+            #(SavegameType.GOG_LINUX,"GoG Linux","object-select-symbolic"),
+        )
+        sgtype_model = Gio.ListStore.new(SavegameTypeData)
+        for data in sgtype_data:
+            sgtype_model.append(SavegameTypeData(*data))
+            
+        
         grid = Gtk.Grid.new()
         
         label = Gtk.Label.new("Is active?")
@@ -272,17 +320,27 @@ class GameDialog(Gtk.Dialog):
         grid.attach(label,0,1,1,1)
         grid.attach(self.__key_entry,1,1,1,1)
         
+        sgtype_factory = Gtk.SignalListItemFactory()
+        sgtype_factory.connect('setup',self._on_savegame_type_setup)
+        sgtype_factory.connect('bind',self._on_savegame_type_bind)
+        self.__savegame_type_dropdown = Gtk.DropDown(model=sgtype_model,factory=sgtype_factory)
+        self.__savegame_type_dropdown.set_selected(0)
+        self.__savegame_type_dropdown.set_hexpand(True)
+        label = Gtk.Label.new("Savegame Type:")
+        grid.attach(label,0,2,1,1)
+        grid.attach(self.__savegame_type_dropdown,1,2,1,1)
+        
         label = Gtk.Label.new("Game name:")
         self.__name_entry = Gtk.Entry()
         self.__name_entry.set_hexpand(True)
-        grid.attach(label,0,2,1,1)
-        grid.attach(self.__name_entry,1,2,1,1)
+        grid.attach(label,0,3,1,1)
+        grid.attach(self.__name_entry,1,3,1,1)
         
         label = Gtk.Label.new("Savegame name:")
         self.__sgname_entry = Gtk.Entry()
         self.__sgname_entry.set_hexpand(True)
-        grid.attach(label,0,3,1,1)
-        grid.attach(self.__sgname_entry,1,3,1,1)
+        grid.attach(label,0,4,1,1)
+        grid.attach(self.__sgname_entry,1,4,1,1)
         vbox.append(grid)
         
         self.__game_variables = self.__create_variables_widget()
@@ -473,6 +531,7 @@ class GameDialog(Gtk.Dialog):
         stack_page.set_icon_name("steam-svgrepo-com-symbolic")
         
         return page
+    
     def __set_widget_margin(self,widget,margin):
         widget.set_margin_start(margin)
         widget.set_margin_end(margin)
@@ -577,6 +636,7 @@ class GameDialog(Gtk.Dialog):
         vbox.append(widget.actions)
         vbox.append(widget.columnview)
         widget.set_child(vbox)
+        
         return widget
     
     def __create_registry_key_widget(self,title):
@@ -618,6 +678,8 @@ class GameDialog(Gtk.Dialog):
         self.__windows.sgroot_entry.set_text("")
         self.__windows.sgdir_entry.set_text("")
         self.__windows.variables.columnview.get_model().get_model().remove_all()
+        self.__windows.filematch.columnview.get_model().get_model().remove_all()
+        self.__windows.ignorematch.columnview.get_model().get_model().remove_all()
         self.__windows.lookup_regkeys.listview.get_model().get_model().remove_all()
         self.__windows.installdir_regkeys.listview.get_model().get_model().remove_all()
         
@@ -625,30 +687,43 @@ class GameDialog(Gtk.Dialog):
         self.__linux.sgroot_entry.set_text("")
         self.__linux.sgdir_entry.set_text("")
         self.__linux.binary_entry.set_text("")
+        self.__linux.filematch.columnview.get_model().get_model().remove_all()
+        self.__linux.ignorematch.columnview.get_model().get_model().remove_all()
         self.__linux.variables.columnview.get_model().get_model().remove_all()
         
         #linux
         self.__macos.sgroot_entry.set_text("")
         self.__macos.sgdir_entry.set_text("")
         self.__macos.binary_entry.set_text("")
+        self.__macos.filematch.columnview.get_model().get_model().remove_all()
+        self.__macos.ignorematch.columnview.get_model().get_model().remove_all()
         self.__macos.variables.columnview.get_model().get_model().remove_all()
         
         #steam windows
         self.__steam_windows.sgroot_entry.set_text("")
         self.__steam_windows.sgdir_entry.set_text("")
         self.__steam_windows.appid_entry.set_text("")
+        self.__steam_windows.installdir_entry.set_text("")
+        self.__steam_windows.filematch.columnview.get_model().get_model().remove_all()
+        self.__steam_windows.ignorematch.columnview.get_model().get_model().remove_all()
         self.__steam_windows.variables.columnview.get_model().get_model().remove_all()
             
         #steam linux
         self.__steam_linux.sgroot_entry.set_text("")
         self.__steam_linux.sgdir_entry.set_text("")
         self.__steam_linux.appid_entry.set_text("")
+        self.__steam_linux.installdir_entry.set_text("")
+        self.__steam_linux.filematch.columnview.get_model().get_model().remove_all()
+        self.__steam_linux.ignorematch.columnview.get_model().get_model().remove_all()
         self.__steam_linux.variables.columnview.get_model().get_model().remove_all()
         
         #steam macos
         self.__steam_macos.sgroot_entry.set_text("")
         self.__steam_macos.sgdir_entry.set_text("")
         self.__steam_macos.appid_entry.set_text("")
+        self.__steam_macos.installdir_entry.set_text("")
+        self.__steam_macos.filematch.columnview.get_model().get_model().remove_all()
+        self.__steam_macos.ignorematch.columnview.get_model().get_model().remove_all()
         self.__steam_macos.variables.columnview.get_model().get_model().remove_all()
         
         if self.__game:
@@ -662,7 +737,17 @@ class GameDialog(Gtk.Dialog):
             if self.__game.windows:
                 self.__windows.sgroot_entry.set_text(self.__game.windows.savegame_root)
                 self.__windows.sgdir_entry.set_text(self.__game.windows.savegame_dir)
+                self.__windows.installdir_entry.set_text(self.__game.windows.installdir)
                 
+                #filematch
+                fm_model = self.__windows.filematch.columnview.get_model().get_model()
+                for fm in self.__game.windows.filematch:
+                    fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
+                
+                im_model = self.__windows.ignorematch.columnview.get_model().get_model()
+                for im in self.__game.windows.ignorematch:
+                    im_model.append(GameFileMatcherData(im.match_type,im.match_file))
+                    
                 # set lookup regkeys
                 var_model = self.__windows.variables.columnview.get_model().get_model()
                 grk_model = self.__windows.lookup_regkeys.listview.get_model().get_model()
@@ -682,6 +767,16 @@ class GameDialog(Gtk.Dialog):
                 self.__linux.sgroot_entry.set_text(self.__game.linux.savegame_root)
                 self.__linux.sgdir_entry.set_text(self.__game.linux.savegame_dir)
                 self.__linux.binary_entry.set_text(self.__game.linux.binary)
+                
+                #filematch
+                fm_model = self.__linux.filematch.columnview.get_model().get_model()
+                for fm in self.__game.linux.filematch:
+                    fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
+                
+                im_model = self.__linux.ignorematch.columnview.get_model().get_model()
+                for im in self.__game.linux.ignorematch:
+                    im_model.append(GameFileMatcherData(im.match_type,im.match_file))
+                
                 var_model = self.__linux.variables.columnview.get_model().get_model()
                 for name,value in self.__game.linux.variables.items():
                     var_model.append(GameVariableData(name,value))
@@ -690,6 +785,16 @@ class GameDialog(Gtk.Dialog):
                 self.__macos.sgroot_entry.set_text(self.__game.linux.savegame_root)
                 self.__macos.sgdir_entry.set_text(self.__game.linux.savegame_dir)
                 self.__macos.binary_entry.set_text(self.__game.linux.binary)
+                
+                #filematch
+                fm_model = self.__macos.filematch.columnview.get_model().get_model()
+                for fm in self.__game.macos.filematch:
+                    fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
+                
+                im_model = self.__macos.ignorematch.columnview.get_model().get_model()
+                for im in self.__game.macos.ignorematch:
+                    im_model.append(GameFileMatcherData(im.match_type,im.match_file))
+                
                 var_model = self.__macos.variables.columnview.get_model().get_model()
                 for name,value in self.__game.linux.variables.items():
                     var_model.append(GameVariableData(name,value))
@@ -698,6 +803,17 @@ class GameDialog(Gtk.Dialog):
                 self.__steam_windows.sgroot_entry.set_text(self.__game.steam_windows.savegame_root)
                 self.__steam_windows.sgdir_entry.set_text(self.__game.steam_windows.savegame_dir)
                 self.__steam_windows.appid_entry.set_text(self.__game.steam_windows.appid)
+                self.__steam_windows.installdir_entry.set_text(self.__game.steam_windows.installdir)
+                
+                #filematch
+                fm_model = self.__steam_windows.filematch.columnview.get_model().get_model()
+                for fm in self.__game.steam_windows.filematch:
+                    fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
+                
+                im_model = self.__steam_windows.ignorematch.columnview.get_model().get_model()
+                for im in self.__game.steam_windows.ignorematch:
+                    im_model.append(GameFileMatcherData(im.match_type,im.match_file))
+                
                 var_model = self.__steam_windows.variables.columnview.get_model().get_model()
                 for name,value in self.__game.steam_windows.variables.items():
                     var_model.append(GameVariableData(name,value))
@@ -706,6 +822,16 @@ class GameDialog(Gtk.Dialog):
                 self.__steam_linux.sgroot_entry.set_text(self.__game.steam_linux.savegame_root)
                 self.__steam_linux.sgdir_entry.set_text(self.__game.steam_linux.savegame_dir)
                 self.__steam_linux.appid_entry.set_text(self.__game.steam_linux.appid)
+                self.__steam_linux.installdir_entry.set_text(self.__game.steam_linux.installdir)
+                
+                fm_model = self.__steam_linux.filematch.columnview.get_model().get_model()
+                for fm in self.__game.steam_linux.filematch:
+                    fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
+                
+                im_model = self.__steam_linux.ignorematch.columnview.get_model().get_model()
+                for im in self.__game.steam_linux.ignorematch:
+                    im_model.append(GameFileMatcherData(im.match_type,im.match_file))
+                    
                 var_model = self.__steam_linux.variables.columnview.get_model().get_model()
                 for name,value in self.__game.steam_linux.variables.items():
                     var_model.append(GameVariableData(name,value))
@@ -714,6 +840,16 @@ class GameDialog(Gtk.Dialog):
                 self.__steam_macos.sgroot_entry.set_text(self.__game.steam_macos.savegame_root)
                 self.__steam_macos.sgdir_entry.set_text(self.__game.steam_macos.savegame_dir)
                 self.__steam_macos.appid_entry.set_text(self.__game.steam_macos.appid)
+                self.__steam_macos.installdir_entry.set_text(self.__game.steam_macos.installdir)
+                
+                fm_model = self.__steam_macos.filematch.columnview.get_model().get_model()
+                for fm in self.__game.steam_macos.filematch:
+                    fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
+                
+                im_model = self.__steam_macos.ignorematch.columnview.get_model().get_model()
+                for im in self.__game.steam_macos.ignorematch:
+                    im_model.append(GameFileMatcherData(im.match_type,im.match_file))
+                    
                 var_model = self.__steam_macos.variables.columnview.get_model().get_model()
                 for name,value in self.__game.steam_macos.variables.items():
                     var_model.append(GameVariableData(name,value))
@@ -721,16 +857,66 @@ class GameDialog(Gtk.Dialog):
     
     def save(self):
         def get_steam_data(widget):
-            try: 
-                appid = int(widget.appid_entry.get_text())
-            except:
-                return None                
+            variables = {}
+            var_model = self.__game_variables.get_model().get_model()
+            for i in range(var_model.get_n_items()):
+                var = var_model.get_item(i)
+                variables[var.name] = var.value
                 
-            if not widget.sgroot_entry.get_text() or not widget.sgdir_entry.get_text():
-                return None
-            
-            files=[]
-            #gfm_model = widget.lookup_files.
+            if self.__game:
+                self.__game.key = self.__key_entry.get_text()
+                self.__game.name = self.__name_entry.get_text()
+                self.__game.savegame_name = self.__sgname_entry.get_text()
+                self.__game.variables = variables
+            else:
+                pass
+                
+            #self.__game.save()
+        
+    def get_is_valid_savegame_type(self,sgtype:SavegameType)->bool:
+        def check_is_valid(widget):
+            return (bool(widget.sgroot_entry.get_text()) and bool(widget.sgdir_entry.get_text()))
+        
+        if sgtype == SavegameType.WINDOWS:
+            return check_is_valid(self.__windows)
+        elif sgtype == SavegameType.LINUX:
+            return check_is_valid(self.__linux)
+        elif sgtype == SavegameType.MACOS:
+            return check_is_valid(self.__macos)
+        elif sgtype == SavegameType.STEAM_WINDOWS:
+            return check_is_valid(self.__steam_windows)
+        elif sgtype == SavegameType.STEAM_LINUX:
+            return check_is_valid(self.__steam_linux)
+        elif sgtype == SavegameType.STEAM_MACOS:
+            return check_is_valid(self.__steam_macos)
+        #elif sgtype == SavegameType.EPIC_WINDOWS:
+        #    return check_is_valid(self.__epic_windows)
+        #elif sgtype == SavegameType.EPIC_LINUX:
+        #    return check_is_valid(self.__epic_linux)
+        #elif sgtype == SavegameType.GOG_WINDOWS:
+        #    return check_is_valid(self.__gog_windows)
+        #elif sgtype == SavegameType.GOG_LINUX:
+        #    return check_is_valid(self.__gog_linux)
+        return False
+        
+    def _on_savegame_type_setup(self,factory,item):
+        vbox = Gtk.Box.new(Gtk.Orientation.HORIZONTAL,4)
+        vbox.icon = Gtk.Image()
+        vbox.label = Gtk.Label()
+        
+        vbox.append(vbox.icon)
+        vbox.append(vbox.label)
+        item.set_child(vbox)
+        
+    def _on_savegame_type_bind(self,factory,item):
+        vbox = item.get_child()
+        data = item.get_item()
+        vbox.icon.props.icon_name = data.icon_name
+        vbox.label.set_text(data.name)
+        
+    def _on_savegame_type_changed(self,dropdown,data):
+        pass
+        
         
     def _on_variable_name_setup(self,factory,item):
         label = Gtk.Label()

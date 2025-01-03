@@ -359,7 +359,7 @@ class GameDialog(Gtk.Dialog):
         page.set_child(vbox)
         self.__stack.add_titled(page,"main","Game")
         stack_page = self.__stack.get_page(page)
-        stack_page.set_icon_name('sgbackup')
+        stack_page.set_icon_name('org.sgbackup.sgbackup-symbolic')
         
         
     def __create_windows_page(self):
@@ -1258,4 +1258,4 @@ class GameDialog(Gtk.Dialog):
                     model.remove(i)
                     continue
                 i += 1
-        
+

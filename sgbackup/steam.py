@@ -21,9 +21,10 @@ import re
 from pathlib import Path
 import sys
 import json
-
 from .settings import settings
 from .game import STEAM_GAMES,STEAM_WINDOWS_GAMES,STEAM_LINUX_GAMES,STEAM_MACOS_GAMES
+
+__gtype_name__ = __name__
 
 PLATFORM_WINDOWS = (sys.platform.lower() == 'win32')
 PLATFORM_LINUX = (sys.platform.lower() in ('linux','freebsd','netbsd','openbsd','dragonfly'))
@@ -35,7 +36,7 @@ from gi.repository.GObject import GObject,Property,Signal
 
 class AcfFileParser(object):
     """
-    Parses steam acf files to a dict.
+    Parses steam .acf files to a dict.
     """
     def __init__(self):
         pass

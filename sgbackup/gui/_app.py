@@ -300,7 +300,7 @@ class AppWindow(Gtk.ApplicationWindow):
                 
         Gtk.ApplicationWindow.__init__(self,**kwargs)
         self.set_default_size(800,600)
-        self.set_icon_name('sgbackup')
+        self.set_icon_name('org.sgbackup.sgbackup-symbolic')
         
         self.__builder = builder
         self.builder.add_from_file(os.path.join(os.path.dirname(__file__),'appmenu.ui'))
@@ -445,4 +445,4 @@ class Application(Gtk.Application):
                     arg_types=(SettingsDialog,))
     def settings_dialog_init(self,dialog):
         pass
-        
+

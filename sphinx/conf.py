@@ -27,7 +27,12 @@ extensions = [
 ]
 language = 'en'
 master_doc = 'index'
-source_suffix = '.rst'
+source_suffix = {
+        '.rst': "restructuredtext",
+        '.txt': "restructuredtext",
+        '.md': 'markdown',
+        '.markdown': 'mardown',
+}
 templates_path = ['templates']
 
 html_theme = 'sphinx_rtd_theme'

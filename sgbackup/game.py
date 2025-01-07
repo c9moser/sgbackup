@@ -46,21 +46,71 @@ else:
 
 
 class SavegameType(StrEnum):
+    """
+    SavegameType The savegame type for `Game` instance.
+    
+    The SavegameType selects the `GameData` provider for the 
+    `Game` instance.
+    """
+    
+    #: UNSET The SavegameType is unset
     UNSET = "unset"
+    
+    #: OTHER Not listed game-provider.
+    #:
+    #: **Currently not supported!**
     OTHER = "other"
+    
+    #: WINDOWS Native Windows game
     WINDOWS = "windows"
+    
+    #: LINUX Native Linux game
     LINUX = "linux"
+    
+    #: MACOS Native MacOS game
     MACOS = "macos"
+    
+    #: STEAM_WINDOWS *Steam* for Windows
     STEAM_WINDOWS = "steam_windows"
+    
+    #: STEAM_LINUX *Steam* for Linux
     STEAM_LINUX = "steam_linux"
+    
+    #: STEAM_MACOS *Steam* for MacOS
     STEAM_MACOS = "steam_macos"
+    
+    #: GOG WINDOWS *Good old Games* for Windows
+    #:
+    #: **Currently not supported!**
     GOG_WINDOWS = "gog_windows"
+    
+    #: GOG_LINUX *Good old Games* for Linux
+    #:
+    #: **Currently not supported!**
     GOG_LINUX = "gog_linux"
+    
+    #: EPIC_WINDOWS *Epic Games* for Windows
+    #:
+    #: **Currently not supported!**
     EPIC_WINDOWS = "epic_windows"
+    
+    #: EPIC_LINUX *Epic Games* for Linux
+    #:
+    #: **Currently not supported!**
     EPIC_LINUX = "epic_linux"
     
     @staticmethod
     def from_string(typestring:str):
+        """
+        from_string Get SavegameType from string.
+
+        :param typestring: The string to parse
+        :type typestring: str
+        :return: The SavegameType if any. If no matching SavegameType is found,
+            SavegameType.UNSET is returned.
+        :rtype: SavegameType
+        """
+        
         st=SavegameType
         s=typestring.lower()
         if (s == 'other'):
@@ -71,31 +121,53 @@ class SavegameType(StrEnum):
             return st.LINUX
         elif (s == 'macos'):
             return st.MACOS
-        elif (s == 'steam_windows' or s == 'steamwindows' or s == 'steam.windows'):
+        elif (s == 'steam_windows' or s == 'steam-windows' or s == 'steamwindows' or s == 'steam.windows'):
             return st.STEAM_WINDOWS
-        elif (s == 'steam_linux' or s == 'steamlinux' or s == 'steam.linux'):
+        elif (s == 'steam_linux' or  s == 'steam-linux' or s == 'steamlinux' or s == 'steam.linux'):
             return st.STEAM_LINUX
-        elif (s == 'steam_macos' or s == 'steammacos' or s == 'steam.macos'):
+        elif (s == 'steam_macos' or s == 'steam-macos' or s == 'steammacos' or s == 'steam.macos'):
             return st.STEAM_MACOS
-        elif (s == 'gog_winows' or s == 'gogwindows' or s == 'gog.windows'):
+        elif (s == 'gog_winows' or s == 'gog-windows' or s == 'gogwindows' or s == 'gog.windows'):
             return st.GOG_WINDOWS
-        elif (s == 'gog_linux' or s == 'goglinux' or s == 'gog.linux'):
+        elif (s == 'gog_linux' or s == 'gog-linux' or s == 'goglinux' or s == 'gog.linux'):
             return st.GOG_LINUX
-        elif (s == 'epic_windows' or s == 'epicwindows' or s == 'epic.windows'):
+        elif (s == 'epic_windows' or s == 'epic-windows' or s == 'epicwindows' or s == 'epic.windows'):
             return st.EPIC_WINDOWS
-        elif (s == 'epic_linux' or s == 'epiclinux' or s == 'epic.linux'):
+        elif (s == 'epic_linux' or s == 'epic-linux' or s == 'epiclinux' or s == 'epic.linux'):
             return st.EPIC_LINUX
         
         return st.UNSET
     
 
 class GameFileType(StrEnum):
+    """
+    GameFileType The file matcher type for `GameFileMatcher`.
+    
+    The path to be matched is originating from *${SAVEGAME_ROOT}/${SAVEGAME_DIR}*. 
+    """
+    
+    #: GLOB Glob matching.
     GLOB = "glob"
+    
+    #: REGEX Regex file matching
     REGEX = "regex"
+    
+    #: FILENAME Filename matching.
     FILENAME = "filename"
     
     @staticmethod
     def from_string(typestring:str):
+        """
+        from_string Get the `GameFileType` from a string.
+
+        If an illegal string-value is given this method raises a `ValueError`.
+        
+        :param typestring: The string to be used.
+        :type typestring: str
+        :raises ValueError: If an illegal string is given.
+        :return: The corresponding Enum-value
+        :rtype: GameFileType
+        """
         s = typestring.lower()
         if (s == 'glob'):
             return GameFileType.GLOB
@@ -104,9 +176,12 @@ class GameFileType(StrEnum):
         elif (s == 'filename'):
             return GameFileType.FILENAME
         
-        raise ValueError("Unknown GameFileType \"{}\"!".fomrat(typestring))
+        raise ValueError("Unknown GameFileType \"{}\"!".format(typestring))
 
 class GameFileMatcher(GObject):
+    """
+    GameFileMatcher Match savegame files if they are  to be included in the backup.
+    """
     __gtype_name__ = "GameFileMatcher"
     
     def __init__(self,match_type:GameFileType,match_file:str):
@@ -116,7 +191,14 @@ class GameFileMatcher(GObject):
     
     @Property
     def match_type(self)->GameFileType:
+        """
+        match_type The type of the matcher.
+        
+        :type: GameFileType
+        """
+        
         return self.__match_type
+    
     @match_type.setter
     def match_type(self,type:GameFileType):
         if not isinstance(type,GameFileType):
@@ -125,15 +207,27 @@ class GameFileMatcher(GObject):
         
     @Property(type=str)
     def match_file(self)->str:
+        """
+        match_file The matcher value.
+        
+        :type: str
+        """
         return self.__match_file
     @match_file.setter
     def match_file(self,file:str):
-        self.__match_file = file
+        self.__match_file = file    
     
-    ## @}
-    
-    def match(self,rel_filename:str):
-        def match_glob(filename):
+    def match(self,rel_filename:str)->bool:
+        """
+        match Match the file.
+
+        :param rel_filename: The relative filename originating from 
+            *${SAVEGAME_ROOT}/${SAVEGAME_DIR}*.
+        :type rel_filename: str
+        :rtype: bool
+        :returns: True if file matches
+        """
+        def match_glob(filename)->bool:
             return fnmatch.fnmatch(filename,self.match_file)
         # match_glob()
         
@@ -170,8 +264,7 @@ class GameData(GObject):
     __gtype_name__ = 'GameData'
     
     """
-    :class: GameData
-    :brief: Base class for platform specific data.
+    :class: GameData Base class for savegame specific data data.
     """
     def __init__(self,
                  savegame_type:SavegameType,
@@ -185,8 +278,8 @@ class GameData(GObject):
         self.__savegame_root = savegame_root
         self.__savegame_dir = savegame_dir
         self.__variables = {}
-        self.__filematch = []
-        self.__ignorematch = []
+        self.__filematchers = []
+        self.__ignorematchers = []
         
         if variables is not None:
             variables.update(variables)
@@ -202,15 +295,14 @@ class GameData(GObject):
     @Property
     def savegame_type(self)->SavegameType:
         """
-        :attr: savegame_type
-        :brief: Type of the class.
+        :type: SavegameType
         """
         return self.__savegame_type
     
     @Property(type=str)
     def savegame_root(self)->str:
         """
-        :attr: savegame_root
+        :type: str
         """
         return self.__savegame_root
     
@@ -221,7 +313,7 @@ class GameData(GObject):
     @Property
     def savegame_dir(self)->str:
         """
-        :attr: savegame_dir
+        :type: str
         """
         return self.__savegame_dir
     
@@ -230,7 +322,10 @@ class GameData(GObject):
         self.__savegame_dir = sgdir
         
     @Property
-    def variables(self)->dict:
+    def variables(self)->dict[str:str]:
+        """
+        :type: dict[str:str]
+        """
         return self.__variables
     @variables.setter
     def variables(self,vars:dict|None):
@@ -240,109 +335,225 @@ class GameData(GObject):
             self.__variables = dict(vars)
     
     @Property
-    def file_match(self):
-        return self.__filematch
-    @file_match.setter
-    def file_match(self,fm:list[GameFileMatcher]|None):
+    def file_matchers(self)->list[GameFileMatcher]:
+        """
+        :type: list[GameFileMatcher]
+        """
+        return self.__filematchers
+    
+    @file_matchers.setter
+    def file_matchers(self,fm:list[GameFileMatcher]|None):
         if not fm:
-            self.__filematch = []
+            self.__filematchers = []
         else:
             for matcher in fm:
                 if not isinstance(matcher,GameFileMatcher):
                     raise TypeError("\"file_match\" needs to be \"None\" or a list of \"GameFileMatcher\" instances!")
-            self.__filematch = list(fm)
+            self.__filematchers = list(fm)
+            
     
     @Property
-    def ignore_match(self):
-        return self.__ignorematch
-    @file_match.setter
-    def file_match(self,im:list[GameFileMatcher]|None):
+    def ignore_matchers(self)->list[GameFileMatcher]:
+        """
+        :type: list[GameFileMatcher]
+        """
+        return self.__ignorematchers
+    @ignore_matchers.setter
+    def ignore_matchers(self,im:list[GameFileMatcher]|None):
         if not im:
-            self.__ignorematch = []
+            self.__ignorematchers = []
         else:
             for matcher in im:
                 if not isinstance(matcher,GameFileMatcher):
                     raise TypeError("\"ignore_match\" needs to be \"None\" or a list of \"GameFileMatcher\" instances!")
-            self.__ignorematch = list(im)
+            self.__ignorematchers = list(im)
             
     def has_variable(self,name:str)->bool:
+        """
+        has_variable Check if variable exists.
+
+        :param name: The variable name.
+        :type name: str
+        :return: `True` if the variable exists.
+        :rtype: bool
+        """
+        
         return (name in self.__variables)
     
     def get_variable(self,name:str)->str:
+        """
+        get_variable Get a variable value byy variable name.
+
+        :param name: The variable name
+        :type name: str
+        :return: The vairable value if the variable exists or an empty string.
+        :rtype: str
+        """
         if name not in self.__variables:
             return ""
         return self.__variables[name]
         
     def set_variable(self,name:str,value:str):
+        """
+        set_variable Set a variable.
+        
+        If the variable exists, it is replaced by the new variable.
+
+        :param name: The variable name.
+        :type name: str
+        :param value: The variable value.
+        :type value: str
+        """
         self.__variables[name] = value
         
     def delete_variable(self,name:str):
+        """
+        delete_variable Deletes as variable if the variable exists
+
+        :param name: The vairable name to delete.
+        :type name: str
+        """
         if name in self.__variables:
             del self.__variables[name]
     
-    def get_variables(self):
+    def get_variables(self)->dict[str:str]:
+        """
+        get_variables Get the variables set by this instance.
+
+        :return: The variables as a dict.
+        :rtype: dict[str:str]
+        """
         return self.variables
     
-    def match_file(self,rel_filename:str):
-        if not self.__filematch:
+    def match_file(self,rel_filename:str)->bool:
+        """
+        match_file Matches a file with the `GameFileMatcher`s for this class.
+        
+        This method returns `True` if there is no `GameFileMatcher` set for 
+        `GameData.file_match`.
+
+        :param rel_filename: The relative filename originating from *$SAVEGAME_DIR*
+        :type rel_filename: str
+        :return: `True` if the file matches.
+        :rtype: bool
+        """
+        if not self.file_matchers:
             return True
         
-        for fm in self.__filematch:
+        for fm in self.file_matchers:
             if fm.match(rel_filename):
                 return True
         return False
             
         
-    def match_ignore(self,rel_filename:str):
-        if not self.__ignorematch:
+    def match_ignore(self,rel_filename:str)->bool:
+        """
+        match_ignore Matches file agains the ignore_match `GameFileMatcher`s.
+        
+        This method returns `False` if there is no `GameFileMatcher` set in 
+        `GameData.ignore_match`.
+
+        :param rel_filename: The relative filename originating from *$SAVEGAME_DIR*
+        :type rel_filename: str
+        :return: `True` if the file matches.
+        :rtype: bool
+        """
+        if not self.ignore_matchers:
             return False
         
-        for fm in self.__ignorematch:
+        for fm in self.ignore_matchers:
             if fm.match(rel_filename):
                 return True
         return False
     
-    def match(self,rel_filename:str):
+    def match(self,rel_filename:str)->bool:
+        """
+        match Match files against `file_match` and `ignore_match`.
+        
+        If this method returns `True` the file should be included in the
+        savegame backup.
+
+        :param rel_filename: The relative filename originating from *$SAVEGAME_DIR*
+        :type rel_filename: str
+        :return: True if the file should be included in the savegame backup.
+        :rtype: bool
+        """
         if self.match_file(rel_filename) and not self.match_ignore(rel_filename):
             return True
         return False
     
     def add_file_match(self,matcher:GameFileMatcher):
+        """
+        add_file_match Add a `GameFileMatcher` to `file_match`.
+
+        :param matcher: The `GameFileMatcher` to add.
+        :type matcher: GameFileMatcher
+        :raises TypeError: If the `matcher` is not a `GameFileMatcher` instance.
+        """
         if not isinstance(matcher,GameFileMatcher):
             raise TypeError("matcher is not a \"GameFileMatcher\" instance!")
-        self.__filematch.append(matcher)
+        self.__filematchers.append(matcher)
         
     def remove_file_match(self,matcher:GameFileMatcher):
-        for i in reversed(range(len(self.__filematch))):
-            if (matcher == self.__filematch[i]):
-                del self.__filematch[i]
+        """
+        remove_file_match Remove a file_matcher.
+
+        :param matcher: The `GameFileMatcher` to remove.
+        :type matcher: GameFileMatcher
+        """
+        for i in reversed(range(len(self.__filematchers))):
+            if (matcher == self.__filematchers[i]):
+                del self.__filematchers[i]
     
     def add_ignore_match(self,matcher:GameFileMatcher):
+        """
+        add_file_match Add a `GameFileMatcher` to `ignore_match`.
+
+        :param matcher: The `GameFileMatcher` to add.
+        :type matcher: GameFileMatcher
+        :raises TypeError: If the `matcher` is not a `GameFileMatcher` instance.
+        """
         if not isinstance(matcher,GameFileMatcher):
             raise TypeError("matcher is not a \"GameFileMatcher\" instance!")
-        self.__ignorematch.append(matcher)
+        self.__ignorematchers.append(matcher)
         
     def remove_ignore_match(self,matcher:GameFileMatcher):
-        for i in reversed(range(len(self.__ignorematch))):
-            if (matcher == self.__ignorematch[i]):
-                del self.__ignorematch[i]
+        """
+        remove_file_match Remove a ignore_match.
+
+        :param matcher: The `GameFileMatcher` to remove.
+        :type matcher: GameFileMatcher
+        """
+
+        for i in reversed(range(len(self.__ignorematchers))):
+            if (matcher == self.__ignorematchers[i]):
+                del self.__ignorematchers[i]
                 
     def serialize(self)->dict:
+        """
+        serialize Serialize the instance to a dict.
+        
+        This method should be overloaded by child-classes, so that their data
+        is exported too.
+
+        :return: The dict holding the data for recreating an instance of this class.
+        :rtype: dict
+        """
         ret = {
             'savegame_root': self.savegame_root,
             'savegame_dir': self.savegame_dir,
         }
         if (self.__variables):
             ret['variables'] = self.variables
-        if (self.file_match):
+        if (self.file_matchers):
             fm = []
-            for matcher in self.file_match:
+            for matcher in self.file_matchers:
                 fm.append({'type':matcher.match_type.value,'match':matcher.match_file})
             ret['file_match'] = fm
                 
-        if (self.add_ignore_match):
+        if (self.ignore_matchers):
             im = []
-            for matcher in self.ignore_match:
+            for matcher in self.ignore_matchers:
                 im.append({'type':matcher.match_type.value,'match':matcher.match_file})
             ret['ignore_match'] = im
             
@@ -978,7 +1189,19 @@ class Game(GObject):
             if not isinstance(data,SteamMacOSGame):
                 raise TypeError("SteamWindowsGame")
             self.__steam_macos = data
-            
+    
+    @Property
+    def savegame_root(self)->str|None:
+        if not self.game_data:
+            return None
+        return self.game_data.savegame_root
+    
+    @Property
+    def savegame_dir(self)->str|None:
+        if not self.game_data:
+            return None
+        return self.game_data.savegame_dir
+    
     def add_variable(self,name:str,value:str):
         self.__variables[str(name)] = str(value)
         
@@ -1038,58 +1261,121 @@ class Game(GObject):
             
         with open(new_path,'wt',encoding='utf-8') as ofile:
             ofile.write(json.dumps(self.serialize(),ensure_ascii=False,indent=4))
-            
     
+    def __bool__(self):
+        return (bool(self.game_data) and bool(self.savegame_root) and bool(self.savegame_dir))
+    
+    def is_backup_file(self,filename:str):
+        pass
+    
+    def get_backup_files(self)->dict[str:str]|None:
+        def get_backup_files_recursive(sgroot:pathlib.Path,sgdir:str,subdir:str|None=None):
+            ret = {}
+            if subdir:
+                path = sgroot / sgdir / subdir
+            else:
+                path = sgroot / sgdir
+                
+            ret = {}
+            for dirent in os.listdir(path):
+                file_path = path / dirent
+                if file_path.is_file():
+                    if subdir:
+                        fname = (os.path.join(subdir,dirent))
+                    else:
+                        fname = dirent
+                        
+                    if self.game_data.match(fname):
+                        ret[str(path)] = os.path.join(sgdir,fname)
+                elif file_path.is_dir():
+                    ret.update(get_backup_files_recursive(sgroot,sgdir,os.path.join(subdir,dirent)))
+                                
+            return ret
         
-GAMES={}
-STEAM_GAMES={}
-STEAM_LINUX_GAMES={}
-STEAM_WINDOWS_GAMES={}
-STEAM_MACOS_GAMES={}
-
-def __init_games():
-    gameconf_dir = settings.gameconf_dir
-    if not os.path.isdir(gameconf_dir):
-        return
+        if not bool(self):
+            return None
+        
+        sgroot = pathlib.Path(self.savegame_root).resolve()
+        sgdir = self.savegame_dir
+        sgpath = sgroot / sgdir
+        if not os.path.exists(sgpath):
+            return None
+        
+        backup_files = get_backup_files_recursive(sgroot,sgdir)
+        
     
-    for gcf in (os.path.join(gameconf_dir,i) for i in os.listdir(gameconf_dir)):
-        if not os.path.isfile(gcf) or not gcf.endswith('.gameconf'):
-            continue
+class GameManager(GObject):
+    __global_gamemanager = None
+    
+    @staticmethod
+    def get_global():
+        if GameManager.__global_gamemanager is None:
+            GameManager.__global_gamemanager = GameManager()
+        return GameManager.__global_gamemanager
+    
+    def __init__(self):
+        GObject.__init__(self)
+        
+        self.__games = {}
+        self.__steam_games = {}
+        self.__steam_linux_games = {}
+        self.__steam_windows_games = {}
+        self.__steam_macos_games = {}
+        
+        self.load()
+
+    @Property(type=object)
+    def games(self)->dict[str:Game]:
+        return self.__games
+    
+    @Property(type=object)
+    def stam_games(self)->dict[int:Game]:
+        return self.__steam_games
+
+    @Property(type=object)
+    def steam_windows_games(self)->dict[int:Game]:
+        return self.__steam_windows_games
+    
+    @Property(type=object)
+    def steam_linux_games(self)->dict[int:Game]:
+        return self.__steam_linux_games
+    
+    @Property(type=object)
+    def steam_macos_games(self)->dict[int:Game]:
+        return self.__steam_macos_games
+
+    def load(self):
+        if self.__games:
+            self.__games = {}
             
-        try:
-            game = Game.new_from_json_file(gcf)
-            if not game:
+        gameconf_dir = settings.gameconf_dir
+        if not os.path.isdir(gameconf_dir):
+            return
+    
+        for gcf in (os.path.join(gameconf_dir,i) for i in os.listdir(gameconf_dir)):
+            if not os.path.isfile(gcf) or not gcf.endswith('.gameconf'):
                 continue
-        except:
-            continue
+            
+            try:
+                game = Game.new_from_json_file(gcf)
+                if not game:
+                    continue
+            except Exception as ex:
+                logger.error("Unable to load gameconf {gameconf}! ({what})".format(
+                    gameconf = os.path.basename(gcf),
+                    what = str(ex)))
+                continue
+            
+            self.add_game(game)
         
-        GAMES[game.key] = game
-        if (game.steam_windows):
-            if not game.steam_windows.appid in STEAM_GAMES:
-                STEAM_GAMES[game.steam_windows.appid] = game
-            STEAM_WINDOWS_GAMES[game.steam_windows.appid] = game
-        if (game.steam_linux):
-            if not game.steam_linux.appid in STEAM_GAMES:
-                STEAM_GAMES[game.steam_linux.appid] = game
-            STEAM_LINUX_GAMES[game.steam_linux.appid] = game
+    def add_game(self,game:Game):
+        self.__[game.key] = game
         if (game.steam_macos):
-            if not game.steam_macos.appid in STEAM_GAMES:
-                STEAM_GAMES[game.steam_macos.appid] = game
-            STEAM_MACOS_GAMES[game.steam_macos.appid] = game
-__init_games()
-
-def add_game(game:Game):
-    GAMES[game.key] = game
-    if game.steam_windows:
-        if not game.steam_windows.appid in STEAM_GAMES:
-            STEAM_GAMES[game.steam_windows.appid] = game
-        STEAM_WINDOWS_GAMES[game.steam_windows.appid] = game
-    if (game.steam_linux):
-        if not game.steam_linux.appid in STEAM_GAMES:
-            STEAM_GAMES[game.steam_linux.appid] = game
-        STEAM_LINUX_GAMES[game.steam_linux.appid] = game
-    if (game.steam_macos):
-        if not game.steam_macos.appid in STEAM_GAMES:
-            STEAM_GAMES[game.steam_macos.appid] = game
-        STEAM_MACOS_GAMES[game.steam_macos.appid] = game
-        
+            self.__steam_games[game.steam_macos.appid] = game
+            self.__steam_macos_games[game.steam_macos.appid] = game
+        if (game.steam_linux):
+            self.__steam_games[game.steam_linux.appid] = game
+            self.__steam_linux_games[game.steam_linux.appid] = game
+        if (game.steam_windows):
+            self.__steam_games[game.steam_windows.appid] = game
+            self.__steam_windows_games[game.steam_windows.appid] = game

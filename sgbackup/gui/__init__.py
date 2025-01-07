@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.   #
 ###############################################################################
 
-from ._app import Application,AppWindow
+from ._app import Application,AppWindow,GameView,BackupView
 from ._settingsdialog import SettingsDialog
 from ._gamedialog import GameDialog
 

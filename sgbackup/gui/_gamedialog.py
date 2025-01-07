@@ -28,11 +28,32 @@ from ..game import (
     SteamLinuxGame,
     SteamWindowsGame,
     SteamMacOSGame,
+    GameManager,
 )
     
 
 class GameVariableData(GObject.GObject):
+    """
+    GameVariableData The Gio.ListStore data for Variables.
+    """
+    
     def __init__(self,name:str,value:str):
+        """
+        GameVariableData
+
+        :param name: The variable name
+        :type name: str
+        :param value: The variable value
+        :type value: str
+        
+        Properties
+        __________
+        .. py:property:: name
+            :type: str
+            
+        .. py:property:: value
+            :type: str
+        """
         GObject.GObject.__init__(self)
         self.name = name
         self.value = value
@@ -52,13 +73,27 @@ class GameVariableData(GObject.GObject):
         self.__value = value
         
 class RegistryKeyData(GObject.GObject):
-    def __init__(self,regkey=None):
+    """
+    RegistyKeyData The data for Windows registry keys.
+    """
+    def __init__(self,regkey:str|None=None):
+        """
+        RegistryKeyData 
+
+        :param regkey: The registry key ot set, defaults to None
+        :type regkey: str | None, optional
+        
+        Properties
+        __________
+        .. py:property:: regkey
+            :type: str
+        """
         GObject.GObject.__init__(self)
         if not regkey:
             self.__regkey = ""
             
     @GObject.Property(type=str)
-    def regkey(self):
+    def regkey(self)->str:
         return self.__regkey
     @regkey.setter
     def regkey(self,key:str):
@@ -67,14 +102,35 @@ class RegistryKeyData(GObject.GObject):
     def __bool__(self):
         return bool(self.__regkey)
 
+
 class GameFileMatcherData(GObject.GObject):
+    """
+    GameFileMatcherData The data for the file matcher.
+    """
     def __init__(self,match_type:GameFileType,match_value:str):
+        """
+        GameFileMatcherData 
+
+        :param match_type: The type of the game file matcher.
+        :type match_type: GameFileType
+        :param match_value: The value to match the file.
+        :type match_value: str
+        
+        Properties
+        __________
+        .. py:property:: match_type
+            :type: GameFileType
+            
+        .. py:property:: match_value
+            :type: str
+        """
         GObject.GObject.__init__(self)
         self.match_type = match_type
         self.match_value = match_value
         
     @GObject.Property
     def match_type(self)->GameFileType:
+        
         return self.__match_type
     @match_type.setter
     def match_type(self,type:GameFileType):
@@ -83,12 +139,30 @@ class GameFileMatcherData(GObject.GObject):
     @GObject.Property(type=str)
     def match_value(self)->str:
         return self.__match_value
+    
     @match_value.setter
     def match_value(self,value:str):
         self.__match_value = value
 
 class GameFileTypeData(GObject.GObject):
+    """ GameFileTypeData The *Gio.Liststore* data for GameFileType *Gtk.DropDown* widgets."""
     def __init__(self,match_type:GameFileType,name:str):
+        """
+        GameFileTypeData
+
+        :param match_type: The matcher type
+        :type match_type: GameFileType
+        :param name: The name of the matcher type
+        :type name: str
+        
+        Properties:
+        ___________
+        .. py:property:: match_type
+            :type: GameFileType
+        
+        .. py:property:: name
+            :type: str
+        """
         GObject.GObject.__init__(self)
         self.__match_type = match_type
         self.__name = name
@@ -102,7 +176,34 @@ class GameFileTypeData(GObject.GObject):
         return self.__name
  
 class SavegameTypeData(GObject.GObject):
+    """
+    SavegameTypeData Holds the data for the SavegameType *Gtk.DropDown*.
+    """
+    
     def __init__(self,type:SavegameType,name:str,icon_name:str):
+        """
+        SavegameTypeData 
+
+        :param type: The SavegameType to select.
+        :type type: SavegameType
+        :param name: The name of the SavegameType.
+        :type name: str
+        :param icon_name: The Icon name to display for the SavegameType
+        :type icon_name: str
+        
+        Properties
+        __________
+        
+        .. py:property:: savegame_type
+            :type: SavegameType
+            
+        .. py:property:: name
+            :type: str
+            
+        .. py:property:: icon_name
+            :type: str
+
+        """
         GObject.GObject.__init__(self)
         self.__sgtype = type
         self.__name = name
@@ -122,7 +223,27 @@ class SavegameTypeData(GObject.GObject):
          
  
 class GameVariableDialog(Gtk.Dialog):
+    """ 
+    GameVariableDialog The dialog for setting game variables. 
+    
+    It is bound to on the GameDialog variable columnviews. This dialog
+    will update the given columnview automatically if the response is
+    *Gtk.Response.APPLY* and destroy itself on any response.
+    
+    If not variable is given, this dialog will create a new one
+    
+    """
     def __init__(self,parent:Gtk.Window,columnview:Gtk.ColumnView,variable:GameVariableData|None=None):
+        """
+        GameVariableDialog
+
+        :param parent: The parent window (should be a GameDialog instance).
+        :type parent: Gtk.Window
+        :param columnview: The Columnview to operate on.
+        :type columnview: Gtk.ColumnView
+        :param variable: The variable to edit, defaults to None
+        :type variable: GameVariableData | None, optional
+        """
         Gtk.Dialog.__init__(self)
         self.set_transient_for(parent)
         self.set_default_size(600,-1)
@@ -186,14 +307,24 @@ class GameVariableDialog(Gtk.Dialog):
                 model = self.__columnview.get_model().get_model()
                 model.append(GameVariableData(self.__name_entry.get_text(),self.__value_entry.get_text()))
         self.hide()
-        self.destroy()            
+        self.destroy()
 
        
 
 class GameDialog(Gtk.Dialog):
     def __init__(self,
                  parent:Gtk.Window|None=None,
-                 game:Game|None=Game):
+                 game:Game|None=None):
+        """
+        GameDialog This dialog is for setting game config.
+        
+        The dialog automatically saves the game.
+
+        :param parent: The parent Window, defaults to None
+        :type parent: Gtk.Window | None, optional
+        :param game: The game to configure, defaults to None
+        :type game: Game | None, optional
+        """
         
         Gtk.Dialog.__init__(self)
         if (parent):
@@ -685,6 +816,9 @@ class GameDialog(Gtk.Dialog):
         return widget
     
     def reset(self):
+        """
+        reset Resets the dialog to the Game set on init or clears the dialog if no Game was set.
+        """
         self.__active_switch.set_active(True)
         self.__live_switch.set_active(True)
         self.__name_entry.set_text("")
@@ -758,11 +892,11 @@ class GameDialog(Gtk.Dialog):
                 
                 #filematch
                 fm_model = self.__windows.filematch.columnview.get_model().get_model()
-                for fm in self.__game.windows.filematch:
+                for fm in self.__game.windows.file_matchers:
                     fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
                 
                 im_model = self.__windows.ignorematch.columnview.get_model().get_model()
-                for im in self.__game.windows.ignorematch:
+                for im in self.__game.windows.ignore_matchers:
                     im_model.append(GameFileMatcherData(im.match_type,im.match_file))
                     
                 # set lookup regkeys
@@ -787,11 +921,11 @@ class GameDialog(Gtk.Dialog):
                 
                 #filematch
                 fm_model = self.__linux.filematch.columnview.get_model().get_model()
-                for fm in self.__game.linux.filematch:
+                for fm in self.__game.linux.file_matchers:
                     fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
                 
                 im_model = self.__linux.ignorematch.columnview.get_model().get_model()
-                for im in self.__game.linux.ignorematch:
+                for im in self.__game.linux.ignore_matchers:
                     im_model.append(GameFileMatcherData(im.match_type,im.match_file))
                 
                 var_model = self.__linux.variables.columnview.get_model().get_model()
@@ -805,11 +939,11 @@ class GameDialog(Gtk.Dialog):
                 
                 #filematch
                 fm_model = self.__macos.filematch.columnview.get_model().get_model()
-                for fm in self.__game.macos.filematch:
+                for fm in self.__game.macos.file_matchers:
                     fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
                 
                 im_model = self.__macos.ignorematch.columnview.get_model().get_model()
-                for im in self.__game.macos.ignorematch:
+                for im in self.__game.macos.ignore_matchers:
                     im_model.append(GameFileMatcherData(im.match_type,im.match_file))
                 
                 var_model = self.__macos.variables.columnview.get_model().get_model()
@@ -824,11 +958,11 @@ class GameDialog(Gtk.Dialog):
                 
                 #filematch
                 fm_model = self.__steam_windows.filematch.columnview.get_model().get_model()
-                for fm in self.__game.steam_windows.filematch:
+                for fm in self.__game.steam_windows.file_matchers:
                     fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
                 
                 im_model = self.__steam_windows.ignorematch.columnview.get_model().get_model()
-                for im in self.__game.steam_windows.ignorematch:
+                for im in self.__game.steam_windows.ignore_matchers:
                     im_model.append(GameFileMatcherData(im.match_type,im.match_file))
                 
                 var_model = self.__steam_windows.variables.columnview.get_model().get_model()
@@ -842,11 +976,11 @@ class GameDialog(Gtk.Dialog):
                 self.__steam_linux.installdir_entry.set_text(self.__game.steam_linux.installdir)
                 
                 fm_model = self.__steam_linux.filematch.columnview.get_model().get_model()
-                for fm in self.__game.steam_linux.filematch:
+                for fm in self.__game.steam_linux.file_matchers:
                     fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
                 
                 im_model = self.__steam_linux.ignorematch.columnview.get_model().get_model()
-                for im in self.__game.steam_linux.ignorematch:
+                for im in self.__game.steam_linux.ignore_matchers:
                     im_model.append(GameFileMatcherData(im.match_type,im.match_file))
                     
                 var_model = self.__steam_linux.variables.columnview.get_model().get_model()
@@ -860,11 +994,11 @@ class GameDialog(Gtk.Dialog):
                 self.__steam_macos.installdir_entry.set_text(self.__game.steam_macos.installdir)
                 
                 fm_model = self.__steam_macos.filematch.columnview.get_model().get_model()
-                for fm in self.__game.steam_macos.filematch:
+                for fm in self.__game.steam_macos.file_matchers:
                     fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
                 
                 im_model = self.__steam_macos.ignorematch.columnview.get_model().get_model()
-                for im in self.__game.steam_macos.ignorematch:
+                for im in self.__game.steam_macos.ignore_matchers:
                     im_model.append(GameFileMatcherData(im.match_type,im.match_file))
                     
                 var_model = self.__steam_macos.variables.columnview.get_model().get_model()
@@ -873,6 +1007,9 @@ class GameDialog(Gtk.Dialog):
     # reset()
     
     def save(self):
+        """
+        save Saves the game configuration to file.
+        """
         def get_game_data(widget):
             fm_model = widget.filematch.columnview.get_model().get_model()
             im_model = widget.ignorematch.columnview.get_model().get_model()
@@ -1078,14 +1215,28 @@ class GameDialog(Gtk.Dialog):
             self.__steam_macos = None
             
         self.__game.save()
+        GameManager.get_global().add_game(self.__game)
+                
         
-    def get_is_valid(self):
+    def get_is_valid(self)->bool:
+        """
+        get_is_valid Check if the configuration is valid for saving.
+        
+        :returns: bool
+        """
         if (self.__key_entry.get_text() and self.__name_entry.get_text() and self.__sgname_entry.get_text()):
             sgtype_data = self.__savegame_type_dropdown.get_selected_item()
             return self.get_is_valid_savegame_type(sgtype_data.savegame_type)
         return False
     
     def get_is_valid_savegame_type(self,sgtype:SavegameType)->bool:
+        """
+        get_is_valid_savegame_type Check if the data for a SavegameType savegame is valid.
+        
+        :param sgtype: The type of the Savegame provider
+        :type: sgbackup.game.SavegameType
+        :returns: bool
+        """
         def check_is_valid(widget):
             return (bool(widget.sgroot_entry.get_text()) and bool(widget.sgdir_entry.get_text()))
         

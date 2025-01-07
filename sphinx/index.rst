@@ -26,4 +26,6 @@ Table of Contents
    modules/sgbackup.settings.rst
    modules/sgbackup.game.rst
    modules/sgbackup.archiver.rst
+   modules/sgbackup.gui.rst
+
 

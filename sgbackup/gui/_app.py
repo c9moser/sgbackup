@@ -28,11 +28,19 @@ from .. import game
 from ..settings import settings
 from ._settingsdialog import SettingsDialog
 from ._gamedialog import GameDialog
+from ..game import Game
+
+__gtype_name__ = __name__
 
 class GameView(Gtk.ScrolledWindow):
-    __gtype_name__ = "sgbackup-gui-GameView"
+    __gtype_name__ = "GameView"
     
     def __init__(self):
+        """
+        GameView The View for games.
+        
+        This is widget presents a clumnview for the installed games.
+        """
         Gtk.ScrolledWindow.__init__(self)
         
         self.__liststore = Gio.ListStore.new(game.Game)
@@ -78,7 +86,7 @@ class GameView(Gtk.ScrolledWindow):
         return self.__liststore
     
     @property
-    def _columnview(self):
+    def _columnview(self)->Gtk.ColumnView:
         return self.__columnview
     
     def _on_key_column_setup(self,factory,item):
@@ -149,6 +157,15 @@ class GameView(Gtk.ScrolledWindow):
             dialog.props.secondary_use_markup = False
             dialog.connect('response',on_dialog_response)
             dialog.present()
+    
+    @property
+    def current_game(self)->Game|None:
+        selection = self._columnview.get_model()
+        pos = selection.get_selected()
+        if pos == Gtk.INVALID_LIST_POSITION:
+            return None
+        return selection.get_model().get_item(pos)
+    
 # GameView class
 
 class BackupViewData(GObject.GObject):
@@ -188,6 +205,9 @@ class BackupViewData(GObject.GObject):
     @GObject.Property
     def timestamp(self):
         return self.__timestamp
+    
+    def _on_selection_changed(self,selection):
+        pass
 
 class BackupView(Gtk.ScrolledWindow):
     __gtype_name__ = "BackupView"
@@ -443,6 +463,6 @@ class Application(Gtk.Application):
                     flags=GObject.SignalFlags.RUN_LAST,
                     return_type=None,
                     arg_types=(SettingsDialog,))
-    def settings_dialog_init(self,dialog):
+    def do_settings_dialog_init(self,dialog):
         pass
 

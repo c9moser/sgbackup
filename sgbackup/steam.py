@@ -22,7 +22,7 @@ from pathlib import Path
 import sys
 import json
 from .settings import settings
-from .game import STEAM_GAMES,STEAM_WINDOWS_GAMES,STEAM_LINUX_GAMES,STEAM_MACOS_GAMES
+from .game import GameManager
 
 __gtype_name__ = __name__
 
@@ -102,7 +102,7 @@ class IgnoreSteamApp(GObject):
             appid = conf['appid']
             name = conf['name']
             reason = conf['reason'] if 'reason' in conf else ""
-            return SteamIgnoreApp(appid,name,reason)
+            return IgnoreSteamApp(appid,name,reason)
             
         return None
         
@@ -331,23 +331,25 @@ class Steam(GObject):
         return sorted(new_apps)
     
     def update_steam_apps(self):
+        gm = GameManager.get_global()
+        
         for lib in self.libraries():
             for app in lib.steam_apps:
                 if PLATFORM_WINDOWS:
-                    if ((app.appid in STEAM_WINDOWS_GAMES) 
-                            and (STEAM_WINDOWS_GAMES[app.appid].installdir != app.installdir)):
-                        game = STEAM_WINDOWS_GAMES[app.appid]
+                    if ((app.appid in gm.steam_windows_games) 
+                            and (gm.steam_windows_games[app.appid].installdir != app.installdir)):
+                        game = gm.steam_windows_games[app.appid]
                         game.installdir = app.installdir
                         game.save()
                 elif PLATFORM_LINUX:
-                    if ((app.appid in STEAM_LINUX_GAMES) 
-                            and (STEAM_LINUX_GAMES[app.appid].installdir != app.installdir)):
-                        game = STEAM_LINUX_GAMES[app.appid]
+                    if ((app.appid in gm.steam_linux_games) 
+                            and (gm.steam_linux_games[app.appid].installdir != app.installdir)):
+                        game = gm.steam_linux_games[app.appid]
                         game.installdir = app.installdir
                         game.save()
                 elif PLATFORM_MACOS:
-                    if ((app.appid in STEAM_MACOS_GAMES) 
-                            and (STEAM_MACOS_GAMES[app.appid].installdir != app.installdir)):
-                        game = STEAM_MACOS_GAMES[app.appid]
+                    if ((app.appid in gm.steam_macos_games) 
+                            and (gm.steam_macos_games[app.appid].installdir != app.installdir)):
+                        game = gm.steam_macos_games[app.appid]
                         game.installdir = app.installdir
                         game.save()

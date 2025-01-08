@@ -1410,7 +1410,7 @@ class GameDialog(Gtk.Dialog):
                     continue
                 i += 1
 
-    def do_reposnse(self,response):
+    def do_response(self,response):
         print("DIALOG")
         if (response == Gtk.ResponseType.APPLY):
             self.save()

@@ -16,7 +16,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.   #
 ###############################################################################
 
-from gi.repository import Gtk,GObject,Gio,Gdk
+from gi.repository import Gtk,Gio,Gdk
+from gi.repository.GObject import GObject,Signal,Property,SignalFlags
 
 import logging; logger=logging.getLogger(__name__)
 
@@ -24,27 +25,29 @@ import os
 from datetime import datetime as DateTime
 from pathlib import Path
 
-from .. import game
 from ..settings import settings
 from ._settingsdialog import SettingsDialog
 from ._gamedialog import GameDialog
-from ..game import Game
+from ..game import Game,GameManager
 
 __gtype_name__ = __name__
 
 class GameView(Gtk.ScrolledWindow):
+    """
+    GameView The View for games.
+        
+    This is widget presents a clumnview for the installed games.
+    """
     __gtype_name__ = "GameView"
     
     def __init__(self):
         """
-        GameView The View for games.
-        
-        This is widget presents a clumnview for the installed games.
+        GameView
         """
         Gtk.ScrolledWindow.__init__(self)
         
         self.__liststore = Gio.ListStore.new(game.Game)
-        for g in game.GameManager.get_global().games.values():
+        for g in GameManager.get_global().games.values():
             pass
             self.__liststore.append(g)
             
@@ -82,13 +85,34 @@ class GameView(Gtk.ScrolledWindow):
         self.set_child(self._columnview)
         
     @property
-    def _liststore(self):
+    def _liststore(self)->Gio.ListStore:
+        """
+        The `Gio.ListStore` that holds the list of installed games.
+
+        
+        :type: Gio.ListStore
+        """
         return self.__liststore
     
     @property
-    def _columnview(self)->Gtk.ColumnView:
+    def columnview(self)->Gtk.ColumnView:
+        """
+        columnview The `Gtk.ColumnView` of the widget.
+
+        :type: Gtk.ColumnView
+        """
         return self.__columnview
     
+    def refresh(self):
+        """
+        refresh Refresh the view.
+        
+        This method reloads the installed Games.
+        """
+        self.__liststore.remove_all()
+        for game in GameManager.get_global().games.values():
+            self.__liststore.append(game)
+            
     def _on_key_column_setup(self,factory,item):
         item.set_child(Gtk.Label())
         
@@ -160,6 +184,13 @@ class GameView(Gtk.ScrolledWindow):
     
     @property
     def current_game(self)->Game|None:
+        """
+        current_game Get the currently selected `Game`
+        
+        If no `Game` is selected this property resolves to `Null`
+
+        :type: Game|None
+        """
         selection = self._columnview.get_model()
         pos = selection.get_selected()
         if pos == Gtk.INVALID_LIST_POSITION:
@@ -168,8 +199,8 @@ class GameView(Gtk.ScrolledWindow):
     
 # GameView class
 
-class BackupViewData(GObject.GObject):
-    def __init__(self,_game:game.Game,filename:str):
+class BackupViewData(GObject):
+    def __init__(self,_game:Game,filename:str):
         GObject.GObject.__init__(self)
         self.__game = _game
         self.__filename = filename
@@ -183,26 +214,26 @@ class BackupViewData(GObject.GObject):
         self.__extension = '.' + parts[3:]
         
     @property
-    def game(self)->game.Game:
+    def game(self)->Game:
         return self.__game
     
-    @GObject.Property
+    @Property
     def savegame_name(self):
         return self.__savegame_name
     
-    @GObject.Property(type=str)
+    @Property(type=str)
     def filename(self)->str:
         return self.__filename
     
-    @GObject.Property(type=bool,default=False)
+    @Property(type=bool,default=False)
     def is_live(self)->bool:
         pass
     
-    @GObject.Property
+    @Property
     def extension(self):
         return self.__extension
     
-    @GObject.Property
+    @Property
     def timestamp(self):
         return self.__timestamp
     
@@ -240,7 +271,7 @@ class BackupView(Gtk.ScrolledWindow):
         self.__columnview.append_column(timestamp_column)
         
         self._on_gameview_selection_changed(selection)
-        self.gameview._columnview.get_model().connect('selection-changed',self._on_gameview_selection_changed)
+        self.gameview.columnview.get_model().connect('selection-changed',self._on_gameview_selection_changed)
         
         self.set_child(self.__columnview)
         
@@ -357,18 +388,21 @@ class AppWindow(Gtk.ApplicationWindow):
         
         self.set_child(vbox)
         
-    @GObject.Property
+    @property
     def builder(self):
         return self.__builder
 
-    @GObject.Property
+    @property
     def backupview(self):
         return self.__backupview
     
-    @GObject.Property
+    @property
     def gameview(self):
         return self.__gameview
     
+    def refresh(self):
+        self.gameview.refresh()
+        #self.backupview.refresh()
         
 class Application(Gtk.Application):
     __gtype_name__ = "Application"
@@ -387,7 +421,7 @@ class Application(Gtk.Application):
     def _logger(self):
         return self.__logger
     
-    @GObject.Property
+    @property
     def appwindow(self):
         return self.__appwindow
     
@@ -424,7 +458,7 @@ class Application(Gtk.Application):
         # add accels
         self.set_accels_for_action('app.quit',["<Primary>q"])
         
-    @GObject.Property
+    @Property
     def builder(self):
         return self.__builder
     
@@ -448,7 +482,8 @@ class Application(Gtk.Application):
         
     def on_action_new_game(self,action,param):
         def on_reponse(dialog,response):
-            dialog.destroy()
+            if response == Gtk.RESPONSE_APPLY:
+                self.appwindow.resfresh()
             
         dialog = GameDialog(self.appwindow)
         dialog.connect('response',on_reponse)
@@ -459,10 +494,10 @@ class Application(Gtk.Application):
         self.emit('settings-dialog-init',dialog)
         return dialog
         
-    @GObject.Signal(name='settings-dialog-init',
-                    flags=GObject.SignalFlags.RUN_LAST,
-                    return_type=None,
-                    arg_types=(SettingsDialog,))
+    @Signal(name='settings-dialog-init',
+            flags=SignalFlags.RUN_LAST,
+            return_type=None,
+            arg_types=(SettingsDialog,))
     def do_settings_dialog_init(self,dialog):
         pass
 

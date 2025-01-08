@@ -44,7 +44,7 @@ class GameView(Gtk.ScrolledWindow):
         Gtk.ScrolledWindow.__init__(self)
         
         self.__liststore = Gio.ListStore.new(game.Game)
-        for g in game.GAMES.values():
+        for g in game.GameManager.get_global().games.values():
             pass
             self.__liststore.append(g)
             

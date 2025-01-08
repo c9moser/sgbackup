@@ -25,7 +25,6 @@ from .steam import SteamLibrary
 
 logger=logging.getLogger(__name__)
 
-
 def cli_main():
     logger.debug("Running cli_main()")
     return 0
@@ -33,7 +32,6 @@ def cli_main():
 def curses_main():
     logger.debug("Running curses_main()")
     return 0
-
 
 def gui_main():
     logger.debug("Running gui_main()")

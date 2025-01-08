@@ -46,7 +46,7 @@ class GameView(Gtk.ScrolledWindow):
         """
         Gtk.ScrolledWindow.__init__(self)
         
-        self.__liststore = Gio.ListStore.new(game.Game)
+        self.__liststore = Gio.ListStore.new(Game)
         for g in GameManager.get_global().games.values():
             pass
             self.__liststore.append(g)
@@ -76,13 +76,13 @@ class GameView(Gtk.ScrolledWindow):
         
         selection = Gtk.SingleSelection.new(self._liststore)
         self.__columnview = Gtk.ColumnView.new(selection)
-        self._columnview.append_column(column_key)
-        self._columnview.append_column(column_name)
-        self._columnview.append_column(column_active)
-        self._columnview.append_column(column_live)
-        self._columnview.set_single_click_activate(True)
+        self.columnview.append_column(column_key)
+        self.columnview.append_column(column_name)
+        self.columnview.append_column(column_active)
+        self.columnview.append_column(column_live)
+        self.columnview.set_single_click_activate(True)
         
-        self.set_child(self._columnview)
+        self.set_child(self.columnview)
         
     @property
     def _liststore(self)->Gio.ListStore:
@@ -482,7 +482,8 @@ class Application(Gtk.Application):
         
     def on_action_new_game(self,action,param):
         def on_reponse(dialog,response):
-            if response == Gtk.RESPONSE_APPLY:
+            print("APPLICATION")
+            if response == Gtk.ResponseType.APPLY:
                 self.appwindow.resfresh()
             
         dialog = GameDialog(self.appwindow)

@@ -480,14 +480,15 @@ class Application(Gtk.Application):
     def on_action_quit(self,action,param):
         self.quit()
         
-    def on_action_new_game(self,action,param):
-        def on_reponse(dialog,response):
-            print("APPLICATION")
-            if response == Gtk.ResponseType.APPLY:
-                self.appwindow.resfresh()
+    def _on_dialog_response_refresh(self,dialog,response,check_response):
+        if response == check_response:
+            self.appwindow.refresh()
             
+    def on_action_new_game(self,action,param):
         dialog = GameDialog(self.appwindow)
-        dialog.connect('response',on_reponse)
+        dialog.connect('response',
+                       self._on_dialog_response_refresh,
+                       Gtk.ResponseType.APPLY)
         dialog.present()        
         
     def new_settings_dialog(self):

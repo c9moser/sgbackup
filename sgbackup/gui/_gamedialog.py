@@ -16,7 +16,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.   #
 ###############################################################################
 
-from gi.repository import GObject,Gio,GLib,Gtk,Pango
+from gi.repository import Gio,GLib,Gtk,Pango
+from gi.repository.GObject import Property,Signal,GObject
 from ..game import (
     Game,
     GameFileMatcher,
@@ -32,7 +33,7 @@ from ..game import (
 )
     
 
-class GameVariableData(GObject.GObject):
+class GameVariableData(GObject):
     """
     GameVariableData The Gio.ListStore data for Variables.
     """
@@ -54,25 +55,35 @@ class GameVariableData(GObject.GObject):
         .. py:property:: value
             :type: str
         """
-        GObject.GObject.__init__(self)
+        GObject.__init__(self)
         self.name = name
         self.value = value
         
-    @GObject.Property(type=str)
+    @Property(type=str)
     def name(self)->str:
+        """
+        name The variable name.
+
+        :type: str
+        """
         return self.__name
     @name.setter
     def name(self,name):
         self.__name = name
         
-    @GObject.Property(type=str)
+    @Property(type=str)
     def value(self)->str:
+        """
+        value The variable value
+
+        :type: str
+        """
         return self.__value
     @value.setter
     def value(self,value:str):
         self.__value = value
         
-class RegistryKeyData(GObject.GObject):
+class RegistryKeyData(GObject):
     """
     RegistyKeyData The data for Windows registry keys.
     """
@@ -82,18 +93,18 @@ class RegistryKeyData(GObject.GObject):
 
         :param regkey: The registry key ot set, defaults to None
         :type regkey: str | None, optional
-        
-        Properties
-        __________
-        .. py:property:: regkey
-            :type: str
         """
-        GObject.GObject.__init__(self)
+        GObject.__init__(self)
         if not regkey:
             self.__regkey = ""
             
-    @GObject.Property(type=str)
+    @Property(type=str)
     def regkey(self)->str:
+        """
+        regkey The registry key to set.
+
+        :type: str
+        """
         return self.__regkey
     @regkey.setter
     def regkey(self,key:str):
@@ -103,7 +114,7 @@ class RegistryKeyData(GObject.GObject):
         return bool(self.__regkey)
 
 
-class GameFileMatcherData(GObject.GObject):
+class GameFileMatcherData(GObject):
     """
     GameFileMatcherData The data for the file matcher.
     """
@@ -116,35 +127,39 @@ class GameFileMatcherData(GObject.GObject):
         :param match_value: The value to match the file.
         :type match_value: str
         
-        Properties
-        __________
-        .. py:property:: match_type
-            :type: GameFileType
-            
-        .. py:property:: match_value
-            :type: str
         """
-        GObject.GObject.__init__(self)
+        GObject.__init__(self)
         self.match_type = match_type
         self.match_value = match_value
         
-    @GObject.Property
+    @Property
     def match_type(self)->GameFileType:
+        """
+        match_type The type of the matcher
+
+        :type: GameFileType
+        """
         
         return self.__match_type
+    
     @match_type.setter
     def match_type(self,type:GameFileType):
         self.__match_type = type
         
-    @GObject.Property(type=str)
+    @Property(type=str)
     def match_value(self)->str:
+        """
+        match_value The value to match files against.
+
+        :type: str
+        """
         return self.__match_value
     
     @match_value.setter
     def match_value(self,value:str):
         self.__match_value = value
 
-class GameFileTypeData(GObject.GObject):
+class GameFileTypeData(GObject):
     """ GameFileTypeData The *Gio.Liststore* data for GameFileType *Gtk.DropDown* widgets."""
     def __init__(self,match_type:GameFileType,name:str):
         """
@@ -154,28 +169,30 @@ class GameFileTypeData(GObject.GObject):
         :type match_type: GameFileType
         :param name: The name of the matcher type
         :type name: str
-        
-        Properties:
-        ___________
-        .. py:property:: match_type
-            :type: GameFileType
-        
-        .. py:property:: name
-            :type: str
         """
-        GObject.GObject.__init__(self)
+        GObject.__init__(self)
         self.__match_type = match_type
         self.__name = name
         
-    @GObject.Property
+    @Property
     def match_type(self)->GameFileType:
+        """
+        match_type The match type
+
+        :type: GameFileType
+        """
         return self.__match_type
     
-    @GObject.Property(type=str)
+    @Property(type=str)
     def name(self)->str:
+        """
+        name The name of the match type.
+
+        :type: str
+        """
         return self.__name
  
-class SavegameTypeData(GObject.GObject):
+class SavegameTypeData(GObject):
     """
     SavegameTypeData Holds the data for the SavegameType *Gtk.DropDown*.
     """
@@ -190,35 +207,38 @@ class SavegameTypeData(GObject.GObject):
         :type name: str
         :param icon_name: The Icon name to display for the SavegameType
         :type icon_name: str
-        
-        Properties
-        __________
-        
-        .. py:property:: savegame_type
-            :type: SavegameType
-            
-        .. py:property:: name
-            :type: str
-            
-        .. py:property:: icon_name
-            :type: str
-
         """
-        GObject.GObject.__init__(self)
+        GObject.__init__(self)
         self.__sgtype = type
         self.__name = name
         self.__icon_name = icon_name
     
-    @GObject.Property
-    def savegame_type(self):
+    @Property
+    def savegame_type(self)->SavegameType:
+        """
+        savegame_type The savegane type to select.
+
+        
+        :type: SavegameType
+        """
         return self.__sgtype
     
-    @GObject.Property
-    def name(self):
+    @Property
+    def name(self)->str:
+        """
+        name The name of the SavegameType
+
+        :type: str
+        """
         return self.__name
     
-    @GObject.Property
+    @Property
     def icon_name(self)->str:
+        """
+        icon_name The icon name for the savegame type.
+
+        :type: str
+        """
         return self.__icon_name
          
  
@@ -1222,8 +1242,10 @@ class GameDialog(Gtk.Dialog):
         """
         get_is_valid Check if the configuration is valid for saving.
         
-        :returns: bool
+        :returns: `True` if the game data is valid.
+        :rtype: bool
         """
+        
         if (self.__key_entry.get_text() and self.__name_entry.get_text() and self.__sgname_entry.get_text()):
             sgtype_data = self.__savegame_type_dropdown.get_selected_item()
             return self.get_is_valid_savegame_type(sgtype_data.savegame_type)
@@ -1237,6 +1259,7 @@ class GameDialog(Gtk.Dialog):
         :type: sgbackup.game.SavegameType
         :returns: bool
         """
+        
         def check_is_valid(widget):
             return (bool(widget.sgroot_entry.get_text()) and bool(widget.sgdir_entry.get_text()))
         
@@ -1411,7 +1434,6 @@ class GameDialog(Gtk.Dialog):
                 i += 1
 
     def do_response(self,response):
-        print("DIALOG")
         if (response == Gtk.ResponseType.APPLY):
             self.save()
         self.hide()

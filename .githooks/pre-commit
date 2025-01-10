@@ -5,7 +5,7 @@ SELF="$(realpath $0)"
 GITHOOKS_DIR="$(dirname "$SELF")" ; export GITHOOKS_DIR
 PROJECT_ROOT="$(dirname "$(dirname "$SELF")")" ; export PROJECT_ROOT
 
-pre_commit_d="${GITHOOKS_DIR}/pre-commit-d"
+pre_commit_d="${GITHOOKS_DIR}/pre-commit.d"
 
 # run scripts from the pre-commit.d directory
 for i in $(ls "$pre_commit_d"); do

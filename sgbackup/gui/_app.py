@@ -405,9 +405,20 @@ class AppWindow(Gtk.ApplicationWindow):
         #self.backupview.refresh()
         
 class Application(Gtk.Application):
+    """
+    Application The `Gtk.Application` for this app.
+    
+    Signals
+    _______
+    
+    + `settings-dialog-init`
+    """
     __gtype_name__ = "Application"
     
     def __init__(self,*args,**kwargs):
+        """
+        Application
+        """
         AppFlags = Gio.ApplicationFlags
         kwargs['application_id'] = 'org.sgbackup.sgbackup'
         kwargs['flags'] = AppFlags.FLAGS_NONE

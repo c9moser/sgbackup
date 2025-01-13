@@ -21,6 +21,27 @@ import os
 import sys
 
 from gi.repository import GLib,GObject
+import zipfile
+
+ZIPFILE_COMPRESSION_STR = {
+    zipfile.ZIP_STORED: "stored",
+    zipfile.ZIP_DEFLATED: "deflated",
+    zipfile.ZIP_BZIP2: "bzip2",
+    zipfile.ZIP_LZMA: "lzma",
+}
+
+ZIPFILE_COMPRESSLEVEL_MAX = {
+    zipfile.ZIP_STORED: 0,
+    zipfile.ZIP_DEFLATED: 9,
+    zipfile.ZIP_BZIP2: 9,
+    zipfile.ZIP_LZMA: 0,
+}
+
+ZIPFILE_STR_COMPRESSION = {}
+for _zc,_zs in ZIPFILE_COMPRESSION_STR.items():
+    ZIPFILE_STR_COMPRESSION[_zs] = _zc
+del _zc
+del _zs
 
 class Settings(GObject.GObject):
     __gtype_name__ = "Settings"
@@ -84,6 +105,33 @@ class Settings(GObject.GObject):
             return self.parser.get('sgbackup','logLevel')
         return "INFO"
 
+    @GObject.Property(type=str)
+    def zipfile_compression(self)->str:
+        if self.parser.has_option('zipfile','compression'):
+            try:
+                ZIPFILE_STR_COMPRESSION[self.parser.get('zipfile','compression')]
+            except:
+                pass
+        return ZIPFILE_STR_COMPRESSION["deflated"]
+    
+    @zipfile_compression.setter
+    def zipfile_compression(self,compression):
+        try:
+            self.parser.set('zipfile','compression',ZIPFILE_COMPRESSION_STR[compression])
+        except:
+            self.parser.set('zipfile','compression',ZIPFILE_STR_COMPRESSION[zipfile.ZIP_DEFLATED])
+            
+    @GObject.Property(type=int)
+    def zipfile_compresslevel(self)->int:
+        if self.parser.has_option('zipfile','compressLevel'):
+            cl = self.parser.getint('zipfile','compressLevel')
+            return cl if cl <= ZIPFILE_COMPRESSLEVEL_MAX[self.zipfile_compression] else ZIPFILE_COMPRESSLEVEL_MAX[self.zipfile_compression]
+        return ZIPFILE_COMPRESSLEVEL_MAX[self.zipfile_compression]
+    
+    @zipfile_compresslevel.setter
+    def zipfile_compresslevel(self,cl:int):
+        self.parser.set('zipfile','compressLevel',cl)
+        
     def save(self):
         self.emit('save')
 

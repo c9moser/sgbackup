@@ -19,6 +19,7 @@
 from gi.repository.GObject import Property,GObject,Signal,SignalFlags
 from gi.repository import GLib
 
+
 import os
 import json
 import re
@@ -28,6 +29,7 @@ from enum import StrEnum
 import sys
 import logging
 import pathlib
+import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -1303,6 +1305,19 @@ class Game(GObject):
         
         backup_files = get_backup_files_recursive(sgroot,sgdir)
         
+    @Property(type=str)
+    def savegame_subdir(self)->str:
+        """
+        savegame_subdir The subdir for the savegame backup.
+        
+        If `is_live` results to `True`, *"live"* is returned. Else *"finished"* is returned.
+
+        :type: str
+        """
+        if (self.is_live):
+            return "live"
+        return "finished"
+        
     
 class GameManager(GObject):
     __global_gamemanager = None
@@ -1379,3 +1394,4 @@ class GameManager(GObject):
         if (game.steam_windows):
             self.__steam_games[game.steam_windows.appid] = game
             self.__steam_windows_games[game.steam_windows.appid] = game
+            

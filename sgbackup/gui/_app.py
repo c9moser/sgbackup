@@ -200,6 +200,10 @@ class GameView(Gtk.ScrolledWindow):
 # GameView class
 
 class BackupViewData(GObject):
+    """
+    BackupViewData The data class for BackupView
+    """
+    
     def __init__(self,_game:Game,filename:str):
         GObject.GObject.__init__(self)
         self.__game = _game
@@ -215,34 +219,75 @@ class BackupViewData(GObject):
         
     @property
     def game(self)->Game:
+        """
+        game The `Game` the data belong to
+
+        :type: Game
+        """
         return self.__game
     
-    @Property
-    def savegame_name(self):
+    @Property(type=str)
+    def savegame_name(self)->str:
+        """
+        savegame_name The savegame_name of the file.
+
+        :type: str
+        """
         return self.__savegame_name
     
     @Property(type=str)
     def filename(self)->str:
+        """
+        filename The full filename of the savegame backup.
+
+        :type: str
+        """
         return self.__filename
     
     @Property(type=bool,default=False)
     def is_live(self)->bool:
+        """
+        is_live `True` if the savegame backup is from a live game.
+
+        :type: bool
+        """
         pass
     
-    @Property
-    def extension(self):
+    @Property(type=str)
+    def extension(self)->str:
+        """
+        extension The extension of the file.
+
+        :type: str
+        """
         return self.__extension
     
     @Property
-    def timestamp(self):
+    def timestamp(self)->DateTime:
+        """
+        timestamp The timestamp of the file.
+        
+        DateTime is the alias for `datetime.datetime`.
+
+        :type: DateTime
+        """
         return self.__timestamp
     
     def _on_selection_changed(self,selection):
         pass
 
 class BackupView(Gtk.ScrolledWindow):
+    """
+    BackupView This view displays the backup for the selected `Game`.
+    """
     __gtype_name__ = "BackupView"
     def __init__(self,gameview:GameView):
+        """
+        BackupView
+
+        :param gameview: The `GameView` to connect this class to.
+        :type gameview: GameView
+        """
         Gtk.ScrolledWindow.__init__(self)
         self.__gameview = gameview
         
@@ -277,6 +322,11 @@ class BackupView(Gtk.ScrolledWindow):
         
     @property
     def gameview(self)->GameView:
+        """
+        gameview The GameView this class is connected to.
+
+        :type: GameView
+        """
         return self.__gameview
 
     def _on_live_column_setup(self,factory,item):
@@ -338,8 +388,17 @@ class BackupView(Gtk.ScrolledWindow):
         
 
 class AppWindow(Gtk.ApplicationWindow):
+    """
+    AppWindow The applications main window.
+    """
     __gtype_name__ = "AppWindow"
     def __init__(self,application=None,**kwargs):
+        """
+        AppWindow
+
+        :param application: The `Application` this window belongs to, defaults to `None`.
+        :type application: Application, optional
+        """
         kwargs['title'] = "SGBackup"
         
         if (application is not None):
@@ -389,18 +448,39 @@ class AppWindow(Gtk.ApplicationWindow):
         self.set_child(vbox)
         
     @property
-    def builder(self):
+    def builder(self)->Gtk.Builder:
+        """
+        builder The Builder for this Window.
+
+        If application is set and it has an attriubte *builder*, The applications builder 
+        is used else a new `Gtk.Builder` instance is created.
+        
+        :type: Gtk.Builder
+        """
         return self.__builder
 
     @property
-    def backupview(self):
+    def backupview(self)->BackupView:
+        """
+        backupview The `BackupView` of this window.
+
+        :type: BackupView
+        """
         return self.__backupview
     
     @property
-    def gameview(self):
+    def gameview(self)->GameView:
+        """
+        gameview The `GameView` for this window.
+
+        :type: GameView
+        """
         return self.__gameview
     
     def refresh(self):
+        """
+        refresh Refresh the views of this window.
+        """
         self.gameview.refresh()
         #self.backupview.refresh()
         
@@ -411,7 +491,7 @@ class Application(Gtk.Application):
     Signals
     _______
     
-    + `settings-dialog-init`
+    + **settings-dialog-init** - Called when the application creates a new `SettingsDialog`.
     """
     __gtype_name__ = "Application"
     
@@ -433,10 +513,18 @@ class Application(Gtk.Application):
         return self.__logger
     
     @property
-    def appwindow(self):
+    def appwindow(self)->AppWindow:
+        """
+        appwindow The main `AppWindow` of this app.
+
+        :type: AppWindow
+        """
         return self.__appwindow
     
     def do_startup(self):
+        """
+        do_startup The startup method for this application.
+        """
         self._logger.debug('do_startup()')
         if not self.__builder:
             self.__builder = Gtk.Builder.new()
@@ -451,29 +539,37 @@ class Application(Gtk.Application):
         theme.add_search_path(str(icons_path))
         
         action_about = Gio.SimpleAction.new('about',None)
-        action_about.connect('activate',self.on_action_about)
+        action_about.connect('activate',self._on_action_about)
         self.add_action(action_about)
         
         action_new_game = Gio.SimpleAction.new('new-game',None)
-        action_new_game.connect('activate',self.on_action_new_game)
+        action_new_game.connect('activate',self._on_action_new_game)
         self.add_action(action_new_game)
         
         action_quit = Gio.SimpleAction.new('quit',None)
-        action_quit.connect('activate',self.on_action_quit)
+        action_quit.connect('activate',self._on_action_quit)
         self.add_action(action_quit)
                 
         action_settings = Gio.SimpleAction.new('settings',None)
-        action_settings.connect('activate',self.on_action_settings)
+        action_settings.connect('activate',self._on_action_settings)
         self.add_action(action_settings)
         
         # add accels
         self.set_accels_for_action('app.quit',["<Primary>q"])
         
-    @Property
-    def builder(self):
+    @property
+    def builder(self)->Gtk.Builder:
+        """
+        builder Get the builder for the application.
+
+        :type: Gtk.Builder
+        """
         return self.__builder
     
     def do_activate(self):
+        """
+        do_activate This method is called, when the application is activated.
+        """
         self._logger.debug('do_activate()')
         if not (self.__appwindow):
             self.__appwindow = AppWindow(application=self)
@@ -481,28 +577,34 @@ class Application(Gtk.Application):
         
         self.appwindow.present()
         
-    def on_action_about(self,action,param):
+    def _on_action_about(self,action,param):
         pass
     
-    def on_action_settings(self,action,param):
+    def _on_action_settings(self,action,param):
         dialog = self.new_settings_dialog()
         dialog.present()
     
-    def on_action_quit(self,action,param):
+    def _on_action_quit(self,action,param):
         self.quit()
         
     def _on_dialog_response_refresh(self,dialog,response,check_response):
         if response == check_response:
             self.appwindow.refresh()
             
-    def on_action_new_game(self,action,param):
+    def _on_action_new_game(self,action,param):
         dialog = GameDialog(self.appwindow)
         dialog.connect('response',
                        self._on_dialog_response_refresh,
                        Gtk.ResponseType.APPLY)
         dialog.present()        
         
-    def new_settings_dialog(self):
+    def new_settings_dialog(self)->SettingsDialog:
+        """
+        new_settings_dialog Create a new `SettingsDialog`.
+
+        :return: The new dialog.
+        :rtype: `SettingsDialog`
+        """
         dialog = SettingsDialog(self.appwindow)
         self.emit('settings-dialog-init',dialog)
         return dialog
@@ -511,6 +613,14 @@ class Application(Gtk.Application):
             flags=SignalFlags.RUN_LAST,
             return_type=None,
             arg_types=(SettingsDialog,))
-    def do_settings_dialog_init(self,dialog):
+    def do_settings_dialog_init(self,dialog:SettingsDialog):
+        """
+        do_settings_dialog_init The **settings-dialog-init** signal callback for initializing the `SettingsDialog`.
+              
+        This signal is ment to add pages to the `SettingsDialog`.
+
+        :param dialog: The dialog to initialize.
+        :type dialog: SettingsDialog
+        """
         pass
 

@@ -17,7 +17,7 @@
 ###############################################################################
 
 from gi.repository import Gtk,GLib,Gio
-from gi.repository.GObject import GObject,Signal,Property
+from gi.repository.GObject import GObject,Signal,Property,SignalFlags
 
 from ..settings import settings
 
@@ -81,7 +81,6 @@ class SettingsDialog(Gtk.Dialog):
         dialog.select_folder(self,None,self._on_backupdir_dialog_select_folder)
         
         
-        
     def add_page(self,page,name,title):
         self.__stack.add_titled(page,name,title)
         
@@ -91,7 +90,10 @@ class SettingsDialog(Gtk.Dialog):
             settings.save()
         self.destroy()
             
-    @Signal(name='save')
+    @Signal(name='save',
+            flags=SignalFlags.RUN_FIRST,
+            return_type=None,
+            arg_types=())
     def do_save(self):
         settings.backup_dir = self.__backupdir_label.get_text()
         

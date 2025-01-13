@@ -229,14 +229,14 @@ class Steam(GObject):
                         self.__libraries.append(SteamLibrary(i))
                         break
         else:
-            with open(str(self.steamlib_list_file),'r',encoding="utf-8") as ifile:
+            with open(str(self.steamlib_list_file),'rt',encoding="utf-8") as ifile:
                 for line in (i.strip() for i in ifile.readlines()):
                     if not line or line.startswith('#'):
                         continue
                     libdir = Path(line).resolve()
                     if libdir.is_dir():
                         try:
-                            self.add_library(str(libdir))
+                            self.__libraries.append(SteamLibrary(str(libdir)))
                         except:
                             pass
         
@@ -259,19 +259,33 @@ class Steam(GObject):
     
     @Property
     def ignore_apps_file(self)->Path:
-        return Path(settings.config_dir).resolve / 'ignore_steamapps.json'
+        return Path(settings.config_dir).resolve() / 'ignore_steamapps.json'
     
     @Property
     def libraries(self)->list[SteamLibrary]:
         return self.__libraries
+    @libraries.setter
+    def libraries(self,steamlibs:list[SteamLibrary|str]):
+        libs=[]
+        for sl in steamlibs:
+            if isinstance(sl,SteamLibrary):
+                libs.append(sl)
+            elif isinstance(sl,str):
+                try:
+                    libs.append(SteamLibrary(sl))
+                except:
+                    continue
+        self.__libraries = libs
+        self.__write_steamlib_list_file()
     
     @Property
     def ignore_apps(self)->dict[int:IgnoreSteamApp]:
         return self.__ignore_apps
     
     def __write_steamlib_list_file(self):
-        with open(self.steamlib_list_file,'w',encoding='utf-8') as ofile:
-            ofile.write('\n'.join(str(sl.directory) for sl in self.libraries))
+        with open(self.steamlib_list_file,'wt',encoding='utf-8') as ofile:
+            output = '\n'.join([sl.directory for sl in self.__libraries])
+            ofile.write(output)
             
     def __write_ignore_steamapps_file(self):
         with open(self.ignore_apps_file,'w',encoding='utf-8') as ofile:
@@ -299,15 +313,15 @@ class Steam(GObject):
         else:
             libdir = str(steamlib)
             
-        delete_libs=[]
-        for i in range(len(self.__libraries)):
-            if self.__libraries[i].directory == libdir:
-                delete_libs.append(i)
         
-        if delete_libs:        
-            for i in sorted(delete_libs,reverse=True):
-                del self.__libraries[i]
-            self.__write_steamlib_list_file()
+        for i in sorted(range(len(self.__libraries)),reverse=True):
+                if libdir == self.__libraries[i].directory:
+                    del self.__libraries[i]            
+        self.__write_steamlib_list_file()
+            
+    def save_libararies(self):
+        self.__write_steamlib_list_file()
+        
             
     def add_ignore_app(self,app:IgnoreSteamApp):
         self.__ignore_apps[app.appid] = app
@@ -326,7 +340,7 @@ class Steam(GObject):
         new_apps = []
         for lib in self.libraries:
             for app in lib.steam_apps:
-                if not app.appid in STEAM_GAMES and not app.appid in self.ignore_apps:
+                if not app.appid in GameManager.steam_games and not app.appid in self.ignore_apps:
                     new_apps.append(app)
         return sorted(new_apps)
     

@@ -1344,7 +1344,7 @@ class GameManager(GObject):
         return self.__games
     
     @Property(type=object)
-    def stam_games(self)->dict[int:Game]:
+    def steam_games(self)->dict[int:Game]:
         return self.__steam_games
 
     @Property(type=object)

@@ -29,6 +29,7 @@ from ..settings import settings
 from ._settingsdialog import SettingsDialog
 from ._gamedialog import GameDialog
 from ..game import Game,GameManager
+from ._steam import SteamLibrariesDialog
 
 __gtype_name__ = __name__
 
@@ -554,6 +555,10 @@ class Application(Gtk.Application):
         action_settings.connect('activate',self._on_action_settings)
         self.add_action(action_settings)
         
+        action_steam_manage_libraries = Gio.SimpleAction.new('steam-manage-libraries')
+        action_steam_manage_libraries.connect('activate',self._on_action_steam_manage_libraries)
+        self.add_action(action_steam_manage_libraries)
+        
         # add accels
         self.set_accels_for_action('app.quit',["<Primary>q"])
         
@@ -596,7 +601,11 @@ class Application(Gtk.Application):
         dialog.connect('response',
                        self._on_dialog_response_refresh,
                        Gtk.ResponseType.APPLY)
-        dialog.present()        
+        dialog.present()
+        
+    def _on_action_steam_manage_libraries(self,action,param):
+        dialog = SteamLibrariesDialog(self.appwindow)
+        dialog.present()
         
     def new_settings_dialog(self)->SettingsDialog:
         """

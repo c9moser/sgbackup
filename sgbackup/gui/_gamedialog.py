@@ -411,7 +411,7 @@ class GameDialog(Gtk.Dialog):
             
             self.__stack_sidebar.append(hbox)
             
-        self.reset()
+        
         self.__stack_sidebar.select_row(self.__stack_sidebar.get_row_at_index(0))
         
         self.get_content_area().append(paned)
@@ -420,6 +420,7 @@ class GameDialog(Gtk.Dialog):
         
         self.add_button("Cancel",Gtk.ResponseType.CANCEL)
         
+        self.reset()
         
     def __add_game_page(self):
         page = Gtk.ScrolledWindow()
@@ -897,11 +898,17 @@ class GameDialog(Gtk.Dialog):
         self.__steam_macos.ignorematch.columnview.get_model().get_model().remove_all()
         self.__steam_macos.variables.columnview.get_model().get_model().remove_all()
         
-        if self.__game:
+        if self.__game is not None:
             self.__active_switch.set_active(self.__game.is_active)
             self.__live_switch.set_active(self.__game.is_live)
             self.__name_entry.set_text(self.__game.name)
             self.__sgname_entry.set_text(self.__game.savegame_name)
+            model = self.__savegame_type_dropdown.get_model()
+            for i in range(model.get_n_items()):
+                if model.get_item(i).savegame_type == self.__game.savegame_type:
+                    self.__savegame_type_dropdown.set_selected(i)
+                    break
+                
             for name,value in self.__game.variables.items():
                 self.__game_variables.get_model().get_model().append(GameVariableData(name,value))
                 
@@ -953,9 +960,9 @@ class GameDialog(Gtk.Dialog):
                     var_model.append(GameVariableData(name,value))
                     
             if self.__game.macos:
-                self.__macos.sgroot_entry.set_text(self.__game.linux.savegame_root)
-                self.__macos.sgdir_entry.set_text(self.__game.linux.savegame_dir)
-                self.__macos.binary_entry.set_text(self.__game.linux.binary)
+                self.__macos.sgroot_entry.set_text(self.__game.macos.savegame_root)
+                self.__macos.sgdir_entry.set_text(self.__game.macos.savegame_dir)
+                self.__macos.binary_entry.set_text(self.__game.macos.binary)
                 
                 #filematch
                 fm_model = self.__macos.filematch.columnview.get_model().get_model()
@@ -973,8 +980,8 @@ class GameDialog(Gtk.Dialog):
             if self.__game.steam_windows:
                 self.__steam_windows.sgroot_entry.set_text(self.__game.steam_windows.savegame_root)
                 self.__steam_windows.sgdir_entry.set_text(self.__game.steam_windows.savegame_dir)
-                self.__steam_windows.appid_entry.set_text(self.__game.steam_windows.appid)
-                self.__steam_windows.installdir_entry.set_text(self.__game.steam_windows.installdir)
+                self.__steam_windows.appid_entry.set_text(str(self.__game.steam_windows.appid))
+                self.__steam_windows.installdir_entry.set_text(self.__game.steam_windows.installdir if self.__game.steam_windows.installdir else "")
                 
                 #filematch
                 fm_model = self.__steam_windows.filematch.columnview.get_model().get_model()
@@ -992,8 +999,8 @@ class GameDialog(Gtk.Dialog):
             if self.__game.steam_linux:
                 self.__steam_linux.sgroot_entry.set_text(self.__game.steam_linux.savegame_root)
                 self.__steam_linux.sgdir_entry.set_text(self.__game.steam_linux.savegame_dir)
-                self.__steam_linux.appid_entry.set_text(self.__game.steam_linux.appid)
-                self.__steam_linux.installdir_entry.set_text(self.__game.steam_linux.installdir)
+                self.__steam_linux.appid_entry.set_text(str(self.__game.steam_linux.appid))
+                self.__steam_linux.installdir_entry.set_text(self.__game.steam_linux.installdir if self.__game.steam_linux.installdir else "")
                 
                 fm_model = self.__steam_linux.filematch.columnview.get_model().get_model()
                 for fm in self.__game.steam_linux.file_matchers:
@@ -1010,8 +1017,8 @@ class GameDialog(Gtk.Dialog):
             if self.__game.steam_macos:
                 self.__steam_macos.sgroot_entry.set_text(self.__game.steam_macos.savegame_root)
                 self.__steam_macos.sgdir_entry.set_text(self.__game.steam_macos.savegame_dir)
-                self.__steam_macos.appid_entry.set_text(self.__game.steam_macos.appid)
-                self.__steam_macos.installdir_entry.set_text(self.__game.steam_macos.installdir)
+                self.__steam_macos.appid_entry.set_text(str(self.__game.steam_macos.appid))
+                self.__steam_macos.installdir_entry.set_text(self.__game.steam_macos.installdir if self.__game.steam_macos.installdir else "")
                 
                 fm_model = self.__steam_macos.filematch.columnview.get_model().get_model()
                 for fm in self.__game.steam_macos.file_matchers:
@@ -1071,14 +1078,14 @@ class GameDialog(Gtk.Dialog):
             return
         
         variables = {}
-        var_model = self.__game_variables.get_model().get_model()
+        var_model = self.__game_variables.columnview.get_model().get_model()
         for i in range(var_model.get_n_items()):
             var = var_model.get_item(i)
             variables[var.name] = var.value
         key = self.__key_entry.get_text()
         name = self.__name_entry.get_text()
         savegame_name = self.__sgname_entry.get_text()
-        savegame_type = self.__savegame_type_dropdown.get_selected_item().savegame_type()
+        savegame_type = self.__savegame_type_dropdown.get_selected_item().savegame_type
         if self.__game:
             self.__game.key = key
             self.__game.name = name

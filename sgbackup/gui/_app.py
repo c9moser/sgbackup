@@ -29,7 +29,7 @@ from ..settings import settings
 from ._settingsdialog import SettingsDialog
 from ._gamedialog import GameDialog
 from ..game import Game,GameManager
-from ._steam import SteamLibrariesDialog
+from ._steam import SteamLibrariesDialog,NewSteamAppsDialog
 
 __gtype_name__ = __name__
 
@@ -555,9 +555,13 @@ class Application(Gtk.Application):
         action_settings.connect('activate',self._on_action_settings)
         self.add_action(action_settings)
         
-        action_steam_manage_libraries = Gio.SimpleAction.new('steam-manage-libraries')
+        action_steam_manage_libraries = Gio.SimpleAction.new('steam-manage-libraries',None)
         action_steam_manage_libraries.connect('activate',self._on_action_steam_manage_libraries)
         self.add_action(action_steam_manage_libraries)
+        
+        action_steam_new_apps = Gio.SimpleAction.new('steam-new-apps',None)
+        action_steam_new_apps.connect('activate',self._on_action_steam_new_apps)
+        self.add_action(action_steam_new_apps)
         
         # add accels
         self.set_accels_for_action('app.quit',["<Primary>q"])
@@ -605,6 +609,14 @@ class Application(Gtk.Application):
         
     def _on_action_steam_manage_libraries(self,action,param):
         dialog = SteamLibrariesDialog(self.appwindow)
+        dialog.present()
+        
+    def _on_action_steam_new_apps(self,action,param):
+        def on_dialog_response(dialog,response):
+            self.appwindow.refresh()
+            
+        dialog = NewSteamAppsDialog(self.appwindow)
+        dialog.connect('response',on_dialog_response)
         dialog.present()
         
     def new_settings_dialog(self)->SettingsDialog:

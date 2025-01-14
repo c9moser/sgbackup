@@ -1071,11 +1071,10 @@ class Game(GObject):
 
     @Property
     def filename(self)->str|None:
-        if not self.__id:
-            return None
-        
         if not self.__filename:
-            GLib.build_filename(settings.gameconf_dir,'.'.join((self.id,'gameconf')))
+            if not self.__key:
+                return None
+            os.path.join(settings.gameconf_dir,'.'.join((self.key,'gameconf')))
             
         return self.__filename
     @filename.setter
@@ -1172,12 +1171,12 @@ class Game(GObject):
     def steam_linux(self)->SteamLinuxGame|None:
         return self.__steam_linux
     @steam_linux.setter
-    def steam_windows(self,data:SteamLinuxGame|None):
+    def steam_linux(self,data:SteamLinuxGame|None):
         if not data:
             self.__steam_linux = None
         else:
             if not isinstance(data,SteamLinuxGame):
-                raise TypeError("SteamWindowsGame")
+                raise TypeError("SteamLinuxGame")
             self.__steam_linux = data
             
     @Property
@@ -1189,7 +1188,7 @@ class Game(GObject):
             self.__steam_macos = None
         else:
             if not isinstance(data,SteamMacOSGame):
-                raise TypeError("SteamWindowsGame")
+                raise TypeError("SteamMacOSGame")
             self.__steam_macos = data
     
     @Property
@@ -1254,9 +1253,12 @@ class Game(GObject):
         return ret
     
     def save(self):
-        old_path = pathlib.Path(self.filename).resolve()
+        old_fname = self.filename
+        if old_fname:
+            old_path = pathlib.Path(self.filename).resolve()
+            
         new_path = pathlib.Path(settings.gameconf_dir / '.'.join(self.id,'gameconf')).resolve()
-        if (str(old_path) != str(new_path)) and old_path.is_file():
+        if old_fname and (str(old_path) != str(new_path)) and old_path.is_file():
             os.unlink(old_path)
         if not new_path.parent.is_dir():
             os.makedirs(new_path.parent)
@@ -1343,7 +1345,7 @@ class GameManager(GObject):
     def games(self)->dict[str:Game]:
         return self.__games
     
-    @Property(type=object)
+    @Property
     def steam_games(self)->dict[int:Game]:
         return self.__steam_games
 

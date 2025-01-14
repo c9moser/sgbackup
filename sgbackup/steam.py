@@ -78,7 +78,7 @@ class AcfFileParser(object):
         if not os.path.isfile(acf_file):
             raise FileNotFoundError("File \"{s}\" does not exist!")
         
-        with open(acf_file,'r') as ifile:
+        with open(acf_file,'rt',encoding="utf-8") as ifile:
             buffer = ifile.read()
         lines = [l.strip() for l in buffer.split('\n')]
         if lines[0] == "\"AppState\"" and lines[1] == "{":
@@ -281,6 +281,16 @@ class Steam(GObject):
     @Property
     def ignore_apps(self)->dict[int:IgnoreSteamApp]:
         return self.__ignore_apps
+    @ignore_apps.setter
+    def ignore_apps(self,apps:dict[int:IgnoreSteamApp]|list[IgnoreSteamApp]|tuple[IgnoreSteamApp]):
+        if isinstance(apps,dict):
+            self.__ignore_apps = apps
+        elif isinstance(apps,list) or isinstance(apps,tuple):
+            self.__ignore_apps = {}
+            for app in apps:
+                self.__ignore_apps[app.appid] = app
+        else:
+            raise TypeError("illegal ignore_apps type!")
     
     def __write_steamlib_list_file(self):
         with open(self.steamlib_list_file,'wt',encoding='utf-8') as ofile:
@@ -340,7 +350,7 @@ class Steam(GObject):
         new_apps = []
         for lib in self.libraries:
             for app in lib.steam_apps:
-                if not app.appid in GameManager.steam_games and not app.appid in self.ignore_apps:
+                if not app.appid in GameManager.get_global().steam_games and not app.appid in self.ignore_apps:
                     new_apps.append(app)
         return sorted(new_apps)
     

@@ -105,6 +105,53 @@ class Settings(GObject.GObject):
             return self.parser.get('sgbackup','logLevel')
         return "INFO"
 
+    @GObject.Property
+    def variables(self)->dict[str:str]:
+        ret = {}
+        if self.parser.has_section('variables'):
+            for k,v in self.parser.items('variables'):
+                ret[k] = v
+        return ret
+    @variables.setter
+    def variables(self,vars:dict[str:str]|list|tuple):
+        if self.parser.has_section('variables'):
+            for opt in self.parser['variables'].keys():
+                self.parser.remove_option('variables',opt)
+                
+        if not vars:
+            return
+        
+        if isinstance(vars,dict):
+            for k,v in vars.items():
+                self.parser.set('variables',k,v)
+        else:
+            for v in vars:
+                self.parser.set('variables',v[0],v[1])
+            
+    def add_variable(self,name:str,value:str):
+        self.parser.set('variables',name,value)
+        
+    def remove_variable(self,name:str):
+        try:
+            self.parser.remove_option('variables',name)
+        except:
+            pass
+        
+    def get_variable(self,name:str)->str:
+        try:
+            return self.parser.get('variables',name)
+        except:
+            return ""
+        
+    def get_variables(self)->dict[str:str]:
+        ret = dict(os.environ)
+        ret.update({
+            "DOCUMENTS": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS),
+            "DOCUMENTS_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS),
+        })
+        ret.update(self.variables)
+        return ret
+        
     @GObject.Property(type=str)
     def zipfile_compression(self)->str:
         if self.parser.has_option('zipfile','compression'):

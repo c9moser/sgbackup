@@ -17,7 +17,7 @@
 ###############################################################################
 
 from gi.repository import Gio,GLib,Gtk,Pango
-from gi.repository.GObject import Property,Signal,GObject
+from gi.repository.GObject import Property,Signal,GObject,BindingFlags
 from ..game import (
     Game,
     GameFileMatcher,
@@ -1051,8 +1051,8 @@ class GameDialog(Gtk.Dialog):
                 filematch.append(GameFileMatcher(fm_data.match_type,fm_data.match_value))
                 
             for i in range(im_model.get_n_items()):
-                fm_data = im_model.get_item(i)
-                ignorematch.append(GameFileMatcher(im_data.match_type,fm_data.match_value))
+                im_data = im_model.get_item(i)
+                ignorematch.append(GameFileMatcher(im_data.match_type,im_data.match_value))
             
             for i in range(var_model.get_n_items()):
                 var = var_model.get_item(i)
@@ -1092,6 +1092,7 @@ class GameDialog(Gtk.Dialog):
             self.__game.savegame_type = savegame_type
             self.__game.savegame_name = savegame_name
             self.__game.variables = variables
+            self.__game.filename = '.'.join((self.__game.key(),'gameconf'))
         else:
             self.__game = Game(key,name,savegame_name)
             self.__game.savegame_type = savegame_type
@@ -1100,16 +1101,20 @@ class GameDialog(Gtk.Dialog):
         if self.get_is_valid_savegame_type(SavegameType.WINDOWS):
             data = get_game_data(self.__windows)
             installdir = self.__windows.installdir_entry.get_text()
-            grk_model = self.__windows.lookup_regekys.listview.get_model().get_model()
+            grk_model = self.__windows.lookup_regkeys.listview.get_model().get_model()
             irk_model = self.__windows.installdir_regkeys.listview.get_model().get_model()
             grk = []
             irk = []
             
             for i in range(grk_model.get_n_items()):
-                grk.append(grk_model.get_item(i).regkey)
+                item = grk.model.get_item(i)
+                if item.regkey:
+                    grk.append(item.regkey)
                 
             for i in range(irk_model.get_n_items()):
-                irk.append(irk_model.get_item(i).regkey)            
+                item = irk.model.get_item(i)
+                if item.regkey:
+                    irk.append(item.regkey)
             
             if self.__game.windows:
                 wg = self.__game.windows
@@ -1330,7 +1335,7 @@ class GameDialog(Gtk.Dialog):
         
     def _on_filematch_dropdown_selection_changed(self,dropdown,data,item):
         data = item.get_item()
-        data.match_type = dropdown.get_slected_item()
+        data.match_type = dropdown.get_selected_item()
     
     def _on_filematch_type_dropdown_setup(self,factory,item):
         label = Gtk.Label()
@@ -1365,7 +1370,7 @@ class GameDialog(Gtk.Dialog):
         else:
             label.start_editing()
             label.grab_focus()
-        label.bind_property('text',data,'match_value',GObject.BindingFlags.DEFAULT)
+        label.bind_property('text',data,'match_value',BindingFlags.DEFAULT)
         label.connect('changed',self._on_filematch_value_label_changed,widget)
     
     def _on_windows_regkey_setup(self,factory,item):
@@ -1421,7 +1426,7 @@ class GameDialog(Gtk.Dialog):
             i = 0
             while i < model.get_n_items():
                 item = model.get_item(i)
-                if not item.match_value:
+                if not item.match_value.strip():
                     model.remove(i)
                     continue
                 i += 1

@@ -291,7 +291,7 @@ class NewSteamAppsDialog(Gtk.Dialog):
         def on_dialog_response(dialog,response):
             if response == Gtk.ResponseType.APPLY:
                 for i in range(self.__listmodel.get_n_items()):
-                    if data.appid == self.__listmodel.get_item(i):
+                    if data.appid == self.__listmodel.get_item(i).appid:
                         self.__listmodel.remove(i)
                         break
                     
@@ -314,6 +314,7 @@ class NewSteamAppsDialog(Gtk.Dialog):
             
         dialog = GameDialog(self,game)
         dialog.set_title("sgbackup: Add Steam Game")
+        dialog.set_modal(False)
         dialog.connect('response',on_dialog_response)
         dialog.present()
     
@@ -331,7 +332,7 @@ class NewSteamAppsDialog(Gtk.Dialog):
         
         dialog = Gtk.MessageDialog(buttons=Gtk.ButtonsType.YES_NO)
         dialog.set_transient_for(self)
-        dialog.set_modal(True)
+        dialog.set_modal(False)
         dialog.props.text = "Do you want to put <span weight=\"bold\">\"{steamapp}\"</span> on the ignore list?".format(steamapp=data.name)
         dialog.props.use_markup = True
         

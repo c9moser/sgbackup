@@ -30,6 +30,7 @@ import sys
 import logging
 import pathlib
 import datetime
+from string import Template
 
 logger = logging.getLogger(__name__)
 
@@ -783,10 +784,14 @@ class SteamGame(GameData):
                           ignore_match)
         self.appid = int(appid)
         self.installdir = installdir
+        self.librarydir=None
         
     def get_variables(self):
         vars = super().get_variables()
         vars["INSTALLDIR"] = self.installdir if self.installdir else ""
+        vars["STEAM_APPID"] = str(self.appid)
+        vars["STEAM_LIBDIR"] = self.librarydir if self.librarydir else ""
+        return vars
         
     @Property(type=int)
     def appid(self):
@@ -802,12 +807,26 @@ class SteamGame(GameData):
     def installdir(self,installdir:str|None):
         self.__installdir = installdir
 
+    @Property
+    def librarydir(self)->str|None:
+        if not self.__librarydir and self.installdir:
+            return pathlib.Path(self.installdir).resolve().parent.parent.parent
+        return self.__librarydir
+    @librarydir.setter
+    def librarydir(self,directory):
+        if not directory:
+            self.__librarydir = None
+        elif not os.path.isdir(directory):
+            raise ValueError("Steam librarydir is not a valid directory!")
+        self.__librarydir = directory
+    
     def serialize(self):
         ret = super().serialize()
         ret['appid'] = self.appid
         
         if self.installdir:
-            ret['installdir'] = self.installdir
+            ret['installdir'] = self.installdir if self.installdir else ""
+            ret['librarydir'] = self.librarydir if self.librarydir else ""
 
         return ret
     
@@ -1015,10 +1034,10 @@ class Game(GObject):
         
     @Property(type=str)
     def dbid(self)->str:
-        return self.__id
+        return self.__dbid
     @dbid.setter
     def id(self,id:str):
-        self.__id = id
+        self.__dbid = id
 
     @Property(type=str)
     def key(self)->str:
@@ -1077,8 +1096,12 @@ class Game(GObject):
             os.path.join(settings.gameconf_dir,'.'.join((self.key,'gameconf')))
             
         return self.__filename
+    
     @filename.setter
     def filename(self,fn:str):
+        if self.__filename and fn != self.__filename and os.path.isfile(self.__filename):
+            self.__old_filename = self.__filename
+            
         if not os.path.isabs(fn):
             self.__filename = GLib.build_filename(settings.gameconf_dir,fn)
         else:
@@ -1195,13 +1218,15 @@ class Game(GObject):
     def savegame_root(self)->str|None:
         if not self.game_data:
             return None
-        return self.game_data.savegame_root
+        t = Template(self.game_data.savegame_root)
+        return t.safe_substitute(self.get_variables())
     
     @Property
     def savegame_dir(self)->str|None:
         if not self.game_data:
             return None
-        return self.game_data.savegame_dir
+        t = Template(self.game_data.savegame_dir)
+        return t.safe_substitute(self.get_variables())
     
     def add_variable(self,name:str,value:str):
         self.__variables[str(name)] = str(value)
@@ -1209,15 +1234,20 @@ class Game(GObject):
     def delete_variable(self,name):
         if name in self.__variables:
             del self.__variables[name]
-            
-    def get_variable(self,name):
-        vars = dict(os.environ)
-        #vars.update(settings.variables)
+        
+    def get_variables(self):
+        vars = settings.get_variables()
         vars.update(self.__variables)
         game_data = self.game_data
-        if (game_data is not None):
-            vars.update(game_data.variables)
-        
+        if game_data is not None:
+            vars.update(game_data.get_variables())
+        return vars
+    
+    def get_variable(self,name):
+        try:
+            return self.get_variables()[name]
+        except:
+            return ""        
             
     def serialize(self)->dict:
         ret = {
@@ -1253,17 +1283,21 @@ class Game(GObject):
         return ret
     
     def save(self):
-        old_fname = self.filename
-        if old_fname:
-            old_path = pathlib.Path(self.filename).resolve()
+        path = pathlib.Path(self.filename).resolve() if self.filename else None
+        if path is None:
+            logger.error("No filename for saving the game \"{game}\" set! Not saving file!".format(game=self.name))
+            return
+        
+        if hasattr(self,'__old_filename'):
+            old_path = pathlib.Path(self.__old_filename).resolve()
+            if  old_path.is_file():
+                os.unlink(old_path)
+            delattr(self,'__old_filename')
             
-        new_path = pathlib.Path(settings.gameconf_dir / '.'.join(self.id,'gameconf')).resolve()
-        if old_fname and (str(old_path) != str(new_path)) and old_path.is_file():
-            os.unlink(old_path)
-        if not new_path.parent.is_dir():
-            os.makedirs(new_path.parent)
+        if not path.parent.is_dir():
+            os.makedirs(path.parent)
             
-        with open(new_path,'wt',encoding='utf-8') as ofile:
+        with open(path,'wt',encoding='utf-8') as ofile:
             ofile.write(json.dumps(self.serialize(),ensure_ascii=False,indent=4))
     
     def __bool__(self):
@@ -1271,7 +1305,7 @@ class Game(GObject):
     
     def is_backup_file(self,filename:str):
         pass
-    
+
     def get_backup_files(self)->dict[str:str]|None:
         def get_backup_files_recursive(sgroot:pathlib.Path,sgdir:str,subdir:str|None=None):
             ret = {}
@@ -1386,7 +1420,7 @@ class GameManager(GObject):
             self.add_game(game)
         
     def add_game(self,game:Game):
-        self.__[game.key] = game
+        self.__games[game.key] = game
         if (game.steam_macos):
             self.__steam_games[game.steam_macos.appid] = game
             self.__steam_macos_games[game.steam_macos.appid] = game

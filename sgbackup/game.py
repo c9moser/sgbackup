@@ -189,7 +189,7 @@ class GameFileMatcher(GObject):
     
     def __init__(self,match_type:GameFileType,match_file:str):
         GObject.__init__(self)
-        self.match_type = type
+        self.match_type = match_type
         self.match_file = match_file
     
     @Property
@@ -203,10 +203,10 @@ class GameFileMatcher(GObject):
         return self.__match_type
     
     @match_type.setter
-    def match_type(self,type:GameFileType):
-        if not isinstance(type,GameFileType):
+    def match_type(self,match_type:GameFileType):
+        if not isinstance(match_type,GameFileType):
             raise TypeError("match_type is not a GameFileType instance!")
-        self.__match_type = type
+        self.__match_type = match_type
         
     @Property(type=str)
     def match_file(self)->str:
@@ -1036,7 +1036,7 @@ class Game(GObject):
     def dbid(self)->str:
         return self.__dbid
     @dbid.setter
-    def id(self,id:str):
+    def dbid(self,id:str):
         self.__dbid = id
 
     @Property(type=str)
@@ -1044,14 +1044,9 @@ class Game(GObject):
         return self.__key
     @key.setter
     def key(self,key:str):
-        set_game = False
-        if self.__key in GAMES:
-            del GAMES[self.__key]
-            set_game = True
-                        
+        if self.__key and self.__key != key:
+            self._old_key = self.__key
         self.__key = key
-        if set_game:
-            GAMES[self.__key] = self
     
     @Property(type=str)
     def name(self)->str:
@@ -1299,12 +1294,17 @@ class Game(GObject):
             
         with open(path,'wt',encoding='utf-8') as ofile:
             ofile.write(json.dumps(self.serialize(),ensure_ascii=False,indent=4))
-    
+            
+        gm = GameManager.get_global()
+        if hasattr(self,'_old_key'):
+            if self._old_key in gm.games:
+                del gm.games[self._old_key]
+            delattr(self,'_old_key')
+        gm.add_game(self)
+
     def __bool__(self):
         return (bool(self.game_data) and bool(self.savegame_root) and bool(self.savegame_dir))
     
-    def is_backup_file(self,filename:str):
-        pass
 
     def get_backup_files(self)->dict[str:str]|None:
         def get_backup_files_recursive(sgroot:pathlib.Path,sgdir:str,subdir:str|None=None):
@@ -1339,7 +1339,7 @@ class Game(GObject):
         if not os.path.exists(sgpath):
             return None
         
-        backup_files = get_backup_files_recursive(sgroot,sgdir)
+        return get_backup_files_recursive(sgroot,sgdir)
         
     @Property(type=str)
     def savegame_subdir(self)->str:

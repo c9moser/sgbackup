@@ -114,51 +114,6 @@ class RegistryKeyData(GObject):
         return bool(self.__regkey)
 
 
-class GameFileMatcherData(GObject):
-    """
-    GameFileMatcherData The data for the file matcher.
-    """
-    def __init__(self,match_type:GameFileType,match_value:str):
-        """
-        GameFileMatcherData 
-
-        :param match_type: The type of the game file matcher.
-        :type match_type: GameFileType
-        :param match_value: The value to match the file.
-        :type match_value: str
-        
-        """
-        GObject.__init__(self)
-        self.match_type = match_type
-        self.match_value = match_value
-        
-    @Property
-    def match_type(self)->GameFileType:
-        """
-        match_type The type of the matcher
-
-        :type: GameFileType
-        """
-        
-        return self.__match_type
-    
-    @match_type.setter
-    def match_type(self,type:GameFileType):
-        self.__match_type = type
-        
-    @Property(type=str)
-    def match_value(self)->str:
-        """
-        match_value The value to match files against.
-
-        :type: str
-        """
-        return self.__match_value
-    
-    @match_value.setter
-    def match_value(self,value:str):
-        self.__match_value = value
-
 class GameFileTypeData(GObject):
     """ GameFileTypeData The *Gio.Liststore* data for GameFileType *Gtk.DropDown* widgets."""
     def __init__(self,match_type:GameFileType,name:str):
@@ -171,6 +126,8 @@ class GameFileTypeData(GObject):
         :type name: str
         """
         GObject.__init__(self)
+        if not isinstance(match_type,GameFileType):
+            raise TypeError("GameFileType")
         self.__match_type = match_type
         self.__name = name
         
@@ -782,7 +739,7 @@ class GameDialog(Gtk.Dialog):
         widget.add_button.connect('clicked',self._on_filematch_add_button_clicked,widget)
         widget.actions.pack_start(widget.add_button)
         
-        model = Gio.ListStore.new(GameFileMatcherData)
+        model = Gio.ListStore.new(GameFileMatcher)
         selection = Gtk.SingleSelection.new(model)
         selection.set_autoselect(False)
         selection.set_can_unselect(True)
@@ -920,11 +877,11 @@ class GameDialog(Gtk.Dialog):
                 #filematch
                 fm_model = self.__windows.filematch.columnview.get_model().get_model()
                 for fm in self.__game.windows.file_matchers:
-                    fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
+                    fm_model.append(GameFileMatcher(im.match_type,im.match_file))
                 
                 im_model = self.__windows.ignorematch.columnview.get_model().get_model()
                 for im in self.__game.windows.ignore_matchers:
-                    im_model.append(GameFileMatcherData(im.match_type,im.match_file))
+                    im_model.append(GameFileMatcher(im.match_type,im.match_file))
                     
                 # set lookup regkeys
                 var_model = self.__windows.variables.columnview.get_model().get_model()
@@ -949,11 +906,11 @@ class GameDialog(Gtk.Dialog):
                 #filematch
                 fm_model = self.__linux.filematch.columnview.get_model().get_model()
                 for fm in self.__game.linux.file_matchers:
-                    fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
+                    fm_model.append(GameFileMatcher(fm.match_type,fm.match_file))
                 
                 im_model = self.__linux.ignorematch.columnview.get_model().get_model()
                 for im in self.__game.linux.ignore_matchers:
-                    im_model.append(GameFileMatcherData(im.match_type,im.match_file))
+                    im_model.append(GameFileMatcher(im.match_type,im.match_file))
                 
                 var_model = self.__linux.variables.columnview.get_model().get_model()
                 for name,value in self.__game.linux.variables.items():
@@ -967,11 +924,11 @@ class GameDialog(Gtk.Dialog):
                 #filematch
                 fm_model = self.__macos.filematch.columnview.get_model().get_model()
                 for fm in self.__game.macos.file_matchers:
-                    fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
+                    fm_model.append(GameFileMatcher(fm.match_type,fm.match_file))
                 
                 im_model = self.__macos.ignorematch.columnview.get_model().get_model()
                 for im in self.__game.macos.ignore_matchers:
-                    im_model.append(GameFileMatcherData(im.match_type,im.match_file))
+                    im_model.append(GameFileMatcher(im.match_type,im.match_file))
                 
                 var_model = self.__macos.variables.columnview.get_model().get_model()
                 for name,value in self.__game.linux.variables.items():
@@ -986,11 +943,11 @@ class GameDialog(Gtk.Dialog):
                 #filematch
                 fm_model = self.__steam_windows.filematch.columnview.get_model().get_model()
                 for fm in self.__game.steam_windows.file_matchers:
-                    fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
+                    fm_model.append(GameFileMatcher(fm.match_type,fm.match_file))
                 
                 im_model = self.__steam_windows.ignorematch.columnview.get_model().get_model()
                 for im in self.__game.steam_windows.ignore_matchers:
-                    im_model.append(GameFileMatcherData(im.match_type,im.match_file))
+                    im_model.append(GameFileMatcher(im.match_type,im.match_file))
                 
                 var_model = self.__steam_windows.variables.columnview.get_model().get_model()
                 for name,value in self.__game.steam_windows.variables.items():
@@ -1004,11 +961,11 @@ class GameDialog(Gtk.Dialog):
                 
                 fm_model = self.__steam_linux.filematch.columnview.get_model().get_model()
                 for fm in self.__game.steam_linux.file_matchers:
-                    fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
+                    fm_model.append(GameFileMatcher(fm.match_type,fm.match_file))
                 
                 im_model = self.__steam_linux.ignorematch.columnview.get_model().get_model()
                 for im in self.__game.steam_linux.ignore_matchers:
-                    im_model.append(GameFileMatcherData(im.match_type,im.match_file))
+                    im_model.append(GameFileMatcher(im.match_type,im.match_file))
                     
                 var_model = self.__steam_linux.variables.columnview.get_model().get_model()
                 for name,value in self.__game.steam_linux.variables.items():
@@ -1022,11 +979,11 @@ class GameDialog(Gtk.Dialog):
                 
                 fm_model = self.__steam_macos.filematch.columnview.get_model().get_model()
                 for fm in self.__game.steam_macos.file_matchers:
-                    fm_model.append(GameFileMatcherData(fm.match_type,fm.match_file))
+                    fm_model.append(GameFileMatcher(fm.match_type,fm.match_file))
                 
                 im_model = self.__steam_macos.ignorematch.columnview.get_model().get_model()
                 for im in self.__game.steam_macos.ignore_matchers:
-                    im_model.append(GameFileMatcherData(im.match_type,im.match_file))
+                    im_model.append(GameFileMatcher(im.match_type,im.match_file))
                     
                 var_model = self.__steam_macos.variables.columnview.get_model().get_model()
                 for name,value in self.__game.steam_macos.variables.items():
@@ -1335,7 +1292,7 @@ class GameDialog(Gtk.Dialog):
         
     def _on_filematch_dropdown_selection_changed(self,dropdown,data,item):
         data = item.get_item()
-        data.match_type = dropdown.get_selected_item()
+        data.match_type = dropdown.get_selected_item().match_type
     
     def _on_filematch_type_dropdown_setup(self,factory,item):
         label = Gtk.Label()
@@ -1418,7 +1375,7 @@ class GameDialog(Gtk.Dialog):
             var_widget.remove_button.set_sensitive(True)
     
     def _on_filematch_add_button_clicked(self,button,widget):
-        widget.columnview.get_model().get_model().append(GameFileMatcherData(GameFileType.GLOB,""))
+        widget.columnview.get_model().get_model().append(GameFileMatcher(GameFileType.GLOB,""))
     
     def _on_filematch_value_label_changed(self,label,widget):
         if not label.get_text():

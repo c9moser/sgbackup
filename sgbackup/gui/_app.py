@@ -17,7 +17,7 @@
 ###############################################################################
 
 from gi.repository import Gtk,Gio,Gdk
-from gi.repository.GObject import GObject,Signal,Property,SignalFlags
+from gi.repository.GObject import GObject,Signal,Property,SignalFlags,BindingFlags
 
 import logging; logger=logging.getLogger(__name__)
 
@@ -84,6 +84,7 @@ class GameView(Gtk.ScrolledWindow):
         self.columnview.set_single_click_activate(True)
         
         self.set_child(self.columnview)
+        self.refresh()
         
     @property
     def _liststore(self)->Gio.ListStore:
@@ -120,7 +121,7 @@ class GameView(Gtk.ScrolledWindow):
     def _on_key_column_bind(self,factory,item):
         label = item.get_child()
         game = item.get_item()
-        label.bind_property(game,'key','label',GObject.BindingFlags.DEFAULT)
+        game.bind_property('key',label,'label',BindingFlags.SYNC_CREATE)
         
     def _on_name_column_setup(self,factory,item):
         item.set_child(Gtk.Label())
@@ -128,14 +129,14 @@ class GameView(Gtk.ScrolledWindow):
     def _on_name_column_bind(self,factory,item):
         label = item.get_child()
         game = item.get_item()
-        label.bind_proprety(game,'name','label',GObject.BindingFlags.DEFAULT)
+        game.bind_property('name',label,'label',BindingFlags.SYNC_CREATE)
 
     def _on_active_column_setup(self,factory,item):
         item.set_child(Gtk.Switch())
         
     def _on_active_column_bind(self,factory,item):
         switch = item.get_child()
-        game = item.get_data()
+        game = item.get_item()
         switch.set_active(game.is_active)
         item._signal_active_state_set = switch.connect('state-set',self._on_active_state_set,game)
         
@@ -153,8 +154,8 @@ class GameView(Gtk.ScrolledWindow):
         
     def _on_live_column_bind(self,factory,item):
         switch = item.get_child()
-        game = item.get_data()
-        switch.set_active(game.is_active)
+        game = item.get_item()
+        switch.set_active(game.is_live)
         item._signal_live_state_set = switch.connect('state-set',self._on_live_state_set,game)
         
     def _on_live_column_unbind(self,factory,item):
@@ -174,7 +175,7 @@ class GameView(Gtk.ScrolledWindow):
         game.save()
         if not state:
             dialog = Gtk.MessageDialog()
-            dialog.set_transient_for(self.get_toplevel())
+            dialog.set_transient_for(self.get_root())
             dialog.props.buttons = Gtk.ButtonsType.YES_NO
             dialog.props.text = "Do you want to create a new savegame for <i>{game}</i>?".format(game=game.name)
             dialog.props.use_markup = True

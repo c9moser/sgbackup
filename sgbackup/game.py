@@ -16,6 +16,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.   #
 ###############################################################################
 
+from . import _import_gtk
+
 from gi.repository.GObject import Property,GObject,Signal,SignalFlags
 from gi.repository import GLib
 
@@ -281,19 +283,12 @@ class GameData(GObject):
         self.__savegame_root = savegame_root
         self.__savegame_dir = savegame_dir
         self.__variables = {}
-        self.__filematchers = []
-        self.__ignorematchers = []
+        self.file_matchers = file_match
+        self.ignore_matchers = ignore_match
         
         if variables is not None:
             variables.update(variables)
             
-        if file_match is not None:
-            for fm in file_match:
-                self.add_file_match(fm)
-                
-        if ignore_match is not None:
-            for fm in ignore_match:
-                self.add_ignore_match(fm)
                         
     @Property
     def savegame_type(self)->SavegameType:
@@ -346,9 +341,8 @@ class GameData(GObject):
     
     @file_matchers.setter
     def file_matchers(self,fm:list[GameFileMatcher]|None):
-        if not fm:
-            self.__filematchers = []
-        else:
+        self.__filematchers = []
+        if fm:
             for matcher in fm:
                 if not isinstance(matcher,GameFileMatcher):
                     raise TypeError("\"file_match\" needs to be \"None\" or a list of \"GameFileMatcher\" instances!")
@@ -363,9 +357,8 @@ class GameData(GObject):
         return self.__ignorematchers
     @ignore_matchers.setter
     def ignore_matchers(self,im:list[GameFileMatcher]|None):
-        if not im:
-            self.__ignorematchers = []
-        else:
+        self.__ignorematchers = []
+        if im:
             for matcher in im:
                 if not isinstance(matcher,GameFileMatcher):
                     raise TypeError("\"ignore_match\" needs to be \"None\" or a list of \"GameFileMatcher\" instances!")
@@ -426,7 +419,7 @@ class GameData(GObject):
         :return: The variables as a dict.
         :rtype: dict[str:str]
         """
-        return self.variables
+        return dict(self.variables)
     
     def match_file(self,rel_filename:str)->bool:
         """
@@ -791,6 +784,9 @@ class SteamGame(GameData):
         vars["INSTALLDIR"] = self.installdir if self.installdir else ""
         vars["STEAM_APPID"] = str(self.appid)
         vars["STEAM_LIBDIR"] = self.librarydir if self.librarydir else ""
+        vars["STEAM_LIBRARY_DIR"] = self.librarydir if self.librarydir else ""
+        vars["STEAM_COMPATDATA"] = self.compatdata if self.compatdata else ""
+        
         return vars
         
     @Property(type=int)
@@ -810,8 +806,9 @@ class SteamGame(GameData):
     @Property
     def librarydir(self)->str|None:
         if not self.__librarydir and self.installdir:
-            return pathlib.Path(self.installdir).resolve().parent.parent.parent
+            return str(pathlib.Path(self.installdir).resolve().parent.parent.parent)
         return self.__librarydir
+    
     @librarydir.setter
     def librarydir(self,directory):
         if not directory:
@@ -820,13 +817,20 @@ class SteamGame(GameData):
             raise ValueError("Steam librarydir is not a valid directory!")
         self.__librarydir = directory
     
+    @Property
+    def compatdata(self)->str|None:
+        libdir = self.librarydir
+        if libdir:
+            return str(pathlib.Path(libdir).resolve() / 'steamapps' / 'compatdata')
+        return None
+    
     def serialize(self):
         ret = super().serialize()
         ret['appid'] = self.appid
         
         if self.installdir:
-            ret['installdir'] = self.installdir if self.installdir else ""
-            ret['librarydir'] = self.librarydir if self.librarydir else ""
+            ret['installdir'] = str(self.installdir) if self.installdir else ""
+            ret['librarydir'] = str(self.librarydir) if self.librarydir else ""
 
         return ret
     
@@ -893,7 +897,7 @@ class Game(GObject):
     
     @staticmethod
     def new_from_dict(config:str):
-        logger = logger.getChild("Game.new_from_dict()")
+        _logger = logger.getChild("Game.new_from_dict()")
         
         def get_file_match(conf:dict):
             conf_fm = conf['file_match'] if 'file_match' in conf else None
@@ -904,11 +908,11 @@ class Game(GObject):
                 for cfm in conf_fm:
                     if ('type' in cfm and 'match' in cfm):
                         try:
-                            file_match.append(GameFileMatcher(GameFileType.from_string(cfm['type'],cfm['match'])))
+                            file_match.append(GameFileMatcher(GameFileType.from_string(cfm['type']),cfm['match']))
                         except Exception as ex:
-                            logger.error("Adding GameFileMatcher to file_match failed! ({})!".format(ex))
+                            _logger.error("Adding GameFileMatcher to file_match failed! ({})!".format(ex))
                     else:
-                        logger.error("Illegal file_match settings! (\"type\" or \"match\" missing!)")
+                        _logger.error("Illegal file_match settings! (\"type\" or \"match\" missing!)")
                         
             else:
                 file_match = None
@@ -918,11 +922,11 @@ class Game(GObject):
                 for cim in conf_im:
                     if ('type' in cim and 'match' in cim):
                         try:
-                            file_match.append(GameFileMatcher(GameFileType.from_string(cim['type'],cim['match'])))
+                            ignore_match.append(GameFileMatcher(GameFileType.from_string(cim['type']),cim['match']))
                         except Exception as ex:
-                            logger.error("Adding GameFileMatcher to ignore_match failed! ({})!".format(ex))
+                            _logger.error("Adding GameFileMatcher to ignore_match failed! ({})!".format(ex))
                     else:
-                        logger.error("Illegal ignore_match settings! (\"type\" or \"match\" missing!)")
+                        _logger.error("Illegal ignore_match settings! (\"type\" or \"match\" missing!)")
             else:
                 ignore_match = None
                 
@@ -938,18 +942,22 @@ class Game(GObject):
                 
             if appid is not None and sgroot and sgdir:
                 cls(appid,sgroot,sgdir,vars,installdir,file_match,ignore_match)
-            return None
+            return cls(appid,sgroot,sgdir,vars,installdir,file_match,ignore_match)
         # new_steam_game()
         
-        if not 'id' in config or not 'name' in config:
+        if not 'key' in config or not 'name' in config:
             return None
         
-        id = config['id']
+        dbid = config['dbid'] if 'dbid' in config else None
+        key = config['key']
         name = config['name']
-        sgname = config['savegame_name'] if 'savegame_name' in config else id
-        sgtype = config['savegame_type'] if 'savegame_type' in config else SavegameType.UNSET
+        sgname = config['savegame_name'] if 'savegame_name' in config else key
+        sgtype = SavegameType.from_string(config['savegame_type']) if 'savegame_type' in config else SavegameType.UNSET
         
-        game = Game(id,name,sgname)
+        game = Game(key,name,sgname)
+        if dbid:
+            game.dbid = dbid
+            
         game.savegame_type = sgtype
         game.is_active = config['is_active'] if 'is_active' in config else False
         game.is_live = config['is_live'] if 'is_live' in config else True
@@ -1007,7 +1015,12 @@ class Game(GObject):
         if not os.path.isfile(filename):
             raise FileNotFoundError("Filename \"{filename}\" not found!".format(filename=filename))
         with open(filename,'rt',encoding="UTF-8") as ifile:
-            return Game.new_from_dict(json.loads(ifile.read()))
+            x=json.loads(ifile.read())
+            game = Game.new_from_dict(x)
+            
+        if game is not None:
+            game.filename = filename
+        return game
         
     def __init__(self,key:str,name:str,savegame_name:str):
         GObject.__init__(self)
@@ -1098,7 +1111,7 @@ class Game(GObject):
             self.__old_filename = self.__filename
             
         if not os.path.isabs(fn):
-            self.__filename = GLib.build_filename(settings.gameconf_dir,fn)
+            self.__filename = os.path.join(settings.gameconf_dir,fn)
         else:
             self.__filename = fn
     
@@ -1246,13 +1259,15 @@ class Game(GObject):
             
     def serialize(self)->dict:
         ret = {
-            'id': self.id,
+            'key': self.key,
             'name': self.name,
             'savegame_name': self.savegame_name,
             'savegame_type': self.savegame_type.value,
             'is_active': self.is_active,
             'is_live': self.is_live,
         }
+        if self.dbid:
+            ret['dbid'] = self.dbid
         
         if (self.windows):
             ret['windows'] = self.windows.serialize()
@@ -1357,6 +1372,7 @@ class Game(GObject):
     
 class GameManager(GObject):
     __global_gamemanager = None
+    logger = logger.getChild('GameManager')
     
     @staticmethod
     def get_global():
@@ -1410,9 +1426,12 @@ class GameManager(GObject):
             try:
                 game = Game.new_from_json_file(gcf)
                 if not game:
+                    self.logger.warn("Not loaded game \"{game}\"!".format(
+                        game=(game.name if game is not None else "UNKNOWN GAME")))
+                    print(game.serialize())
                     continue
             except Exception as ex:
-                logger.error("Unable to load gameconf {gameconf}! ({what})".format(
+                self.logger.error("Unable to load gameconf {gameconf}! ({what})".format(
                     gameconf = os.path.basename(gcf),
                     what = str(ex)))
                 continue

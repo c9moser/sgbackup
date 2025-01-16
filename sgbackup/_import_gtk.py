@@ -16,24 +16,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.   #
 ###############################################################################
 
-from . import _import_gtk
+_GTK_IMPORTED_ = False
 
-__version__ = "0.0.1"
-from .settings import settings
-from . import _logging
-from .main import cli_main,curses_main,gui_main
-from . import game
-from .command import Command
-from . import commands
-from . import archiver
-
-__ALL__ = [
-    "settings"
-    "cli_main",
-    "gui_main",
-    "curses_main",
-    'game',
-    "Command",
-    "commands",
-    "archiver",
-]
+if not _GTK_IMPORTED_:
+    import gi; gi.require_version("Gtk","4.0")
+    _GTK_IMPORTED_ = True

@@ -16,10 +16,14 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.   #
 ###############################################################################
 
+from .. import _import_gtk
+
 from gi.repository import Gio,GLib,Gtk,Pango
 from gi.repository.GObject import Property,Signal,GObject,BindingFlags
+
 from ..game import (
     Game,
+    GameData,
     GameFileMatcher,
     GameFileType,
     SavegameType,
@@ -793,201 +797,104 @@ class GameDialog(Gtk.Dialog):
         
         return widget
     
+    @Property(type=bool,default=False)
+    def has_game(self)->bool:
+        return (self.__game is not None)
+    
     def reset(self):
         """
         reset Resets the dialog to the Game set on init or clears the dialog if no Game was set.
         """
-        self.__active_switch.set_active(True)
-        self.__live_switch.set_active(True)
-        self.__name_entry.set_text("")
-        self.__sgname_entry.set_text("")
-        self.__game_variables.columnview.get_model().get_model().remove_all()
+        def set_variables(var_widget,vars:dict[str:str]|None):
+            model = var_widget.columnview.get_model().get_model()
+            model.remove_all()
+            if vars:
+                for k,v in vars.items():
+                    model.append(GameVariableData(str(k),str(v)))
+                    
+        def set_game_widget_data(widget,data:GameData|None):
+            def set_filematch(fm_widget,filematchers:list[GameFileMatcher]):
+                model = fm_widget.columnview.get_model().get_model()
+                model.remove_all()
+                if filematchers:
+                    for fm in filematchers:
+                        model.append(GameFileMatcher(fm.match_type,fm.match_file))
+                
             
-        #windows
-        self.__windows.sgroot_entry.set_text("")
-        self.__windows.sgdir_entry.set_text("")
-        self.__windows.variables.columnview.get_model().get_model().remove_all()
-        self.__windows.filematch.columnview.get_model().get_model().remove_all()
-        self.__windows.ignorematch.columnview.get_model().get_model().remove_all()
-        self.__windows.lookup_regkeys.listview.get_model().get_model().remove_all()
-        self.__windows.installdir_regkeys.listview.get_model().get_model().remove_all()
-        
-        #linux
-        self.__linux.sgroot_entry.set_text("")
-        self.__linux.sgdir_entry.set_text("")
-        self.__linux.binary_entry.set_text("")
-        self.__linux.filematch.columnview.get_model().get_model().remove_all()
-        self.__linux.ignorematch.columnview.get_model().get_model().remove_all()
-        self.__linux.variables.columnview.get_model().get_model().remove_all()
-        
-        #linux
-        self.__macos.sgroot_entry.set_text("")
-        self.__macos.sgdir_entry.set_text("")
-        self.__macos.binary_entry.set_text("")
-        self.__macos.filematch.columnview.get_model().get_model().remove_all()
-        self.__macos.ignorematch.columnview.get_model().get_model().remove_all()
-        self.__macos.variables.columnview.get_model().get_model().remove_all()
-        
-        #steam windows
-        self.__steam_windows.sgroot_entry.set_text("")
-        self.__steam_windows.sgdir_entry.set_text("")
-        self.__steam_windows.appid_entry.set_text("")
-        self.__steam_windows.installdir_entry.set_text("")
-        self.__steam_windows.filematch.columnview.get_model().get_model().remove_all()
-        self.__steam_windows.ignorematch.columnview.get_model().get_model().remove_all()
-        self.__steam_windows.variables.columnview.get_model().get_model().remove_all()
+                
+            widget.sgroot_entry.set_text(data.savegame_root if data else "")
+            widget.sgdir_entry.set_text(data.savegame_dir if data else "")
+            set_variables(widget.variables,data.variables if data else None)
+            set_filematch(widget.filematch,data.file_matchers if data else None)
+            set_filematch(widget.ignorematch,data.ignore_matchers if data else None)
             
-        #steam linux
-        self.__steam_linux.sgroot_entry.set_text("")
-        self.__steam_linux.sgdir_entry.set_text("")
-        self.__steam_linux.appid_entry.set_text("")
-        self.__steam_linux.installdir_entry.set_text("")
-        self.__steam_linux.filematch.columnview.get_model().get_model().remove_all()
-        self.__steam_linux.ignorematch.columnview.get_model().get_model().remove_all()
-        self.__steam_linux.variables.columnview.get_model().get_model().remove_all()
+        self.__active_switch.set_active(self.__game.is_active if self.has_game else True)
+        self.__live_switch.set_active(self.__game.is_live if self.has_game  else True)
+        self.__name_entry.set_text(self.__game.name if self.has_game else "")
+        self.__sgname_entry.set_text(self.__game.savegame_name if self.has_game else "")
+        set_variables(self.__game_variables,self.__game.variables if self.has_game else None)
         
-        #steam macos
-        self.__steam_macos.sgroot_entry.set_text("")
-        self.__steam_macos.sgdir_entry.set_text("")
-        self.__steam_macos.appid_entry.set_text("")
-        self.__steam_macos.installdir_entry.set_text("")
-        self.__steam_macos.filematch.columnview.get_model().get_model().remove_all()
-        self.__steam_macos.ignorematch.columnview.get_model().get_model().remove_all()
-        self.__steam_macos.variables.columnview.get_model().get_model().remove_all()
-        
-        if self.__game is not None:
-            self.__active_switch.set_active(self.__game.is_active)
-            self.__live_switch.set_active(self.__game.is_live)
-            self.__name_entry.set_text(self.__game.name)
-            self.__sgname_entry.set_text(self.__game.savegame_name)
+        if self.has_game:
             model = self.__savegame_type_dropdown.get_model()
+            sgtype = self.__game.savegame_type
             for i in range(model.get_n_items()):
-                if model.get_item(i).savegame_type == self.__game.savegame_type:
+                item = model.get_item(i)
+                if sgtype == item.savegame_type:
                     self.__savegame_type_dropdown.set_selected(i)
                     break
-                
-            for name,value in self.__game.variables.items():
-                self.__game_variables.get_model().get_model().append(GameVariableData(name,value))
-                
-            if self.__game.windows:
-                self.__windows.sgroot_entry.set_text(self.__game.windows.savegame_root)
-                self.__windows.sgdir_entry.set_text(self.__game.windows.savegame_dir)
-                self.__windows.installdir_entry.set_text(self.__game.windows.installdir)
-                
-                #filematch
-                fm_model = self.__windows.filematch.columnview.get_model().get_model()
-                for fm in self.__game.windows.file_matchers:
-                    fm_model.append(GameFileMatcher(im.match_type,im.match_file))
-                
-                im_model = self.__windows.ignorematch.columnview.get_model().get_model()
-                for im in self.__game.windows.ignore_matchers:
-                    im_model.append(GameFileMatcher(im.match_type,im.match_file))
-                    
-                # set lookup regkeys
-                var_model = self.__windows.variables.columnview.get_model().get_model()
-                grk_model = self.__windows.lookup_regkeys.listview.get_model().get_model()
-                irk_model = self.__windows.installdir_regkeys.listview.get_model().get_model()
-                for rk in self.__game.windows.game_registry_keys:
-                    grk_model.append(RegistryKeyData(rk))
-                
-                #set installdir regkeys
-                for rk in self.__game.windows.installdir_registry_keys:
-                    irk_model.append(RegistryKeyData(rk))
-                
-                #set variables
-                for name,value in self.__game.windows.variables.items():
-                    var_model.append(GameVariableData(name,value))
             
-            if self.__game.linux:
-                self.__linux.sgroot_entry.set_text(self.__game.linux.savegame_root)
-                self.__linux.sgdir_entry.set_text(self.__game.linux.savegame_dir)
-                self.__linux.binary_entry.set_text(self.__game.linux.binary)
+        #windows
+        set_game_widget_data(self.__windows,self.__game.windows if self.has_game else None)
+        self.__windows.lookup_regkeys.listview.get_model().get_model().remove_all()
+        self.__windows.installdir_regkeys.listview.get_model().get_model().remove_all()
+        if self.has_game and self.__game.windows:
+            grk_model = self.__windows.lookup_regkeys.listview.get_model().get_model()
+            irk_model = self.__windows.installdir_regkeys.listview.get_model().get_model()
+            for rk in self.__game.windows.game_registry_keys:
+                grk_model.append(RegistryKeyData(rk))
                 
-                #filematch
-                fm_model = self.__linux.filematch.columnview.get_model().get_model()
-                for fm in self.__game.linux.file_matchers:
-                    fm_model.append(GameFileMatcher(fm.match_type,fm.match_file))
-                
-                im_model = self.__linux.ignorematch.columnview.get_model().get_model()
-                for im in self.__game.linux.ignore_matchers:
-                    im_model.append(GameFileMatcher(im.match_type,im.match_file))
-                
-                var_model = self.__linux.variables.columnview.get_model().get_model()
-                for name,value in self.__game.linux.variables.items():
-                    var_model.append(GameVariableData(name,value))
-                    
-            if self.__game.macos:
-                self.__macos.sgroot_entry.set_text(self.__game.macos.savegame_root)
-                self.__macos.sgdir_entry.set_text(self.__game.macos.savegame_dir)
-                self.__macos.binary_entry.set_text(self.__game.macos.binary)
-                
-                #filematch
-                fm_model = self.__macos.filematch.columnview.get_model().get_model()
-                for fm in self.__game.macos.file_matchers:
-                    fm_model.append(GameFileMatcher(fm.match_type,fm.match_file))
-                
-                im_model = self.__macos.ignorematch.columnview.get_model().get_model()
-                for im in self.__game.macos.ignore_matchers:
-                    im_model.append(GameFileMatcher(im.match_type,im.match_file))
-                
-                var_model = self.__macos.variables.columnview.get_model().get_model()
-                for name,value in self.__game.linux.variables.items():
-                    var_model.append(GameVariableData(name,value))
-                    
-            if self.__game.steam_windows:
-                self.__steam_windows.sgroot_entry.set_text(self.__game.steam_windows.savegame_root)
-                self.__steam_windows.sgdir_entry.set_text(self.__game.steam_windows.savegame_dir)
-                self.__steam_windows.appid_entry.set_text(str(self.__game.steam_windows.appid))
-                self.__steam_windows.installdir_entry.set_text(self.__game.steam_windows.installdir if self.__game.steam_windows.installdir else "")
-                
-                #filematch
-                fm_model = self.__steam_windows.filematch.columnview.get_model().get_model()
-                for fm in self.__game.steam_windows.file_matchers:
-                    fm_model.append(GameFileMatcher(fm.match_type,fm.match_file))
-                
-                im_model = self.__steam_windows.ignorematch.columnview.get_model().get_model()
-                for im in self.__game.steam_windows.ignore_matchers:
-                    im_model.append(GameFileMatcher(im.match_type,im.match_file))
-                
-                var_model = self.__steam_windows.variables.columnview.get_model().get_model()
-                for name,value in self.__game.steam_windows.variables.items():
-                    var_model.append(GameVariableData(name,value))
-            
-            if self.__game.steam_linux:
-                self.__steam_linux.sgroot_entry.set_text(self.__game.steam_linux.savegame_root)
-                self.__steam_linux.sgdir_entry.set_text(self.__game.steam_linux.savegame_dir)
-                self.__steam_linux.appid_entry.set_text(str(self.__game.steam_linux.appid))
-                self.__steam_linux.installdir_entry.set_text(self.__game.steam_linux.installdir if self.__game.steam_linux.installdir else "")
-                
-                fm_model = self.__steam_linux.filematch.columnview.get_model().get_model()
-                for fm in self.__game.steam_linux.file_matchers:
-                    fm_model.append(GameFileMatcher(fm.match_type,fm.match_file))
-                
-                im_model = self.__steam_linux.ignorematch.columnview.get_model().get_model()
-                for im in self.__game.steam_linux.ignore_matchers:
-                    im_model.append(GameFileMatcher(im.match_type,im.match_file))
-                    
-                var_model = self.__steam_linux.variables.columnview.get_model().get_model()
-                for name,value in self.__game.steam_linux.variables.items():
-                    var_model.append(GameVariableData(name,value))
+            #set installdir regkeys
+            for rk in self.__game.windows.installdir_registry_keys:
+                irk_model.append(RegistryKeyData(rk))
         
-            if self.__game.steam_macos:
-                self.__steam_macos.sgroot_entry.set_text(self.__game.steam_macos.savegame_root)
-                self.__steam_macos.sgdir_entry.set_text(self.__game.steam_macos.savegame_dir)
-                self.__steam_macos.appid_entry.set_text(str(self.__game.steam_macos.appid))
-                self.__steam_macos.installdir_entry.set_text(self.__game.steam_macos.installdir if self.__game.steam_macos.installdir else "")
-                
-                fm_model = self.__steam_macos.filematch.columnview.get_model().get_model()
-                for fm in self.__game.steam_macos.file_matchers:
-                    fm_model.append(GameFileMatcher(fm.match_type,fm.match_file))
-                
-                im_model = self.__steam_macos.ignorematch.columnview.get_model().get_model()
-                for im in self.__game.steam_macos.ignore_matchers:
-                    im_model.append(GameFileMatcher(im.match_type,im.match_file))
-                    
-                var_model = self.__steam_macos.variables.columnview.get_model().get_model()
-                for name,value in self.__game.steam_macos.variables.items():
-                    var_model.append(GameVariableData(name,value))
+        #linux
+        set_game_widget_data(self.__linux,self.__game.linux if self.has_game else None)
+        self.__linux.binary_entry.set_text(self.__game.linux.binary if self.has_game and self.__game.linux else "")
+
+        #macos
+        set_game_widget_data(self.__macos,self.__game.macos if self.__game else None)
+        self.__macos.binary_entry.set_text(self.__game.macos.binary if self.has_game and self.__game.macos else "")
+        
+        #steam windows
+        set_game_widget_data(self.__steam_windows,self.__game.steam_windows if self.has_game else None)
+        self.__steam_windows.appid_entry.set_text(str(self.__game.steam_windows.appid) 
+                                                  if self.has_game and self.__game.steam_windows else "")
+        self.__steam_windows.installdir_entry.set_text(self.__game.steam_windows.installdir 
+                                                       if self.has_game 
+                                                       and self.__game.steam_windows 
+                                                       and self.__game.steam_windows.installdir
+                                                       else "")
+            
+        #steam linux
+        set_game_widget_data(self.__steam_linux,self.__game.steam_linux if self.has_game else None)
+        self.__steam_linux.appid_entry.set_text(str(self.__game.steam_linux.appid) 
+                                                if self.has_game and self.__game.steam_linux else "")
+        self.__steam_linux.installdir_entry.set_text(self.__game.steam_linux.installdir 
+                                                     if self.has_game 
+                                                     and self.__game.steam_linux
+                                                     and self.__game.steam_linux.installdir 
+                                                     else "")
+        
+        #steam macos
+        set_game_widget_data(self.__steam_macos,self.__game.steam_macos if self.has_game else None)
+        self.__steam_macos.appid_entry.set_text(str(self.__game.steam_macos.appid) 
+                                                if self.has_game and self.__game.steam_macos else "")
+        self.__steam_macos.installdir_entry.set_text(self.__game.steam_macos.installdir 
+                                                     if self.has_game 
+                                                     and self.__game.steam_macos
+                                                     and self.__game.steam_macos.installdir
+                                                     else "")
+        
     # reset()
     
     def save(self):
@@ -1005,11 +912,11 @@ class GameDialog(Gtk.Dialog):
             
             for i in range(fm_model.get_n_items()):
                 fm_data = fm_model.get_item(i)
-                filematch.append(GameFileMatcher(fm_data.match_type,fm_data.match_value))
+                filematch.append(fm_data)
                 
             for i in range(im_model.get_n_items()):
                 im_data = im_model.get_item(i)
-                ignorematch.append(GameFileMatcher(im_data.match_type,im_data.match_value))
+                ignorematch.append(im_data)
             
             for i in range(var_model.get_n_items()):
                 var = var_model.get_item(i)
@@ -1043,13 +950,13 @@ class GameDialog(Gtk.Dialog):
         name = self.__name_entry.get_text()
         savegame_name = self.__sgname_entry.get_text()
         savegame_type = self.__savegame_type_dropdown.get_selected_item().savegame_type
-        if self.__game:
+        if self.has_game:
             self.__game.key = key
             self.__game.name = name
             self.__game.savegame_type = savegame_type
             self.__game.savegame_name = savegame_name
             self.__game.variables = variables
-            self.__game.filename = '.'.join((self.__game.key(),'gameconf'))
+            self.__game.filename = '.'.join((self.__game.key,'gameconf'))
         else:
             self.__game = Game(key,name,savegame_name)
             self.__game.savegame_type = savegame_type
@@ -1279,7 +1186,7 @@ class GameDialog(Gtk.Dialog):
     def _on_variable_name_bind(self,factory,item):
         label = item.get_child()
         data = item.get_item()
-        data.bind_property('name',label,'label',GObject.BindingFlags.SYNC_CREATE)
+        data.bind_property('name',label,'label',BindingFlags.SYNC_CREATE)
         
     def _on_variable_value_setup(self,factory,item):
         label = Gtk.Label()
@@ -1288,7 +1195,7 @@ class GameDialog(Gtk.Dialog):
     def _on_variable_value_bind(self,factory,item):
         label = item.get_child()
         data = item.get_item()
-        data.bind_property('value',label,'label',GObject.BindingFlags.SYNC_CREATE)
+        data.bind_property('value',label,'label',BindingFlags.SYNC_CREATE)
         
     def _on_filematch_dropdown_selection_changed(self,dropdown,data,item):
         data = item.get_item()
@@ -1322,13 +1229,19 @@ class GameDialog(Gtk.Dialog):
     def _on_filematch_value_bind(self,factory,item,widget):
         label = item.get_child()
         data = item.get_item()
-        if (data.match_value):
-            label.set_text(data.match_value)
+        if (data.match_file):
+            label.set_text(data.match_file)
+            label.bind_property('text',data,'match_file',BindingFlags.DEFAULT)
+            #label.connect('changed',self._on_filematch_value_label_changed,widget)
+            label.connect('notify::editing',self._on_filematch_value_notify_editing,widget)
         else:
-            label.start_editing()
+            label.bind_property('text',data,'match_file',BindingFlags.DEFAULT)
+            #label.connect('changed',self._on_filematch_value_label_changed,widget)
+            label.connect('notify::editing',self._on_filematch_value_notify_editing,widget)
             label.grab_focus()
-        label.bind_property('text',data,'match_value',BindingFlags.DEFAULT)
-        label.connect('changed',self._on_filematch_value_label_changed,widget)
+            label.start_editing()
+            
+        
     
     def _on_windows_regkey_setup(self,factory,item):
         label = Gtk.EditableLabel()
@@ -1378,16 +1291,27 @@ class GameDialog(Gtk.Dialog):
         widget.columnview.get_model().get_model().append(GameFileMatcher(GameFileType.GLOB,""))
     
     def _on_filematch_value_label_changed(self,label,widget):
-        if not label.get_text():
+        if not label.get_text().strip():
             model = widget.columnview.get_model().get_model()
             i = 0
             while i < model.get_n_items():
                 item = model.get_item(i)
-                if not item.match_value.strip():
+                if not item.match_file.strip():
                     model.remove(i)
                     continue
                 i += 1
-        
+    def _on_filematch_value_notify_editing(self,label,param,widget):
+        if label.props.editing == False:
+            if not label.get_text().strip():
+                model = widget.columnview.get_model().get_model()
+                i = 0
+                while i < model.get_n_items():
+                    item = model.get_item(i)
+                    if not item.match_file.strip():
+                        model.remove(i)
+                        continue
+                    i += 1
+                
     def _on_windows_regkey_add_button_clicked(self,button,widget):
         widget.listview.get_model().get_model().append(RegistryKeyData())
         

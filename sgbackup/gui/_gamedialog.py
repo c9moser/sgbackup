@@ -831,6 +831,7 @@ class GameDialog(Gtk.Dialog):
         self.__active_switch.set_active(self.__game.is_active if self.has_game else True)
         self.__live_switch.set_active(self.__game.is_live if self.has_game  else True)
         self.__name_entry.set_text(self.__game.name if self.has_game else "")
+        self.__key_entry.set_text(self.__game.key if self.has_game else "")
         self.__sgname_entry.set_text(self.__game.savegame_name if self.has_game else "")
         set_variables(self.__game_variables,self.__game.variables if self.has_game else None)
         

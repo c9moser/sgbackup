@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.   #
 ###############################################################################
 
-from gi.repository import Gtk,Gio,Gdk
+from gi.repository import Gtk,Gio,Gdk,GLib
 from gi.repository.GObject import GObject,Signal,Property,SignalFlags,BindingFlags
 
 import logging; logger=logging.getLogger(__name__)
@@ -28,7 +28,7 @@ from pathlib import Path
 from ..settings import settings
 from ._settingsdialog import SettingsDialog
 from ._gamedialog import GameDialog
-from ..game import Game,GameManager
+from ..game import Game,GameManager,SAVEGAME_TYPE_ICONS
 from ._steam import SteamLibrariesDialog,NewSteamAppsDialog
 
 __gtype_name__ = __name__
@@ -52,6 +52,11 @@ class GameView(Gtk.ScrolledWindow):
             pass
             self.__liststore.append(g)
             
+        factory_icon = Gtk.SignalListItemFactory.new()
+        factory_icon.connect('setup',self._on_icon_column_setup)
+        factory_icon.connect('bind',self._on_icon_column_bind)
+        column_icon = Gtk.ColumnViewColumn.new("",factory_icon)
+        
         factory_key = Gtk.SignalListItemFactory.new()
         factory_key.connect('setup',self._on_key_column_setup)
         factory_key.connect('bind',self._on_key_column_bind)
@@ -75,13 +80,21 @@ class GameView(Gtk.ScrolledWindow):
         factory_live.connect('unbind',self._on_live_column_unbind)
         column_live = Gtk.ColumnViewColumn.new("Live",factory_live)
         
+        factory_actions = Gtk.SignalListItemFactory.new()
+        factory_actions.connect('setup',self._on_actions_column_setup)
+        factory_actions.connect('bind',self._on_actions_column_bind)
+        column_actions = Gtk.ColumnViewColumn.new("",factory_actions)
+        
         selection = Gtk.SingleSelection.new(self._liststore)
         self.__columnview = Gtk.ColumnView.new(selection)
+        self.columnview.append_column(column_icon)
         self.columnview.append_column(column_key)
         self.columnview.append_column(column_name)
         self.columnview.append_column(column_active)
         self.columnview.append_column(column_live)
+        self.columnview.append_column(column_actions)
         self.columnview.set_single_click_activate(True)
+        
         
         self.set_child(self.columnview)
         self.refresh()
@@ -115,6 +128,22 @@ class GameView(Gtk.ScrolledWindow):
         for game in GameManager.get_global().games.values():
             self.__liststore.append(game)
             
+    def _on_icon_column_setup(self,factory,item):
+        item.set_child(Gtk.Image())
+        
+    def _on_icon_column_bind(self,factory,item):
+        def transform_to_icon_name(_bidning,sgtype):
+            icon_name = SAVEGAME_TYPE_ICONS[sgtype] if sgtype in SAVEGAME_TYPE_ICONS else None
+            if icon_name:
+                return icon_name
+            return ""
+        icon = item.get_child()
+        game = item.get_item()
+        game.bind_property('savegame_type',icon,'icon_name',BindingFlags.SYNC_CREATE,transform_to_icon_name)
+        
+        
+        
+        
     def _on_key_column_setup(self,factory,item):
         item.set_child(Gtk.Label())
         
@@ -171,9 +200,9 @@ class GameView(Gtk.ScrolledWindow):
             dialog.hide()
             dialog.destroy()
             
-        game.is_live = state
+        game.is_live = switch.get_active()
         game.save()
-        if not state:
+        if not game.is_live:
             dialog = Gtk.MessageDialog()
             dialog.set_transient_for(self.get_root())
             dialog.props.buttons = Gtk.ButtonsType.YES_NO
@@ -184,21 +213,61 @@ class GameView(Gtk.ScrolledWindow):
             dialog.connect('response',on_dialog_response)
             dialog.present()
     
-    @property
-    def current_game(self)->Game|None:
-        """
-        current_game Get the currently selected `Game`
+    def _on_actions_column_setup(self,action,item):
+        child = Gtk.Box.new(Gtk.Orientation.HORIZONTAL,2)
+        icon = Gtk.Image.new_from_icon_name('document-edit-symbolic')
+        child.edit_button = Gtk.Button()
+        child.edit_button.set_child(icon)
+        child.append(child.edit_button)
         
-        If no `Game` is selected this property resolves to `Null`
-
-        :type: Game|None
-        """
-        selection = self._columnview.get_model()
-        pos = selection.get_selected()
-        if pos == Gtk.INVALID_LIST_POSITION:
-            return None
-        return selection.get_model().get_item(pos)
+        icon = Gtk.Image.new_from_icon_name('list-remove-symbolic')
+        child.remove_button = Gtk.Button()
+        child.remove_button.set_child(icon)
+        child.append(child.remove_button)
+        
+        item.set_child(child)
+        
+    def _on_actions_column_bind(self,action,item):
+        child = item.get_child()
+        game = item.get_item()
+        
+        child.edit_button.connect('clicked',self._on_columnview_edit_button_clicked,item)
+        child.remove_button.connect('clicked',self._on_columnview_remove_button_clicked,item)
     
+    def _on_columnview_edit_button_clicked(self,button,item):
+        def on_dialog_response(dialog,response):
+            if response == Gtk.ResponseType.APPLY:
+                self.refresh()
+                
+        game = item.get_item()
+        dialog = GameDialog(self.get_root(),game)
+        dialog.connect('response',on_dialog_response)
+        dialog.present()
+        
+    def _on_columnview_remove_button_clicked(self,button,item):
+        def on_dialog_response(dialog,response,game:Game):
+            if response == Gtk.ResponseType.YES:
+                if os.path.isfile(game.filename):
+                    os.unlink(game.filename)
+                for i in range(self._liststore.get_n_items()):
+                    item = self._liststore.get_item(i)
+                    if item.key == game.key:
+                        self._liststore.remove_item(i)
+                        return
+                    
+            dialog.hide()
+            dialog.destroy()
+            
+        game = item.get_item()
+        dialog = Gtk.MessageDialog(buttons=Gtk.ButtonsType.YES_NO,
+                                   text="Do you really want to remove the game <span weight='bold'>{game}</span>?".format(
+                                       game=game.name),
+                                   use_markup=True,
+                                   secondary_text="Removing games cannot be undone!!!")
+        dialog.set_transient_for(self.get_root())
+        dialog.connect('response',on_dialog_response,game)
+        dialog.present()
+        
 # GameView class
 
 class BackupViewData(GObject):
@@ -278,7 +347,7 @@ class BackupViewData(GObject):
     def _on_selection_changed(self,selection):
         pass
 
-class BackupView(Gtk.ScrolledWindow):
+class BackupView(Gtk.Box):
     """
     BackupView This view displays the backup for the selected `Game`.
     """
@@ -290,7 +359,9 @@ class BackupView(Gtk.ScrolledWindow):
         :param gameview: The `GameView` to connect this class to.
         :type gameview: GameView
         """
-        Gtk.ScrolledWindow.__init__(self)
+        Gtk.Box.__init__(self,orientation=Gtk.Orientation.VERTICAL)
+        self._title_label = Gtk.Label()
+        scrolled = Gtk.ScrolledWindow()
         self.__gameview = gameview
         
         self.__liststore = Gio.ListStore()
@@ -316,11 +387,14 @@ class BackupView(Gtk.ScrolledWindow):
         self.__columnview.append_column(live_column)
         self.__columnview.append_column(sgname_column)
         self.__columnview.append_column(timestamp_column)
+        self.__columnview.set_vexpand(True)
         
-        self._on_gameview_selection_changed(selection)
-        self.gameview.columnview.get_model().connect('selection-changed',self._on_gameview_selection_changed)
+        self.gameview.columnview.connect('activate',self._on_gameview_columnview_activate)
         
-        self.set_child(self.__columnview)
+        scrolled.set_child(self.__columnview)
+        
+        self.append(self._title_label)
+        self.append(scrolled)
         
     @property
     def gameview(self)->GameView:
@@ -383,10 +457,12 @@ class BackupView(Gtk.ScrolledWindow):
             display_size = str(size) + " B"
         label.set_text(display_size)
         
-    def _on_gameview_selection_changed(self,model):
-        game = model.get_selected_item()
-        if game is None:
-            return
+    def _on_gameview_columnview_activate(self,columnview,position):
+        model = columnview.get_model().get_model()
+        game = model.get_item(position)
+        
+        self._title_label.set_markup("<span size='large' weight='bold'>{}</span>".format(GLib.markup_escape_text(game.name)))
+        
         
 
 class AppWindow(Gtk.ApplicationWindow):

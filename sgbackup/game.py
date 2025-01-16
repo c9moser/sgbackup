@@ -143,6 +143,20 @@ class SavegameType(StrEnum):
         
         return st.UNSET
     
+    
+SAVEGAME_TYPE_ICONS = {
+    SavegameType.UNSET : None,
+    SavegameType.WINDOWS: 'windows-svgrepo-com-symbolic',
+    SavegameType.LINUX: 'linux-svgrepo-com-symbolic.svg',
+    SavegameType.MACOS: 'apple-svgrepo-com-symbolic.svg',
+    SavegameType.STEAM_LINUX: 'steam-svgrepo-com-symbolic',
+    SavegameType.STEAM_MACOS: 'steam-svgrepo-com-symbolic',
+    SavegameType.STEAM_WINDOWS: 'steam-svgrepo-com-symbolic',
+    SavegameType.EPIC_LINUX: 'epic-games-svgrepo-com-symbolic',
+    SavegameType.EPIC_WINDOWS: 'epic-games-svgrepo-com-symbolic',
+    SavegameType.GOG_LINUX: 'gog-com-svgrepo-com-symbolic',
+    SavegameType.GOG_WINDOWS: 'gog-com-svgrepo-com-symbolic',
+}    
 
 class GameFileType(StrEnum):
     """
@@ -619,10 +633,24 @@ class WindowsGame(GameData):
     def game_registry_keys(self)->list:
         return self.__game_registry_keys
     
+    @game_registry_keys.setter
+    def game_registry_keys(self,keys:list[str]|tuple[str]|None):
+        self.__game_registry_keys = []
+        if keys:
+            for rk in keys:
+                self.__game_registry_keys.append(str(rk))
+    
     @Property
     def installdir_registry_keys(self)->list:
         return self.__installdir_registry_keys
     
+    @installdir_registry_keys.setter
+    def installdir_registry_keys(self,keys:list[str]|tuple[str]|None):
+        self.__installdir_registry_keys = []
+        if keys:
+            for rk in keys:
+                self.__installdir_registry_keys.append(str(rk))
+                
     @Property
     def is_installed(self)->bool|None:
         if not PLATFORM_WIN32 or not self.game_registry_keys:
@@ -666,6 +694,7 @@ class WindowsGame(GameData):
     def get_variables(self):
         variables = super().get_variables()
         variables["INSTALLDIR"] = self.installdir if self.installdir else ""
+        return variables
         
     def serialize(self):
         ret = super().serialize()
@@ -900,8 +929,8 @@ class Game(GObject):
         _logger = logger.getChild("Game.new_from_dict()")
         
         def get_file_match(conf:dict):
-            conf_fm = conf['file_match'] if 'file_match' in conf else None
-            conf_im = conf['ignore_match'] if 'ignore_match' in conf else None
+            conf_fm = conf['file_match'] if 'file_match' in conf else []
+            conf_im = conf['ignore_match'] if 'ignore_match' in conf else []
             
             if (conf_fm):
                 file_match = []
@@ -933,11 +962,11 @@ class Game(GObject):
             return (file_match,ignore_match)
                 
         def new_steam_game(conf,cls:SteamGame):
-            appid = conf['appid'] if 'appid' in conf else None
-            sgroot = conf['savegame_root'] if 'savegame_root' in conf else None
-            sgdir = conf['savegame_dir'] if 'savegame_dir' in conf else None
-            vars = conf['variables'] if 'variables' in conf else None
-            installdir = conf['installdir'] if 'installdir' in conf else None
+            appid = conf['appid'] if 'appid' in conf else ""
+            sgroot = conf['savegame_root'] if 'savegame_root' in conf else ""
+            sgdir = conf['savegame_dir'] if 'savegame_dir' in conf else ""
+            vars = conf['variables'] if 'variables' in conf else {}
+            installdir = conf['installdir'] if 'installdir' in conf else ""
             file_match,ignore_match = get_file_match(conf)
                 
             if appid is not None and sgroot and sgdir:
@@ -966,40 +995,37 @@ class Game(GObject):
             winconf = config['windows']
             sgroot = winconf['savegame_root'] if 'savegame_root' in winconf else None
             sgdir = winconf['savegame_dir'] if 'savegame_dir' in winconf else None
-            vars = winconf['variables'] if 'variables' in winconf else None
+            vars = winconf['variables'] if 'variables' in winconf else {}
             installdir = winconf['installdir'] if 'installdir' in winconf else None
-            game_regkeys = winconf['game_registry_keys'] if 'game_registry_keys' in winconf else None
-            installdir_regkeys = winconf['installdir_registry_keys'] if 'installdir_registry_keys' in winconf else None
+            game_regkeys = winconf['game_registry_keys'] if 'game_registry_keys' in winconf else []
+            installdir_regkeys = winconf['installdir_registry_keys'] if 'installdir_registry_keys' in winconf else []
             file_match,ignore_match = get_file_match(winconf)
-            if (sgroot and sgdir):
-                game.windows = WindowsGame(sgroot,
-                                           sgdir,
-                                           vars,
-                                           installdir,
-                                           game_regkeys,
-                                           installdir_regkeys,
-                                           file_match,
-                                           ignore_match)
+            game.windows = WindowsGame(sgroot,
+                                       sgdir,
+                                       vars,
+                                       installdir,
+                                       game_regkeys,
+                                       installdir_regkeys,
+                                       file_match,
+                                       ignore_match)
         
         if 'linux' in config:
             linconf = config['linux']
             sgroot = linconf['savegame_root'] if 'savegame_root' in linconf else None
             sgdir = linconf['savegame_dir'] if 'savegame_dir' in linconf else None
-            vars = linconf['variables'] if 'variables' in linconf else None
+            vars = linconf['variables'] if 'variables' in linconf else {}
             binary = linconf['binary'] if 'binary' in linconf else None
             file_match,ignore_match = get_file_match(linconf)
-            if (sgroot and sgdir):
-                game.linux = LinuxGame(sgroot,sgdir,vars,binary,file_match,ignore_match)
+            game.linux = LinuxGame(sgroot,sgdir,vars,binary,file_match,ignore_match)
                 
         if 'macos' in config:
             macconf = config['macos']
             sgroot = macconf['savegame_root'] if 'savegame_root' in macconf else None
             sgdir = macconf['savegame_dir'] if 'savegame_dir' in macconf else None
-            vars = macconf['variables'] if 'variables' in macconf else None
+            vars = macconf['variables'] if 'variables' in macconf else {}
             binary = macconf['binary'] if 'binary' in macconf else None
             file_match,ignore_match = get_file_match(macconf)
-            if (sgroot and sgdir):
-                game.macos = MacOSGame(sgroot,sgdir,vars,binary,file_match,ignore_match)
+            game.macos = MacOSGame(sgroot,sgdir,vars,binary,file_match,ignore_match)
         
         if 'steam_windows' in config:
             game.steam_windows = new_steam_game(config['steam_windows'],SteamWindowsGame)
@@ -1099,9 +1125,9 @@ class Game(GObject):
     @Property
     def filename(self)->str|None:
         if not self.__filename:
-            if not self.__key:
+            if not self.key:
                 return None
-            os.path.join(settings.gameconf_dir,'.'.join((self.key,'gameconf')))
+            return os.path.join(settings.gameconf_dir,'.'.join((self.key,'gameconf')))
             
         return self.__filename
     
@@ -1428,9 +1454,8 @@ class GameManager(GObject):
                 if not game:
                     self.logger.warn("Not loaded game \"{game}\"!".format(
                         game=(game.name if game is not None else "UNKNOWN GAME")))
-                    print(game.serialize())
                     continue
-            except Exception as ex:
+            except GLib.Error as ex: #Exception as ex:
                 self.logger.error("Unable to load gameconf {gameconf}! ({what})".format(
                     gameconf = os.path.basename(gcf),
                     what = str(ex)))

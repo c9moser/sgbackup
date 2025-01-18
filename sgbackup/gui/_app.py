@@ -52,6 +52,8 @@ class GameView(Gtk.ScrolledWindow):
             pass
             self.__liststore.append(g)
             
+        self.__action_dialog = None
+            
         factory_icon = Gtk.SignalListItemFactory.new()
         factory_icon.connect('setup',self._on_icon_column_setup)
         factory_icon.connect('bind',self._on_icon_column_bind)
@@ -142,8 +144,6 @@ class GameView(Gtk.ScrolledWindow):
         game.bind_property('savegame_type',icon,'icon_name',BindingFlags.SYNC_CREATE,transform_to_icon_name)
         
         
-        
-        
     def _on_key_column_setup(self,factory,item):
         item.set_child(Gtk.Label())
         
@@ -215,6 +215,12 @@ class GameView(Gtk.ScrolledWindow):
     
     def _on_actions_column_setup(self,action,item):
         child = Gtk.Box.new(Gtk.Orientation.HORIZONTAL,2)
+        
+        icon = Gtk.Image.new_from_icon_name('document-save-symbolic')
+        child.backup_button = Gtk.Button()
+        child.backup_button.set_child(icon)
+        child.append(child.backup_button)
+        
         icon = Gtk.Image.new_from_icon_name('document-edit-symbolic')
         child.edit_button = Gtk.Button()
         child.edit_button.set_child(icon)
@@ -231,18 +237,34 @@ class GameView(Gtk.ScrolledWindow):
         child = item.get_child()
         game = item.get_item()
         
+        child.backup_button.connect('clicked',self._on_columnview_backup_button_clicked,item)
         child.edit_button.connect('clicked',self._on_columnview_edit_button_clicked,item)
         child.remove_button.connect('clicked',self._on_columnview_remove_button_clicked,item)
+    
+    def _on_columnview_backup_button_clicked(self,button,item):
+        def on_dialog_response(dialog,response):
+            dialog.hide()
+            dialog.destroy()
+            
+        game = item.get_item()
+        print('{}.{}._on_columnview_backup_button_clicked() -> {}'.format(__name__,__class__,game.name))
     
     def _on_columnview_edit_button_clicked(self,button,item):
         def on_dialog_response(dialog,response):
             if response == Gtk.ResponseType.APPLY:
                 self.refresh()
-                
-        game = item.get_item()
-        dialog = GameDialog(self.get_root(),game)
-        dialog.connect('response',on_dialog_response)
-        dialog.present()
+            self.__action_dialog = None
+        
+        if self.__action_dialog is None:        
+            game = item.get_item()
+        
+            self.__action_dialog = GameDialog(self.get_root(),game)
+            self.__action_dialog.set_modal(False)
+            self.__action_dialog.connect('response',on_dialog_response)
+            self.__action_dialog.present()
+        else:
+            self.__action_dialog.present()
+        
         
     def _on_columnview_remove_button_clicked(self,button,item):
         def on_dialog_response(dialog,response,game:Game):
@@ -252,21 +274,26 @@ class GameView(Gtk.ScrolledWindow):
                 for i in range(self._liststore.get_n_items()):
                     item = self._liststore.get_item(i)
                     if item.key == game.key:
-                        self._liststore.remove_item(i)
-                        return
-                    
+                        self._liststore.remove(i)
+                        break
+                   
             dialog.hide()
             dialog.destroy()
+            self.__action_dialog = None
             
         game = item.get_item()
-        dialog = Gtk.MessageDialog(buttons=Gtk.ButtonsType.YES_NO,
-                                   text="Do you really want to remove the game <span weight='bold'>{game}</span>?".format(
-                                       game=game.name),
-                                   use_markup=True,
-                                   secondary_text="Removing games cannot be undone!!!")
-        dialog.set_transient_for(self.get_root())
-        dialog.connect('response',on_dialog_response,game)
-        dialog.present()
+        if self.__action_dialog is None:
+            self.__action_dialog = Gtk.MessageDialog(buttons=Gtk.ButtonsType.YES_NO,
+                                                     text="Do you really want to remove the game <span weight='bold'>{game}</span>?".format(
+                                                     game=game.name),
+                                                     use_markup=True,
+                                                     secondary_text="Removing games cannot be undone!!!")
+            self.__action_dialog.set_transient_for(self.get_root())
+            self.__action_dialog.set_modal(False)
+            self.__action_dialog.connect('response',on_dialog_response,game)
+            self.__action_dialog.present()
+        else:
+            self.__action_dialog.present()
         
 # GameView class
 
@@ -559,6 +586,7 @@ class AppWindow(Gtk.ApplicationWindow):
         """
         refresh Refresh the views of this window.
         """
+        GameManager.get_global().load()
         self.gameview.refresh()
         #self.backupview.refresh()
         
@@ -673,15 +701,12 @@ class Application(Gtk.Application):
     def _on_action_quit(self,action,param):
         self.quit()
         
-    def _on_dialog_response_refresh(self,dialog,response,check_response):
-        if response == check_response:
-            self.appwindow.refresh()
-            
     def _on_action_new_game(self,action,param):
+        def on_dialog_apply(dialog):
+            self.appwindow.refresh()
+                
         dialog = GameDialog(self.appwindow)
-        dialog.connect('response',
-                       self._on_dialog_response_refresh,
-                       Gtk.ResponseType.APPLY)
+        dialog.connect('apply',on_dialog_apply)
         dialog.present()
         
     def _on_action_steam_manage_libraries(self,action,param):

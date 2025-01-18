@@ -19,7 +19,7 @@
 from .. import _import_gtk
 
 from gi.repository import Gio,GLib,Gtk,Pango
-from gi.repository.GObject import Property,Signal,GObject,BindingFlags
+from gi.repository.GObject import Property,Signal,GObject,BindingFlags,SignalFlags
 
 from ..game import (
     Game,
@@ -1330,5 +1330,11 @@ class GameDialog(Gtk.Dialog):
     def do_response(self,response):
         if (response == Gtk.ResponseType.APPLY):
             self.save()
+            self.emit('apply')
+            
         self.hide()
         self.destroy()
+        
+    @Signal(name='apply',flags=SignalFlags.RUN_FIRST,return_type=None,arg_types=())
+    def do_apply(self):
+        pass

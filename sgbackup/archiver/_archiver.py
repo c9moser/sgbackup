@@ -26,6 +26,8 @@ from gi.repository.GObject import (
 
 import datetime
 import os
+import threading
+import time
 
 from ..game import Game
 from ..settings import settings
@@ -67,9 +69,6 @@ class Archiver:
             
         self.emit('backup',game,filename)
     
-    def restore(self,game,file)->bool:
-        pass
-    
     def generate_new_backup_filename(self,game:Game)->str:
         dt = datetime.datetime.now()
         basename = '.'.join(game.savegame_name,
@@ -79,7 +78,13 @@ class Archiver:
                             self.extensions[0])
         return os.path.join(settings.backup_dir,game.savegame_name,game.subdir,basename)
         
-        
+    def _backup_progress(self,game:Game,fraction:float,message:str|None):
+        if fraction > 1.0:
+            fraction = 1.0
+        elif fraction < 0.0:
+            fraction = 0.0
+            
+        self.emit("progress",game,fraction,message)
         
         
     @Signal(name="backup",flags=SignalFlags.RUN_FIRST,
@@ -93,6 +98,13 @@ class Archiver:
             accumulator=signal_accumulator_true_handled)
     def do_restore(self,filanme:str):
         raise NotImplementedError("{_class}.{function}() is not implemented!",_class=__class__,function="do_restore")
+    
+    @Signal(name="backup_progress",flags=SignalFlags.RUN_FIRST,
+            return_type=bool,arg_types=(Game,float,str))
+    def do_backup_progress(self,game:Game,fraction:float,message:str):
+        pass
+    
+    
     
 class ArchiverManager(GObject):
     __global_archiver_manager = None
@@ -114,7 +126,54 @@ class ArchiverManager(GObject):
         try:
             return self.__archivers[settings.archiver]
         except:
-            return self.__archivers["zipfile"]
+            return self.__archivers["zipfile"]    
+    
+    def _on_archiver_backup_progress_single(self,archiver,game,fraction,message):
+        pass
+    
+    def _on_archiver_backup_progress_multi(self,archiver,game,fraction,message):
+        pass
+    
+    def backup(self,game:Game):
+        archiver = self.standard_archiver
+        archiver.backup(game)
         
     
+    def backup_many(self,games:list[Game]):
+        def thread_function(game):
+            archiver = self.standard_archiver
+            self._on_archiver_backup_progress_multi(archiver,game,1.0,"Finished ...")
+        
+        game_list = list(games)
+        threadpool = {}
+        
+        if len(game_list) > 8:
+            n = 8
+        else:
+            n = len(games)
             
+        for i in range(n):
+            game=game_list[0]
+            del game_list[0]
+            
+            thread = threading.Thread(thread_function,args=game,daemon=True)
+            threadpool.append(thread)
+            thread.start()
+        
+        while threadpool:
+            time.sleep(0.25)
+            for i in range(len(threadpool)):
+                thread = threadpool[i]
+                if thread.is_alive():
+                    continue
+                del threadpool[i]
+                
+                if game_list:
+                    game = game_list[0]
+                    del game_list[0]
+                    thread = threading.Thread(thread_function,args=game,daemon=True)
+                    threadpool.append(thread)
+                    thread.start()
+            
+        
+    

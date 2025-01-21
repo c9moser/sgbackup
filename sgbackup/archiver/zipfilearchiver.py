@@ -28,15 +28,26 @@ class ZipfileArchiver(Archiver):
         Archiver.__init__(self,"zipfile","ZipFile",[".zip"],"Archiver for .zip files.")
         
     def do_backup(self, game:Game, filename:str):
+        _calc_fraction = lambda n,cnt: ((1.0 / n) * cnt)
+        
+        self._backup_progress(game,0.0,"Starting {game} ...".format(game=game.name))
         files = game.get_backup_files()
+        div = len(files + 2)
+        cnt=1
         game_data = json.dumps(game.serialize(),ensure_ascii=False,indent=4)
         with zipfile.ZipFile(filename,mode="w",
                              compression=settings.zipfile_compression,
                              compresslevel=settings.zipfile_compresslevel) as zf:
-            zf.writestr("game.conf",game_data)
+            self._backup_progress(game,_calc_fraction(div,cnt),"{} -> {}".format(game.name,"gameconf.json"))
+            zf.writestr("gameconf.json",game_data)
             for path,arcname in files.items():
+                cnt+=1
+                self._backup_progress(game,_calc_fraction(div,cnt),"{} -> {}".format(game.name,arcname))
                 zf.write(path,arcname)
-    
+                
+            self._backup_progress("{game} ... FINISHED".format(game=game.name))
+        
+                
     def is_archive(self,filename:str)->bool:
         if zipfile.is_zipfile(filename):
             with zipfile.ZipFile(filename,"r") as zf:
@@ -46,6 +57,7 @@ class ZipfileArchiver(Archiver):
     
     def do_restore(self,filename:str):
         # TODO: convert savegame dir if not the same SvaegameType!!!
+        
         
         if not zipfile.is_zipfile(filename):
             raise RuntimeError("\"{filename}\" is not a valid sgbackup zipfile archive!")

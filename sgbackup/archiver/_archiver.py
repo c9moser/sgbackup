@@ -134,9 +134,35 @@ class ArchiverManager(GObject):
     def _on_archiver_backup_progress_multi(self,archiver,game,fraction,message):
         pass
     
+    @Signal(name="backup-game-progress",return_type=None,arg_types=(Game,float,str),flags=SignalFlags.RUN_FIRST)
+    def do_backup_game_progress(self,game,fraction,message):
+        pass
+    
+    @Signal(name="backup-game-finished",return_type=None,arg_types=(Game,float,str),flags=SignalFlags.RUN_FIRST)
+    def do_backup_game_finished(self,game:Game):
+        pass
+    
+    @Signal(name="backup-progress",return_type=None,arg_types=(float,),flags=SignalFlags.RUN_FIRST)
+    def do_backup_progress(self,fraction):
+        pass
+    
+    @Signal(name="backup-finished",return_type=None,arg_types=(),flags=SignalFlags.RUN_FIRST)
+    def do_backup_finished(self):
+        pass
+    
     def backup(self,game:Game):
+        def on_progress(archiver,game,fraction,message):
+            self.emit("backup-game-progress",game,fraction,message)
+            self.emit("backup-progress",fraction)
+            
         archiver = self.standard_archiver
+        backup_sc = archiver.connect('backup-progress',on_progress)
         archiver.backup(game)
+        archiver.disconnect(backup_sc)
+        self.emit("backup-game-finished",game)
+        self.emit("backup-finsihed")
+        
+        
         
     
     def backup_many(self,games:list[Game]):
@@ -161,7 +187,7 @@ class ArchiverManager(GObject):
             thread.start()
         
         while threadpool:
-            time.sleep(0.25)
+            time.sleep(0.02)
             for i in range(len(threadpool)):
                 thread = threadpool[i]
                 if thread.is_alive():
@@ -175,5 +201,4 @@ class ArchiverManager(GObject):
                     threadpool.append(thread)
                     thread.start()
             
-        
     

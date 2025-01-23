@@ -113,7 +113,7 @@ class Settings(GObject.GObject):
                 ret[k] = v
         return ret
     @variables.setter
-    def variables(self,vars:dict[str:str]|list|tuple):
+    def variables(self,vars:dict|list|tuple):
         if self.parser.has_section('variables'):
             for opt in self.parser['variables'].keys():
                 self.parser.remove_option('variables',opt)

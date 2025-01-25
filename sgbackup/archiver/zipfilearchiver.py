@@ -21,7 +21,7 @@ import zipfile
 import json
 import os
 from ..game import Game,GameManager
-from settings import settings
+from ..settings import settings
 
 class ZipfileArchiver(Archiver):
     def __init__(self):
@@ -32,7 +32,7 @@ class ZipfileArchiver(Archiver):
         
         self._backup_progress(game,0.0,"Starting {game} ...".format(game=game.name))
         files = game.get_backup_files()
-        div = len(files + 2)
+        div = len(files) + 2
         cnt=1
         game_data = json.dumps(game.serialize(),ensure_ascii=False,indent=4)
         with zipfile.ZipFile(filename,mode="w",
@@ -45,19 +45,18 @@ class ZipfileArchiver(Archiver):
                 self._backup_progress(game,_calc_fraction(div,cnt),"{} -> {}".format(game.name,arcname))
                 zf.write(path,arcname)
                 
-            self._backup_progress("{game} ... FINISHED".format(game=game.name))
+        self._backup_progress(game,1.0,"{game} ... FINISHED".format(game=game.name))
         
                 
     def is_archive(self,filename:str)->bool:
         if zipfile.is_zipfile(filename):
             with zipfile.ZipFile(filename,"r") as zf:
-                if 'game.conf' in zf.filelist():
+                if 'gameconf.json' in [i.filename for i in zf.filelist]:
                     return True
         return False
     
     def do_restore(self,filename:str):
         # TODO: convert savegame dir if not the same SvaegameType!!!
-        
         
         if not zipfile.is_zipfile(filename):
             raise RuntimeError("\"{filename}\" is not a valid sgbackup zipfile archive!")

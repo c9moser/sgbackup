@@ -17,9 +17,22 @@
 ###############################################################################
 
 from ._archiver import Archiver,ArchiverManager
-import importlib
+#import importlib
+import os
 
-archiver = ArchiverManager()
+_archiver = ArchiverManager.get_global()
+_archiver_path= os.path.dirname(__file__)
+for dirent in os.listdir(_archiver_path):
+    if dirent.startswith('.') or dirent.startswith('_'):
+        continue
+    if dirent.endswith('.py'):
+        module = dirent[0:-3]
+        exec("""
+from . import {module}
+if hasattr({module},"ARCHIVERS"):
+    for a in {module}.ARCHIVERS:
+        _archiver.archivers[a.key] = a
+""".format(module=module))
 
 __ALL__ = [
     "Archiver",

@@ -30,6 +30,9 @@ from ._settingsdialog import SettingsDialog
 from ._gamedialog import GameDialog
 from ..game import Game,GameManager,SAVEGAME_TYPE_ICONS
 from ._steam import SteamLibrariesDialog,NewSteamAppsDialog
+from ._backupdialog import BackupSingleDialog
+from ..archiver import ArchiverManager
+
 
 __gtype_name__ = __name__
 
@@ -236,18 +239,21 @@ class GameView(Gtk.ScrolledWindow):
     def _on_actions_column_bind(self,action,item):
         child = item.get_child()
         game = item.get_item()
-        
+        archiver_manager = ArchiverManager.get_global()
         child.backup_button.connect('clicked',self._on_columnview_backup_button_clicked,item)
         child.edit_button.connect('clicked',self._on_columnview_edit_button_clicked,item)
         child.remove_button.connect('clicked',self._on_columnview_remove_button_clicked,item)
+        archiver_manager.bind_property('backup-in-progress',child.backup_button,'sensitive',
+                                       BindingFlags.SYNC_CREATE,lambda binding,x: False if x else True)
+        archiver_manager.bind_property('backup-in-progress',child.edit_button,'sensitive',
+                                       BindingFlags.SYNC_CREATE,lambda binding,x: False if x else True)
+        archiver_manager.bind_property('backup-in-progress',child.remove_button,'sensitive',
+                                       BindingFlags.SYNC_CREATE,lambda binding,x: False if x else True)
     
     def _on_columnview_backup_button_clicked(self,button,item):
-        def on_dialog_response(dialog,response):
-            dialog.hide()
-            dialog.destroy()
-            
         game = item.get_item()
-        print('{}.{}._on_columnview_backup_button_clicked() -> {}'.format(__name__,__class__,game.name))
+        dialog = BackupSingleDialog(self.get_root(),game)
+        dialog.run()
     
     def _on_columnview_edit_button_clicked(self,button,item):
         def on_dialog_response(dialog,response):
@@ -303,17 +309,17 @@ class BackupViewData(GObject):
     """
     
     def __init__(self,_game:Game,filename:str):
-        GObject.GObject.__init__(self)
+        GObject.__init__(self)
         self.__game = _game
         self.__filename = filename
         
         basename = os.path.basename(filename)
         self.__is_live = (os.path.basename(os.path.dirname(filename)) == 'live')
-        parts = filename.split('.')
+        parts = basename.split('.')
         self.__savegame_name = parts[0]
-        self.__timestamp = DateTime.strptime(parts[1],"%Y%m%d-%H%M%S")
+        self.__timestamp = DateTime.strptime(parts[2],"%Y%m%d-%H%M%S")
         
-        self.__extension = '.' + parts[3:]
+        self.__extension = '.' + '.'.join(parts[3:])
         
     @property
     def game(self)->Game:
@@ -410,10 +416,16 @@ class BackupView(Gtk.Box):
         timestamp_factory.connect('bind',self._on_timestamp_column_bind)
         timestamp_column = Gtk.ColumnViewColumn.new("Timestamp",timestamp_factory)
         
+        size_factory = Gtk.SignalListItemFactory()
+        size_factory.connect('setup',self._on_size_column_setup)
+        size_factory.connect('bind',self._on_size_column_bind)
+        size_column = Gtk.ColumnViewColumn.new("Size",size_factory)
+        
         self.__columnview = Gtk.ColumnView.new(selection)
         self.__columnview.append_column(live_column)
         self.__columnview.append_column(sgname_column)
         self.__columnview.append_column(timestamp_column)
+        self.__columnview.append_column(size_column)
         self.__columnview.set_vexpand(True)
         
         self.gameview.columnview.connect('activate',self._on_gameview_columnview_activate)
@@ -435,6 +447,7 @@ class BackupView(Gtk.Box):
     def _on_live_column_setup(self,factory,item):
         checkbutton = Gtk.CheckButton()
         checkbutton.set_sensitive(False)
+        item.set_child(checkbutton)
         
     def _on_live_column_bind(self,factory,item):
         checkbutton = item.get_child()
@@ -444,7 +457,7 @@ class BackupView(Gtk.Box):
     
     def _on_savegamename_column_setup(self,factory,item):
         label = Gtk.Label()
-        self.set_child(label)
+        item.set_child(label)
         
     def _on_savegamename_column_bind(self,factory,item):
         label = item.get_child()
@@ -489,6 +502,13 @@ class BackupView(Gtk.Box):
         game = model.get_item(position)
         
         self._title_label.set_markup("<span size='large' weight='bold'>{}</span>".format(GLib.markup_escape_text(game.name)))
+        
+        self.__liststore.remove_all()
+        for bf in ArchiverManager.get_global().get_backups(game):
+            try:
+                self.__liststore.append(BackupViewData(game,bf))
+            except: 
+                pass
         
         
 

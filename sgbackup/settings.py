@@ -85,7 +85,8 @@ class Settings(GObject.GObject):
     @GObject.Property(type=str,nick="logger-conf")
     def logger_conf(self)->str:
         return self.__logger_conf
-        
+
+            
 
     @GObject.Property(type=str,nick="backup-dir")
     def backup_dir(self)->str:

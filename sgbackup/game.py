@@ -1151,6 +1151,13 @@ class Game(GObject):
         else:
             self.__variables = dict(vars)
             
+    @Property(type=str)
+    def subdir(self):
+        if self.is_live:
+            return "live"
+        else:
+            return "finished"
+        
     @Property
     def game_data(self):
         sgtype = self.savegame_type
@@ -1367,7 +1374,10 @@ class Game(GObject):
                     if self.game_data.match(fname):
                         ret[str(path)] = os.path.join(sgdir,fname)
                 elif file_path.is_dir():
-                    ret.update(get_backup_files_recursive(sgroot,sgdir,os.path.join(subdir,dirent)))
+                    if subdir:
+                        ret.update(get_backup_files_recursive(sgroot,sgdir,os.path.join(subdir,dirent)))
+                    else:
+                        ret.update(get_backup_files_recursive(sgroot,sgdir,dirent))
                                 
             return ret
         

@@ -32,8 +32,9 @@ import time
 from ..game import Game
 from ..settings import settings
 
-class Archiver:
+class Archiver(GObject):
     def __init__(self,key:str,name:str,extensions:list[str],decription:str|None=None):
+        GObject.__init__(self)
         self.__key = key
         self.__name = name
         if decription:
@@ -59,23 +60,29 @@ class Archiver:
     def extensions(self)->list[str]:
         return self.__extensions
     
+    def is_archive(self,filename):
+        for ext in self.extensions:
+            if filename.endswith(ext):
+                return True
+        return False
+            
     def backup(self,game:Game)->bool:
         if not game.get_backup_files():
             return
-        filename = self.generate_new_backup_filename()
+        filename = self.generate_new_backup_filename(game)
         dirname = os.path.dirname(filename)
         if not os.path.isdir(dirname):
             os.makedirs(dirname)
             
-        self.emit('backup',game,filename)
+        return self.emit('backup',game,filename)
     
     def generate_new_backup_filename(self,game:Game)->str:
         dt = datetime.datetime.now()
-        basename = '.'.join(game.savegame_name,
+        basename = '.'.join((game.savegame_name,
                             game.savegame_subdir,
                             dt.strftime("%Y%m%d-%H%M%S"),
                             "sgbackup",
-                            self.extensions[0])
+                            self.extensions[0][1:]))
         return os.path.join(settings.backup_dir,game.savegame_name,game.subdir,basename)
         
     def _backup_progress(self,game:Game,fraction:float,message:str|None):
@@ -84,7 +91,7 @@ class Archiver:
         elif fraction < 0.0:
             fraction = 0.0
             
-        self.emit("progress",game,fraction,message)
+        self.emit("backup-progress",game,fraction,message)
         
         
     @Signal(name="backup",flags=SignalFlags.RUN_FIRST,
@@ -112,7 +119,8 @@ class ArchiverManager(GObject):
     def __init__(self):
         GObject.__init__(self)
         self.__archivers = {}
-        
+        self.__backup_in_progress = False
+
         
     @staticmethod
     def get_global():
@@ -126,7 +134,18 @@ class ArchiverManager(GObject):
         try:
             return self.__archivers[settings.archiver]
         except:
-            return self.__archivers["zipfile"]    
+            return self.__archivers["zipfile"]
+    
+    @Property(type=bool,nick='backup-in-progress',default=False)
+    def backup_in_progress(self)->bool:
+        return self.__backup_in_progress
+    @backup_in_progress.setter
+    def backup_in_progress(self,b:bool):
+        self.__backup_in_progress = b
+    
+    @property
+    def archivers(self):
+        return self.__archivers
     
     def _on_archiver_backup_progress_single(self,archiver,game,fraction,message):
         pass
@@ -134,11 +153,12 @@ class ArchiverManager(GObject):
     def _on_archiver_backup_progress_multi(self,archiver,game,fraction,message):
         pass
     
+    
     @Signal(name="backup-game-progress",return_type=None,arg_types=(Game,float,str),flags=SignalFlags.RUN_FIRST)
     def do_backup_game_progress(self,game,fraction,message):
         pass
     
-    @Signal(name="backup-game-finished",return_type=None,arg_types=(Game,float,str),flags=SignalFlags.RUN_FIRST)
+    @Signal(name="backup-game-finished",return_type=None,arg_types=(Game,),flags=SignalFlags.RUN_FIRST)
     def do_backup_game_finished(self,game:Game):
         pass
     
@@ -155,21 +175,27 @@ class ArchiverManager(GObject):
             self.emit("backup-game-progress",game,fraction,message)
             self.emit("backup-progress",fraction)
             
+        if self.backup_in_progress:
+            raise RuntimeError("A backup is already in progress!!!")
+        
+        self.backup_in_progress = True
+            
         archiver = self.standard_archiver
         backup_sc = archiver.connect('backup-progress',on_progress)
         archiver.backup(game)
         archiver.disconnect(backup_sc)
         self.emit("backup-game-finished",game)
-        self.emit("backup-finsihed")
+        self.emit("backup-finished")
+        self.backup_in_progress = False
         
-        
-        
-    
     def backup_many(self,games:list[Game]):
         def thread_function(game):
             archiver = self.standard_archiver
             self._on_archiver_backup_progress_multi(archiver,game,1.0,"Finished ...")
         
+        if self.backup_in_progress:
+            raise RuntimeError("A backup is already in progress!!!")
+        self.backup_in_progress = True
         game_list = list(games)
         threadpool = {}
         
@@ -200,5 +226,25 @@ class ArchiverManager(GObject):
                     thread = threading.Thread(thread_function,args=game,daemon=True)
                     threadpool.append(thread)
                     thread.start()
+        self.backup_in_progress = False
+       
+    def is_archive(self,filename)->bool:
+        if self.standard_archiver.is_archive(filename):
+            return True
+        for i in self.archivers.values():
+            if i.is_archive(filename):
+                return True
+        return False
+        
+    def get_backups(self,game:Game):
+        ret = []
+        for backupdir in [os.path.join(settings.backup_dir,game.savegame_name,i) for i in ('live','finished')]:
+            if os.path.isdir(backupdir):
+                for basename in os.listdir(backupdir):
+                    filename = os.path.join(backupdir,basename)
+                    if (self.is_archive(filename)):
+                        ret.append(filename)
+                        
+        return ret
             
-    
+        

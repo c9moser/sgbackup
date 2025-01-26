@@ -33,12 +33,12 @@ from ..game import Game
 from ..settings import settings
 
 class Archiver(GObject):
-    def __init__(self,key:str,name:str,extensions:list[str],decription:str|None=None):
+    def __init__(self,key:str,name:str,extensions:list[str],description:str|None=None):
         GObject.__init__(self)
         self.__key = key
         self.__name = name
-        if decription:
-            self.__description = decription
+        if description:
+            self.__description = description
         else:
             self.__description = ""
             

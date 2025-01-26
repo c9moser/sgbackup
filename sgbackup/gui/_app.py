@@ -534,7 +534,7 @@ class AppWindow(Gtk.ApplicationWindow):
                 builder = Gtk.Builder.new()
                 
         Gtk.ApplicationWindow.__init__(self,**kwargs)
-        self.set_default_size(800,600)
+        self.set_default_size(800,700)
         self.set_icon_name('org.sgbackup.sgbackup-symbolic')
         
         self.__builder = builder
@@ -561,6 +561,7 @@ class AppWindow(Gtk.ApplicationWindow):
         self.__vpaned.set_end_child(self.backupview)
         self.__vpaned.set_resize_start_child(True)
         self.__vpaned.set_resize_end_child(True)
+        self.__vpaned.set_position(400)
         
         vbox.append(self.__vpaned)
         

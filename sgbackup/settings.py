@@ -43,6 +43,13 @@ for _zc,_zs in ZIPFILE_COMPRESSION_STR.items():
 del _zc
 del _zs
 
+if sys.platform.lower() == 'win32':
+    PLATFORM_WINDOWS = True
+    import winreg
+else:
+    PLATFORM_WINDOWS = False
+    
+    
 class Settings(GObject.GObject):
     __gtype_name__ = "Settings"
     
@@ -129,6 +136,27 @@ class Settings(GObject.GObject):
             for v in vars:
                 self.parser.set('variables',v[0],v[1])
             
+    @GObject.Property(type=str)
+    def steam_installpath(self):
+        if self.parser.has_section('steam') and self.parser.has_option('installpath'):
+            return self.parser.get('steam','installdir')
+        
+        if PLATFORM_WINDOWS:
+            for i in ('SOFTWARE\\WOW6432Node\\Valve\\Steam','SOFTWARE\\Valve\\Steam'):
+                try:
+                    skey = None
+                    skey = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE,i)
+                    svalue = winreg.QueryValueEx(skey,'InstallPath')[0]
+                    if svalue:
+                        self.parser.set('steam','installpath',svalue)
+                        return svalue
+                except:
+                    continue
+                finally:
+                    if skey:
+                        skey.Close()
+        return ""
+        
     def add_variable(self,name:str,value:str):
         self.parser.set('variables',name,value)
         
@@ -149,6 +177,8 @@ class Settings(GObject.GObject):
         ret.update({
             "DOCUMENTS": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS),
             "DOCUMENTS_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS),
+            "DATADIR": GLib.get_user_data_dir(),
+            "STEAM_INSTALLPATH": self.steam_installpath,
         })
         ret.update(self.variables)
         return ret

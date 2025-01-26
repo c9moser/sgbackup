@@ -68,7 +68,7 @@ class ZipfileArchiver(Archiver):
             except:
                 game = zip_game
                 
-            if not game.savegame_root:
+            if not os.path.isdir(game.savegame_root):
                 os.makedirs(game.savegame_root)
                 
             extract_files = [i for i in zf.filelist if i.startswith(zip_game.savegame_dir + "/")]

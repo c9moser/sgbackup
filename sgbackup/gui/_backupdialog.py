@@ -30,13 +30,21 @@ class BackupSingleDialog(Gtk.Dialog):
         
         self.set_transient_for(parent)
         
+        label = Gtk.Label()
+        label.set_markup("<span size=\"x-large\">Backing up <i>{game}</i></span>".format(
+            game = GLib.markup_escape_text(game.name)))
+        
+        self.get_content_area().append(label)
+        
         self.__progressbar = Gtk.ProgressBar()
         self.__progressbar.set_text("Starting savegame backup ...")
+        self.__progressbar.set_show_text(True)
         self.__progressbar.set_fraction(0.0)
         
         self.get_content_area().append(self.__progressbar)
         self.set_modal(False)
         
+        self.__ok_button = self.add_button('Close',Gtk.ResponseType.OK)
         self.__am_signal_progress = None
         self.__am_signal_finished = None
         
@@ -46,10 +54,16 @@ class BackupSingleDialog(Gtk.Dialog):
         self.__progressbar.set_fraction(fraction)
         return False
         
+    def do_response(self,response):
+        self.hide()
+        self.destroy()
+        
     def _on_finished(self):
         self.__progressbar.set_text("Finished ...")
         self.__progressbar.set_fraction(1.0)
+        self.__ok_button.set_sensitive(True)
         am = ArchiverManager.get_global()
+        
         if self.__am_signal_finished is not None:
             am.disconnect(self.__am_signal_finished)
             self.__am_signal_finished = None
@@ -58,8 +72,10 @@ class BackupSingleDialog(Gtk.Dialog):
             am.disconnect(self.__am_signal_progress)
             self.__am_signal_progress = None
             
-        self.hide()
-        self.destroy()
+        #if settings.backup_dialog_close_when_finished:
+        #    self.response(Gtk.ResponseType.OK)
+        
+        return False
             
     def _on_am_backup_game_progress(self,am,game,fraction,message):
         if self.__game.key == game.key:
@@ -72,8 +88,9 @@ class BackupSingleDialog(Gtk.Dialog):
     def run(self):
         def _thread_func(archiver_manager,game):
             am.backup(game)
-            
+        self.__ok_button.set_sensitive(False)    
         self.present()
+        
         
         am = ArchiverManager.get_global()
         self.__am_signal_progress = am.connect('backup-game-progress',self._on_am_backup_game_progress)

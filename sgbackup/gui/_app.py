@@ -56,6 +56,7 @@ class GameView(Gtk.ScrolledWindow):
             self.__liststore.append(g)
             
         self.__action_dialog = None
+        self.__backup_dialog = None
             
         factory_icon = Gtk.SignalListItemFactory.new()
         factory_icon.connect('setup',self._on_icon_column_setup)
@@ -251,9 +252,14 @@ class GameView(Gtk.ScrolledWindow):
                                        BindingFlags.SYNC_CREATE,lambda binding,x: False if x else True)
     
     def _on_columnview_backup_button_clicked(self,button,item):
-        game = item.get_item()
-        dialog = BackupSingleDialog(self.get_root(),game)
-        dialog.run()
+        def on_dialog_response(dialog,response):
+            self.__backup_dialog = None
+            
+        if self.__backup_dialog is None:
+            game = item.get_item()
+            self.__backup_dialog = BackupSingleDialog(self.get_root(),game)
+            self.__backup_dialog.connect('response',on_dialog_response)
+            self.__backup_dialog.run()
     
     def _on_columnview_edit_button_clicked(self,button,item):
         def on_dialog_response(dialog,response):
@@ -691,6 +697,7 @@ class Application(Gtk.Application):
         
         # add accels
         self.set_accels_for_action('app.quit',["<Primary>q"])
+        
         
     @property
     def builder(self)->Gtk.Builder:

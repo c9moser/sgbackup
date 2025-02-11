@@ -17,3 +17,32 @@ pacman -S --noconfirm $_install_pkg
 cd $PROJECT_DIR
 pip install --user .
 
+bindir=$( realpath ~/bin )
+wbindir=$( cygpath -w "$bindir" )
+if [ ! -d "$bindir" ]; then
+    mkdir -p "$bindir"
+fi
+
+pythonpath="$( python -c 'import sys; print(sys.executable)' )" 
+cat > "${bindir}/sgbackup" << EOF
+#!/bin/bash
+
+python -m sgbackup "\$@"
+EOF
+
+cat > "${bindir}/sgbackup.bat" << EOF
+@ECHO OFF\r
+"$pythonpath" -m sgbackup %*\r
+EOF
+
+cat > "${bindir}/gsgbackup" << EOF
+#!/bin/bash
+
+python -m sgbackup.gui "\$@"
+EOF
+
+cat > "${bindir}/gsgbackup.bat" << EOF
+@ECHO OFF\r
+"$pythonpath" -m sgbackup.gui %*
+EOF
+

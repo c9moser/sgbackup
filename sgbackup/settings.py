@@ -22,6 +22,7 @@ import sys
 
 from gi.repository import GLib,GObject
 import zipfile
+from threading import RLock
 
 ZIPFILE_COMPRESSION_STR = {
     zipfile.ZIP_STORED: "stored",
@@ -55,27 +56,219 @@ class Settings(GObject.GObject):
     
     def __init__(self):
         super().__init__()
+        self.__mutex = RLock()
         
-        self.__configparser = ConfigParser()
+        self.__keyfile = GLib.KeyFile.new()
         self.__config_dir = os.path.join(GLib.get_user_config_dir(),'sgbackup')
         self.__gameconf_dir = os.path.join(self.__config_dir,'games')
         self.__logger_conf = os.path.join(self.__config_dir,'logger.conf')
+        self.__backup_versions = 0
         
         self.__config_file = os.path.join(self.__config_dir,'sgbackup.conf')
         if (os.path.isfile(self.__config_file)):
-            with open(self.__config_file,'r') as conf:
-                self.__configparser.read_file(conf)
+            self.__keyfile.load_from_file(self.__config_file,
+                                          (GLib.KeyFileFlags.KEEP_COMMENTS | GLib.KeyFileFlags.KEEP_TRANSLATIONS))
                 
         if not os.path.isdir(self.config_dir):
             os.makedirs(self.config_dir)
             
         if not os.path.isdir(self.gameconf_dir):
             os.makedirs(self.gameconf_dir)
+          
+    def has_group(self,group:str)->bool:
+        with self.__mutex:
+            return self.keyfile.has_group(group)
+    
+    def has_section(self,section:str)->bool:
+        with self.__mutex:
+            return self.keyfile.has_group(section)
+    
+    def has_option(self,section:str,option:str):
+        if self.has_section(section):
+            with self.__mutex:
+                keys,length = self.keyfile.get_keys(section)
+                if (keys and option in keys):
+                    return True
+        return False
+    
+    def has_key(self,group:str,key:str):
+        if self.has_group(group):
+            with self.__mutex:
+                keys,length = self.keyfile.get_keys(group)
+                return (keys and key in keys)
+        return False
+    
+    def get_groups(self):
+        with self.__mutex:
+            return self.keyfile.get_groups()[0]
+    
+    def get_sections(self):
+        with self.__mutex:
+            return self.keyfile.get_groups()[0]
+    
+    def get_keys(self,group:str):
+        with self.__mutex:
+            return self.keyfile.get_keys(group)[0]
+    
+    def get_options(self,section:str):
+        with self.__mutex:
+            return self.keyfile.get_keys(section)[0]
+    
+    def get(self,group:str,key:str,default=None)->str|None:
+        if (self.has_key(group,key)):
+            with self.__mutex:
+                self.keyfile.get_value(group,key)
+        return default
+    
+    def set(self,group:str,key:str,value:str):
+        with self.__mutex:
+            self.keyfile.set_key(group,key,value)
+    
+    def get_boolean(self,group:str,key:str,default:bool|None=None)->bool|None:
+        if self.has_key(group,key):
+            with self.__mutex:
+                return self.keyfile.get_boolean(group,key)
+        return default
+    
+    def set_boolean(self,group:str,key:str,value:bool):
+        with self.__mutex:
+            self.keyfile.set_boolean(group,key,value)
+        
+    def get_boolean_list(self,group:str,key:str,default:list[bool]|None=None)->list[bool]|None:
+        if self.has_key(group,key):
+            with self.__mutex:
+                return self.keyfile.get_boolean_list(group,key)
+        return default
+    
+    def set_boolean_list(self,group:str,key:str,value:list[bool]):
+        with self.__mutex:
+            self.keyfile.set_boolean_list(group,key,value)
+                
+    def get_double(self,group:str,key:str,default:float|None=None)->float|None:
+        if self.has_key(group,key):
+            with self.__mutex:
+                return self.keyfile.get_double(group,key)
+        return default
+    
+    
+    def set_double(self,group:str,key:str,value:float):
+        with self.__mutex:
+            self.keyfile.set_double(group,key,value)
+    
+    def get_double_list(self,group:str,key:str,default:list[float]|None=None)->list[float]|None:
+        if self.has_key(group,key):
+            with self.__mutex:
+                return self.keyfile.get_double_list(group,key)
+        return default
+    
+    def set_double_list(self,group:str,key:str,value:list[float]):
+        with self.__mutex:
+            self.keyfile.set_double_list(group,key,value)
             
+    def get_integer(self,group:str,key:str,default:None|int=None)->int|None:
+        if self.has_key(group,key):
+            with self.__mutex:
+                return self.keyfile.get_integer(group,key)
+        return default
+    
+    def set_integer(self,group:str,key:str,value:int):
+        with self.__mutex:
+            self.keyfile.set_integer(group,key,value)
+        
+    def get_integer_list(self,group:str,key:str,default:list[int]|None=None)->list[int]|None:
+        if self.has_key(group,key):
+            with self.__mutex:
+                return self.keyfile.get_integer_list(group,key)
+        return default
+
+    def set_integer_list(self,group:str,key:str,value:list[int]):
+        with self.__mutex:
+            self.keyfile.set_integer_list(group,key,value)
+            
+    def get_locale_for_key(self,group:str,key:str,locale:str|None=None)->str|None:
+        if self.has_key(group,key):
+            with self.__mutex:
+                return self.keyfile.get_locale_for_key(group,key,locale)
+        return None
+    
+    def get_locale_string(self,group:str,key:str,locale:str|None=None,default:str|None=None)->str|None:
+        if self.has_key(group,key):
+            with self.__mutex:
+                ret = self.keyfile.get_locale_string(group,key,locale)
+            if ret is not None:
+                return ret
+        return default
+    
+    def set_locale_string(self,group:str,key:str,locale:str,value:str):
+        with self.__mutex:
+            self.set_locale_string(group,key,locale,value)
+            
+    def get_locale_string_list(self,group:str,key:str,locale:str|None=None,default:list[str]|None=None)->list[str]|None:
+        if self.has_key(group,key):
+            with self.__mutex:
+                ret = self.keyfile.get_locale_string_list(group,key,locale)
+            if ret is not None:
+                return ret
+        return default
+    
+    def set_locale_string_list(self,group:str,key:str,locale:str,value:list[str]):
+        with self.__mutex:
+            self.keyfile.set_locale_string_list(group,key,locale,value)
+            
+    def get_string(self,group:str,key:str,default:str|None=None)->str|None:
+        if self.has_key(group,key):
+            with self.__mutex:
+                return self.keyfile.get_string(group,key)
+        return default
+    
+    def set_string(self,group:str,key:str,value:str):
+        with self.__mutex:
+            self.keyfile.set_string(group,key,value)
+            
+    def get_string_list(self,group:str,key:str,default:list[str]|None=None)->list[str]|None:
+        if self.has_key(group,key):
+            with self.__mutex:
+                return self.keyfile.get_string_list(group,key)
+        return default
+    
+    def set_string_list(self,group:str,key:str,value:list[str]):
+        with self.__mutex:
+            self.keyfile.set_string_list(group,key,value)
+    
+    def remove_key(self,group:str,key:str):
+        if self.has_key(group,key):
+            with self.__mutex:
+                self.keyfile.remove_key(group,key)
+
+    def remove_group(self,group):
+        if self.has_group(group):
+            keys = self.get_keys(group)
+            with self.__mutex:
+                for key in keys:
+                    self.keyfile.remove_key(group,key)
+                self.keyfile.remove_group(group)
+                
+    def remove_comment(self,group:str|None=None,key:str|None=None):
+        with self.__mutex:
+            try:
+                self.keyfile.remove_comment(group,key)
+            except:
+                pass
+            
+    def set_comment(self,comment:str,group:str|None=None,key:str|None=None):
+        with self.__mutex:
+            try:
+                self.keyfile.set_comment(group,key,comment)
+            except:
+                pass
             
     @GObject.Property(nick="parser")
-    def parser(self)->ConfigParser:
-        return self.__configparser
+    def parser(self)->GLib.KeyFile:
+        return self.__keyfile
+    
+    @GObject.Property(nick="keyfile")
+    def keyfile(self)->GLib.KeyFile:
+        return self.__keyfile
     
     @GObject.Property(type=str,nick="config-dir")
     def config_dir(self)->str:
@@ -93,53 +286,46 @@ class Settings(GObject.GObject):
     def logger_conf(self)->str:
         return self.__logger_conf
 
-            
 
     @GObject.Property(type=str,nick="backup-dir")
     def backup_dir(self)->str:
-        if self.parser.has_option('sgbackup','backupDirectory'):
-           return self.parser.get('sgbackup','backupDirectory')
-        return os.path.join(GLib.get_home_dir(),'SavagameBackups')
+        return self.get_string('sgbackup','backupDirectory',
+                               os.path.join(GLib.get_home_dir(),'SavagameBackups'))
+        
     @backup_dir.setter
     def backup_dir(self,directory:str):
         if not os.path.isabs(directory):
             raise ValueError("\"backup_dir\" needs to be an absolute path!")
-        self.ensure_section('sgbackup')            
-        return self.parser.set('sgbackup','backupDirectory',directory)
+        return self.set_string('sgbackup','backupDirectory',directory)
     
     @GObject.Property(type=str)
     def loglevel(self)->str:
-        if self.parser.has_option('sgbackup','logLevel'):
-            return self.parser.get('sgbackup','logLevel')
-        return "INFO"
+        return self.get_string('sgbackup','logLevel',"INFO")
 
     @GObject.Property
     def variables(self)->dict[str:str]:
         ret = {}
-        if self.parser.has_section('variables'):
-            for k,v in self.parser.items('variables'):
-                ret[k] = v
+        if self.keyfile.has_group('variables'):
+            for key in self.get_keys('variables'):
+                ret[key] = self.get_string('variables',key,"")
         return ret
     @variables.setter
     def variables(self,vars:dict|list|tuple):
-        if self.parser.has_section('variables'):
-            for opt in self.parser['variables'].keys():
-                self.parser.remove_option('variables',opt)
-                
+        self.remove_group("variables")
         if not vars:
             return
         
         if isinstance(vars,dict):
             for k,v in vars.items():
-                self.parser.set('variables',k,v)
+                self.set_string('variables',k,v)
         else:
-            for v in vars:
-                self.parser.set('variables',v[0],v[1])
+            for k,v in dict(vars).items():
+                self.set_string('variables',v[0],v[1])
             
     @GObject.Property(type=str)
     def steam_installpath(self):
-        if self.parser.has_section('steam') and self.parser.has_option('installpath'):
-            return self.parser.get('steam','installdir')
+        if self.has_key('steam','installpath'):
+            return self.get_string('steam','installpath')
         
         if PLATFORM_WINDOWS:
             for i in ('SOFTWARE\\WOW6432Node\\Valve\\Steam','SOFTWARE\\Valve\\Steam'):
@@ -148,7 +334,7 @@ class Settings(GObject.GObject):
                     skey = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE,i)
                     svalue = winreg.QueryValueEx(skey,'InstallPath')[0]
                     if svalue:
-                        self.parser.set('steam','installpath',svalue)
+                        self.set_string('steam','installpath',svalue)
                         return svalue
                 except:
                     continue
@@ -157,20 +343,18 @@ class Settings(GObject.GObject):
                         skey.Close()
         return ""
         
+    @steam_installpath.setter
+    def steam_installpath(self,path:str):
+        self.set_string('steam','installpath',path)
+        
     def add_variable(self,name:str,value:str):
-        self.parser.set('variables',name,value)
+        self.set_string('variables',name,value)
         
     def remove_variable(self,name:str):
-        try:
-            self.parser.remove_option('variables',name)
-        except:
-            pass
+        self.remove_key('variables',name)
         
     def get_variable(self,name:str)->str:
-        try:
-            return self.parser.get('variables',name)
-        except:
-            return ""
+        return self.get_string('variables',name,"")
         
     def get_variables(self)->dict[str:str]:
         ret = dict(os.environ)
@@ -178,48 +362,64 @@ class Settings(GObject.GObject):
             "DOCUMENTS": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS),
             "DOCUMENTS_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS),
             "DATADIR": GLib.get_user_data_dir(),
+            "DATA_DIR": GLib.get_user_data_dir(),
+            "CONFIGDIR": GLib.get_user_config_dir(),
+            "CONFIG_DIR": GLib.get_user_config_dir(),
             "STEAM_INSTALLPATH": self.steam_installpath,
         })
         ret.update(self.variables)
         return ret
         
     @GObject.Property(type=str)
-    def zipfile_compression(self)->str:
-        if self.parser.has_option('zipfile','compression'):
-            try:
-                ZIPFILE_STR_COMPRESSION[self.parser.get('zipfile','compression')]
-            except:
-                pass
-        return ZIPFILE_STR_COMPRESSION["deflated"]
+    def archiver(self)->str:
+        return self.get_string('sgbackup','archiver',"zipfile")
+    
+    @archiver.setter
+    def archiver(self,archiver_key:str):
+        self.set_string('sgbackup','archiver',archiver_key)
+        
+    @GObject.Property(type=int)
+    def backup_versions(self)->int:
+        return self.get_integer('sgbackup','backupVersions',0)
+    
+    @backup_versions.setter
+    def backup_versions(self,versions:int):
+        self.set_integer('sgbackup','backupVersions',versions)
+    
+    
+    @GObject.Property(type=int)
+    def zipfile_compression(self)->int:
+        comp = self.parser.has_option('zipfile','compression','deflated')
+        try:
+            return ZIPFILE_STR_COMPRESSION[comp]
+        except:
+            pass
+        return zipfile.ZIP_DEFLATED
     
     @zipfile_compression.setter
-    def zipfile_compression(self,compression):
+    def zipfile_compression(self,compression:int):
         try:
-            self.parser.set('zipfile','compression',ZIPFILE_COMPRESSION_STR[compression])
+            self.set_string('zipfile','compression',ZIPFILE_COMPRESSION_STR[compression])
         except:
-            self.parser.set('zipfile','compression',ZIPFILE_STR_COMPRESSION[zipfile.ZIP_DEFLATED])
+            self.set_string('zipfile','compression',ZIPFILE_COMPRESSION_STR[zipfile.ZIP_DEFLATED])
             
     @GObject.Property(type=int)
     def zipfile_compresslevel(self)->int:
-        if self.parser.has_option('zipfile','compressLevel'):
-            cl = self.parser.getint('zipfile','compressLevel')
-            return cl if cl <= ZIPFILE_COMPRESSLEVEL_MAX[self.zipfile_compression] else ZIPFILE_COMPRESSLEVEL_MAX[self.zipfile_compression]
-        return ZIPFILE_COMPRESSLEVEL_MAX[self.zipfile_compression]
+        cl = self.get_integer('zipfile','compresslevel',9)
+        if cl < 0:
+            cl = 9
+        return cl if cl <= ZIPFILE_COMPRESSLEVEL_MAX[self.zipfile_compression] else ZIPFILE_COMPRESSLEVEL_MAX[self.zipfile_compression]
     
     @zipfile_compresslevel.setter
     def zipfile_compresslevel(self,cl:int):
-        self.parser.set('zipfile','compressLevel',cl)
+        self.set_integer('zipfile','compressLevel',cl)
         
     def save(self):
         self.emit('save')
 
-    def ensure_section(self,section:str):
-        if not self.parser.has_section(section):
-            self.parser.add_section(section)
-                    
     @GObject.Signal(name='save',flags=GObject.SIGNAL_RUN_LAST,return_type=None,arg_types=())
     def do_save(self):
-        with open(self.config_file,'w') as ofile:
-            self.__configparser.write(ofile)
+        with self.__mutex:
+            self.keyfile.save_to_file(self.config_file)
     
 settings = Settings()

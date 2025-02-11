@@ -1,6 +1,9 @@
 #!/bin/bash
 # vim: syn=sh ts=4 sts=4 sw=4 smartindent expandtab ff=unix
 
+SELF="$( realpath "$0" )"
+PROJECT_DIR="$( dirname "$SELF")"
+
 PACKAGES="gtk4 gobject-introspection python-gobject python-rapidfuzz"
 
 _install_pkg=""
@@ -10,4 +13,7 @@ done
 
 pacman -Sy
 pacman -S --noconfirm $_install_pkg
+
+cd $PROJECT_DIR
+pip install --user .
 

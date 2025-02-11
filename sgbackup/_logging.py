@@ -26,3 +26,4 @@ if os.path.isfile(settings.logger_conf):
     logging.config.fileConfig(settings.logger_conf)
 else:
     logging.config.fileConfig(os.path.join(os.path.dirname(__file__),"logger.conf"))
+   

@@ -230,6 +230,8 @@ class NewSteamAppsDialog(Gtk.Dialog):
         
         self.get_content_area().append(scrolled)
         
+        self.__gamedialog = None
+        
         self.add_button("OK",Gtk.ResponseType.OK)
         
     def _on_listitem_setup(self,factory,item):
@@ -289,12 +291,16 @@ class NewSteamAppsDialog(Gtk.Dialog):
         
     def _on_add_steamapp_button_clicked(self,button,data:SteamApp,*args):
         def on_dialog_response(dialog,response):
+            self.__gamedialog = None
             if response == Gtk.ResponseType.APPLY:
                 for i in range(self.__listmodel.get_n_items()):
                     if data.appid == self.__listmodel.get_item(i).appid:
                         self.__listmodel.remove(i)
                         break
                     
+        if self.__gamedialog is not None:
+            return
+        
         game = Game("Enter key",data.name,"")
         if PLATFORM_WINDOWS:
             game.steam_windows = SteamWindowsGame(data.appid,"","",installdir=data.installdir)
@@ -311,12 +317,13 @@ class NewSteamAppsDialog(Gtk.Dialog):
             game.steam_windows = SteamWindowsGame(data.appid,"","")
             game.steam_macos = SteamMacOSGame(data.appid,"","")
             game.savegame_type = SavegameType.STEAM_MACOS
-            
-        dialog = GameDialog(self,game)
-        dialog.set_title("sgbackup: Add Steam Game")
-        dialog.set_modal(False)
-        dialog.connect('response',on_dialog_response)
-        dialog.present()
+        
+        if self.__gamedialog is None:
+            self.__gamedialog = GameDialog(self,game)
+            self.__gamedialog.set_title("sgbackup: Add Steam Game")
+            self.__gamedialog.set_modal(False)
+            self.__gamedialog.connect('response',on_dialog_response)
+            self.__gamedialog.present()
     
     def _on_ignore_steamapp_button_clicked(self,button,data,*args):
         def on_dialog_response(dialog,response,data):

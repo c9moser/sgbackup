@@ -74,29 +74,31 @@ class Settings(GObject.GObject):
             
         if not os.path.isdir(self.gameconf_dir):
             os.makedirs(self.gameconf_dir)
-          
+
+    def _has_group_nb(self,group:str)->bool:
+        return self.keyfile.has_group(group)
+    
     def has_group(self,group:str)->bool:
         with self.__mutex:
-            return self.keyfile.has_group(group)
+            return self._has_group_nb(group)
     
     def has_section(self,section:str)->bool:
         with self.__mutex:
-            return self.keyfile.has_group(section)
+            return self._has_group_nb(section)
+    
+    def _has_key_nb(self,group:str,key:str)->bool:
+        if self._has_group_nb(group):
+            keys,length = self.keyfile.get_keys(group)
+            return (key in keys)
+        return False
     
     def has_option(self,section:str,option:str):
-        if self.has_section(section):
-            with self.__mutex:
-                keys,length = self.keyfile.get_keys(section)
-                if (keys and option in keys):
-                    return True
-        return False
+        with self.__mutex:
+            return self._has_key_nb(section,option)
     
     def has_key(self,group:str,key:str):
-        if self.has_group(group):
-            with self.__mutex:
-                keys,length = self.keyfile.get_keys(group)
-                return (keys and key in keys)
-        return False
+        with self.__mutex:
+            return self._has_key_nb(group,key)
     
     def get_groups(self):
         with self.__mutex:
@@ -108,15 +110,19 @@ class Settings(GObject.GObject):
     
     def get_keys(self,group:str):
         with self.__mutex:
+            if not self._has_group_nb(group):
+                return []
             return self.keyfile.get_keys(group)[0]
     
     def get_options(self,section:str):
         with self.__mutex:
+            if not self._has_group_nb(section):
+                return []
             return self.keyfile.get_keys(section)[0]
     
     def get(self,group:str,key:str,default=None)->str|None:
-        if (self.has_key(group,key)):
-            with self.__mutex:
+        with self.__mutex:
+            if (self._has_key_nb(group,key)):
                 self.keyfile.get_value(group,key)
         return default
     
@@ -125,8 +131,8 @@ class Settings(GObject.GObject):
             self.keyfile.set_key(group,key,value)
     
     def get_boolean(self,group:str,key:str,default:bool|None=None)->bool|None:
-        if self.has_key(group,key):
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
                 return self.keyfile.get_boolean(group,key)
         return default
     
@@ -135,8 +141,8 @@ class Settings(GObject.GObject):
             self.keyfile.set_boolean(group,key,value)
         
     def get_boolean_list(self,group:str,key:str,default:list[bool]|None=None)->list[bool]|None:
-        if self.has_key(group,key):
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
                 return self.keyfile.get_boolean_list(group,key)
         return default
     
@@ -145,8 +151,8 @@ class Settings(GObject.GObject):
             self.keyfile.set_boolean_list(group,key,value)
                 
     def get_double(self,group:str,key:str,default:float|None=None)->float|None:
-        if self.has_key(group,key):
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
                 return self.keyfile.get_double(group,key)
         return default
     
@@ -156,8 +162,8 @@ class Settings(GObject.GObject):
             self.keyfile.set_double(group,key,value)
     
     def get_double_list(self,group:str,key:str,default:list[float]|None=None)->list[float]|None:
-        if self.has_key(group,key):
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
                 return self.keyfile.get_double_list(group,key)
         return default
     
@@ -166,8 +172,8 @@ class Settings(GObject.GObject):
             self.keyfile.set_double_list(group,key,value)
             
     def get_integer(self,group:str,key:str,default:None|int=None)->int|None:
-        if self.has_key(group,key):
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
                 return self.keyfile.get_integer(group,key)
         return default
     
@@ -176,8 +182,8 @@ class Settings(GObject.GObject):
             self.keyfile.set_integer(group,key,value)
         
     def get_integer_list(self,group:str,key:str,default:list[int]|None=None)->list[int]|None:
-        if self.has_key(group,key):
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
                 return self.keyfile.get_integer_list(group,key)
         return default
 
@@ -185,18 +191,38 @@ class Settings(GObject.GObject):
         with self.__mutex:
             self.keyfile.set_integer_list(group,key,value)
             
+    def get_int64(self,group:str,key:str,default:int|None=None)->int|None:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
+                self.keyfile.get_int64(group,key)
+        return default
+    
+    def set_int64(self,group:str,key:str,value:int):
+        with self.__mutex:
+            self.keyfile.set_int64(group,key,value)
+            
+    def get_uint64(self,group:str,key:str,default:int|None=None)->int|None:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
+                self.keyfile.get_uint64(self,group,key)
+        return default
+    
+    def set_uint64(self,group:str,key:str,value:int):
+        with self.__mutex:
+            self.keyfile.set_uint64(group,key,value)
+        
     def get_locale_for_key(self,group:str,key:str,locale:str|None=None)->str|None:
-        if self.has_key(group,key):
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
                 return self.keyfile.get_locale_for_key(group,key,locale)
         return None
     
     def get_locale_string(self,group:str,key:str,locale:str|None=None,default:str|None=None)->str|None:
-        if self.has_key(group,key):
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
                 ret = self.keyfile.get_locale_string(group,key,locale)
-            if ret is not None:
-                return ret
+                if ret is not None:
+                    return ret
         return default
     
     def set_locale_string(self,group:str,key:str,locale:str,value:str):
@@ -204,11 +230,11 @@ class Settings(GObject.GObject):
             self.set_locale_string(group,key,locale,value)
             
     def get_locale_string_list(self,group:str,key:str,locale:str|None=None,default:list[str]|None=None)->list[str]|None:
-        if self.has_key(group,key):
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
                 ret = self.keyfile.get_locale_string_list(group,key,locale)
-            if ret is not None:
-                return ret
+                if ret is not None:
+                    return ret
         return default
     
     def set_locale_string_list(self,group:str,key:str,locale:str,value:list[str]):
@@ -216,8 +242,8 @@ class Settings(GObject.GObject):
             self.keyfile.set_locale_string_list(group,key,locale,value)
             
     def get_string(self,group:str,key:str,default:str|None=None)->str|None:
-        if self.has_key(group,key):
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
                 return self.keyfile.get_string(group,key)
         return default
     
@@ -226,8 +252,8 @@ class Settings(GObject.GObject):
             self.keyfile.set_string(group,key,value)
             
     def get_string_list(self,group:str,key:str,default:list[str]|None=None)->list[str]|None:
-        if self.has_key(group,key):
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
                 return self.keyfile.get_string_list(group,key)
         return default
     
@@ -236,14 +262,14 @@ class Settings(GObject.GObject):
             self.keyfile.set_string_list(group,key,value)
     
     def remove_key(self,group:str,key:str):
-        if self.has_key(group,key):
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_key_nb(group,key):
                 self.keyfile.remove_key(group,key)
 
     def remove_group(self,group):
-        if self.has_group(group):
-            keys = self.get_keys(group)
-            with self.__mutex:
+        with self.__mutex:
+            if self._has_group_nb(group):
+                keys = self.keyfile.get_keys(group)[0]
                 for key in keys:
                     self.keyfile.remove_key(group,key)
                 self.keyfile.remove_group(group)

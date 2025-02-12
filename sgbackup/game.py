@@ -1372,7 +1372,7 @@ class Game(GObject):
                         fname = dirent
                         
                     if self.game_data.match(fname):
-                        ret[str(str(file_path))] = os.path.join(sgdir,fname)
+                        ret[str(file_path)] = os.path.join(sgdir,fname)
                 elif file_path.is_dir():
                     if subdir:
                         ret.update(get_backup_files_recursive(sgroot,sgdir,os.path.join(subdir,dirent)))

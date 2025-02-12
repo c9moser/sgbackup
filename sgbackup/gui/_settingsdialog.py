@@ -125,7 +125,15 @@ class SettingsDialog(Gtk.Dialog):
         grid.attach(label,0,1,1,1)
         page.backup_versions_spinbutton = Gtk.SpinButton.new_with_range(0,1000,1)
         page.backup_versions_spinbutton.set_hexpand(True)
+        page.backup_versions_spinbutton.set_value(settings.backup_versions)
         grid.attach(page.backup_versions_spinbutton,1,1,2,1)
+        
+        label = Gtk.Label.new('Max. Backup Threads:')
+        page.backup_threads_spinbutton = Gtk.SpinButton.new_with_range(1,256,1)
+        page.backup_threads_spinbutton.set_hexpand(True)
+        page.backup_threads_spinbutton.set_value(settings.backup_threads)
+        grid.attach(label,0,2,1,1)
+        grid.attach(page.backup_threads_spinbutton,1,2,2,1)
         
         label = Gtk.Label.new("Archiver:")
         archiver_model = Gio.ListStore.new(Archiver)
@@ -145,8 +153,10 @@ class SettingsDialog(Gtk.Dialog):
             if archiver_key == archiver.key:
                 page.archiver_dropdown.set_selected(i)
                 break
-        grid.attach(label,0,2,1,1)
-        grid.attach(page.archiver_dropdown,1,2,2,1)
+        grid.attach(label,0,3,1,1)
+        grid.attach(page.archiver_dropdown,1,3,2,1)
+        
+        
             
         vbox.append(grid)
         page.set_child(vbox)
@@ -216,13 +226,14 @@ class SettingsDialog(Gtk.Dialog):
         try:
             dir = dialog.select_folder_finish(result)
             if dir is not None:
-                self.__backupdir_label.set_text(dir.get_path())
+                self.general_page.backupdir_label.set_text(dir.get_path())
         except:
             pass
         
     def _on_backupdir_button_clicked(self,button):
         dialog = Gtk.FileDialog.new()
         dialog.set_title("sgbackup: Choose backup folder")
+        dialog.set_initial_folder(Gio.File.new_for_path(self.general_page.backupdir_label.get_text()))
         dialog.select_folder(self,None,self._on_backupdir_dialog_select_folder)
         
         
@@ -261,6 +272,7 @@ class SettingsDialog(Gtk.Dialog):
     def do_save(self):
         settings.backup_dir = self.general_page.backupdir_label.get_text()
         settings.backup_versions = self.general_page.backup_versions_spinbutton.get_value_as_int()
+        settings.backup_threads = self.general_page.backup_threads_spinbutton.get_value_as_int()
         settings.archiver = self.general_page.archiver_dropdown.get_selected_item().key
         settings.zipfile_compression = self.archiver_page.zf_compressor_dropdown.get_selected_item().compressor
         settings.zipfile_compresslevel = self.archiver_page.zf_compresslevel_spinbutton.get_value_as_int()

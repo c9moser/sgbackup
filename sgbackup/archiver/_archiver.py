@@ -31,6 +31,8 @@ import time
 
 from ..game import Game
 from ..settings import settings
+from ..utility import sanitize_path,sanitize_windows_path
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -91,7 +93,7 @@ class Archiver(GObject):
                             dt.strftime("%Y%m%d-%H%M%S"),
                             "sgbackup",
                             self.extensions[0][1:] if self.extensions[0].startswith('.') else self.extensions[0]))
-        return os.path.join(settings.backup_dir,game.savegame_name,game.subdir,basename)
+        return sanitize_path(os.path.join(settings.backup_dir,game.savegame_name,game.subdir,basename))
         
     def _backup_progress(self,game:Game,fraction:float,message:str|None):
         if fraction > 1.0:
@@ -242,8 +244,8 @@ class ArchiverManager(GObject):
         game_progress._game_progress_connection = self.connect('backup-game-progress',game_progress)
         threadpool = {}
         
-        if len(game_list) > 8:
-            n = 8
+        if len(game_list) > settings.backup_threads:
+            n = settings.backup_threads
         else:
             n = len(games)
             
@@ -278,8 +280,8 @@ class ArchiverManager(GObject):
         return self.emit('backup',archiver,game,filename)
     
     @Signal(name="backup",return_type=bool,arg_types=(Archiver,Game,str),
-            flags=SignalFlags.RUN_FIRST,accumulator=signal_accumulator_true_handled)
-    def backup(self,archiver,game,filename):
+            flags=SignalFlags.RUN_FIRST)
+    def do_backup(self,archiver,game,filename):
         return True
        
     def is_archive(self,filename)->bool:

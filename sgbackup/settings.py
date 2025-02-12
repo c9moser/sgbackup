@@ -24,6 +24,8 @@ from gi.repository import GLib,GObject
 import zipfile
 from threading import RLock
 
+from .utility import sanitize_path
+
 ZIPFILE_COMPRESSION_STR = {
     zipfile.ZIP_STORED: "stored",
     zipfile.ZIP_DEFLATED: "deflated",
@@ -315,19 +317,30 @@ class Settings(GObject.GObject):
 
     @GObject.Property(type=str,nick="backup-dir")
     def backup_dir(self)->str:
-        return self.get_string('sgbackup','backupDirectory',
-                               os.path.join(GLib.get_home_dir(),'SavagameBackups'))
+        return sanitize_path(self.get_string('sgbackup','backupDirectory',
+                                             os.path.join(GLib.get_home_dir(),'SavagameBackups')))
         
     @backup_dir.setter
     def backup_dir(self,directory:str):
         if not os.path.isabs(directory):
             raise ValueError("\"backup_dir\" needs to be an absolute path!")
-        return self.set_string('sgbackup','backupDirectory',directory)
+        return self.set_string('sgbackup','backupDirectory',sanitize_path(directory))
     
     @GObject.Property(type=str)
     def loglevel(self)->str:
         return self.get_string('sgbackup','logLevel',"INFO")
 
+    @GObject.Property(type=int)
+    def backup_threads(self)->int:
+        return self.get_integer('sgbackup','maxBackupThreads',1)
+    
+    @backup_threads.setter
+    def backup_threads(self,max_threads:int):
+        if (max_threads < 1):
+            max_threads = 1
+        self.set_integer('sgbackup','maxBackupThreads',max_threads)
+        
+    
     @GObject.Property
     def variables(self)->dict[str:str]:
         ret = {}
@@ -415,7 +428,7 @@ class Settings(GObject.GObject):
     
     @GObject.Property(type=int)
     def zipfile_compression(self)->int:
-        comp = self.parser.has_option('zipfile','compression','deflated')
+        comp = self.get_string('zipfile','compression','deflated')
         try:
             return ZIPFILE_STR_COMPRESSION[comp]
         except:

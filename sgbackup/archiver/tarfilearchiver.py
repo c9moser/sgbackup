@@ -20,7 +20,7 @@ from gi.repository.GObject import Property
 from gi.repository import GLib
 
 from ._archiver import Archiver
-from tarfile import TarFile
+from tarfile import open as tf_open, is_tarfile
 from tempfile import mkdtemp,NamedTemporaryFile
 import json
 import os
@@ -46,10 +46,11 @@ class TarfileArchiver(Archiver):
         return self.__compression
         
     def is_archive(self, filename):
-        if (Archiver.is_archive()):
+        if (Archiver.is_archive(self,filename) and is_tarfile(filename)):
             try:
-                with TarFile(filename,"r:{}".format(self.compression)) as tf:
-                    return ("gameconf.json" in tf.getnames())
+                with tf_open(filename,"r:{}".format(self.compression)) as tf:
+                    #return ("gameconf.json" in tf.getnames())
+                    return True
             except:
                 pass
             return False
@@ -57,14 +58,14 @@ class TarfileArchiver(Archiver):
     def do_backup(self, game, filename):
         _calc_fraction = lambda n,cnt: ((1.0 / n) * cnt)
         
-        self._backup_progress(game,0.0,"Starting {game} ...".format(game.name))
+        self._backup_progress(game,0.0,"Starting {game} ...".format(game=game.name))
         files = game.get_backup_files()
         
         n = len(files) + 2
         cnt=1
         data=json.dumps(game.serialize(),ensure_ascii=False,indent=4)
         
-        with TarFile(filename,'x:{}'.format(self.compression)) as tf:
+        with tf_open(filename,'x:{}'.format(self.compression)) as tf:
             self._backup_progress(game,_calc_fraction(n,cnt),"gameconf.json")
             gcf = os.path.join(GLib.get_tmp_dir(),"sgbackup-" + GLib.get_user_name() + "." + "backup." + game.key + ".gameconf.tmp")
             with open(gcf,"wt",encoding="utf-8") as gcfile:
@@ -72,7 +73,7 @@ class TarfileArchiver(Archiver):
                 
             tf.add(gcf,"gameconf.json")
             
-            for path,arcname in files:
+            for path,arcname in files.items():
                 cnt += 1
                 self._backup_progress(game,_calc_fraction(n,cnt),"arcname")
                 tf.add(path,arcname)
@@ -99,7 +100,7 @@ class TarfileArchiver(Archiver):
         tempdir = mkdtemp(suffix="-sgbackup")
         tempfile= os.path.join(tempdir,"gameconf.json")
         try:
-            with TarFile(filename,'r:{}'.format(self.compression)) as tf:
+            with tf_open(filename,'r:{}'.format(self.compression)) as tf:
                 tf.extract("gameconf.json",tempdir)
                 with open(tempfile,"r",encoding="utf-8") as ifile:
                     game = Game.new_from_json_file(tempfile)

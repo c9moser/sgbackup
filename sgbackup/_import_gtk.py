@@ -20,4 +20,6 @@ _GTK_IMPORTED_ = False
 
 if not _GTK_IMPORTED_:
     import gi; gi.require_version("Gtk","4.0")
+    from gi.repository import GLib
+    GLib.threads_init()
     _GTK_IMPORTED_ = True

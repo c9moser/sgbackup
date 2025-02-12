@@ -43,7 +43,6 @@ class ZipfileArchiver(Archiver):
             for path,arcname in files.items():
                 cnt+=1
                 self._backup_progress(game,_calc_fraction(div,cnt),"{} -> {}".format(game.name,arcname))
-                print("writing file:",path)
                 zf.write(path,arcname)
                 
         self._backup_progress(game,1.0,"{game} ... FINISHED".format(game=game.name))

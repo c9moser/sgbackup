@@ -986,8 +986,8 @@ class GameDialog(Gtk.Dialog):
                 wg.savegame_root = data['sgroot']
                 wg.savegame_dir = data['sgdir']
                 wg.variables = data['variables']
-                wg.file_match = data["filematch"]
-                wg.ignore_match = data['ignorematch']
+                wg.file_matchers = data["filematch"]
+                wg.ignore_matchers = data['ignorematch']
                 wg.installdir = installdir
                 wg.game_registry_keys = grk
                 wg.installdir_registry_keys = irk
@@ -1011,8 +1011,8 @@ class GameDialog(Gtk.Dialog):
                 lg.savegame_root = data['sgroot']
                 lg.savegame_dir = data['sgdir']
                 lg.variables = data['variables']
-                lg.file_match = data["filematch"]
-                lg.ignore_match = data['ignorematch']
+                lg.file_matchers = data["filematch"]
+                lg.ignore_matchers = data['ignorematch']
                 lg.binary = binary
             else:
                 self.__game.linux = LinuxGame(data["sgroot"],
@@ -1032,8 +1032,8 @@ class GameDialog(Gtk.Dialog):
                 mg.savegame_root = data['sgroot']
                 mg.savegame_dir = data['sgdir']
                 mg.variables = data['variables']
-                mg.file_match = data["filematch"]
-                mg.ignore_match = data['ignorematch']
+                mg.file_matchers = data["filematch"]
+                mg.ignore_matchers = data['ignorematch']
                 mg.binary = binary
             else:
                 self.__game.macos = MacOSGame(data["sgroot"],
@@ -1052,8 +1052,8 @@ class GameDialog(Gtk.Dialog):
                 sg.savegame_root = data['sgroot']
                 sg.savegame_dir = data['sgdir']
                 sg.variables = data['variables']
-                sg.file_match = data["filematch"]
-                sg.ignore_match = data['ignorematch']
+                sg.file_matchers = data["filematch"]
+                sg.ignore_matchers = data['ignorematch']
                 sg.appid = data['appid']
                 sg.installdir = data['installdir']
             else:
@@ -1074,8 +1074,8 @@ class GameDialog(Gtk.Dialog):
                 sg.savegame_root = data['sgroot']
                 sg.savegame_dir = data['sgdir']
                 sg.variables = data['variables']
-                sg.file_match = data["filematch"]
-                sg.ignore_match = data['ignorematch']
+                sg.file_matchers = data["filematch"]
+                sg.ignore_matchers = data['ignorematch']
                 sg.appid = data['appid']
                 sg.installdir = data['installdir']
             else:
@@ -1096,8 +1096,8 @@ class GameDialog(Gtk.Dialog):
                 sg.savegame_root = data['sgroot']
                 sg.savegame_dir = data['sgdir']
                 sg.variables = data['variables']
-                sg.file_match = data["filematch"]
-                sg.ignore_match = data['ignorematch']
+                sg.file_matchers = data["filematch"]
+                sg.ignore_matchers = data['ignorematch']
                 sg.appid = data['appid']
                 sg.installdir = data['installdir']
             else:
@@ -1233,11 +1233,9 @@ class GameDialog(Gtk.Dialog):
         if (data.match_file):
             label.set_text(data.match_file)
             label.bind_property('text',data,'match_file',BindingFlags.DEFAULT)
-            #label.connect('changed',self._on_filematch_value_label_changed,widget)
             label.connect('notify::editing',self._on_filematch_value_notify_editing,widget)
         else:
             label.bind_property('text',data,'match_file',BindingFlags.DEFAULT)
-            #label.connect('changed',self._on_filematch_value_label_changed,widget)
             label.connect('notify::editing',self._on_filematch_value_notify_editing,widget)
             label.grab_focus()
             label.start_editing()

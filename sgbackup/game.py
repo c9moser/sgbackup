@@ -224,14 +224,15 @@ class GameFileMatcher(GObject):
             raise TypeError("match_type is not a GameFileType instance!")
         self.__match_type = match_type
         
-    @Property(type=str)
+    @Property
     def match_file(self)->str:
         """
         match_file The matcher value.
         
         :type: str
         """
-        return self.__match_file
+        return str(self.__match_file)
+    
     @match_file.setter
     def match_file(self,file:str):
         self.__match_file = file    
@@ -247,23 +248,15 @@ class GameFileMatcher(GObject):
         :returns: True if file matches
         """
         def match_glob(filename)->bool:
-            return fnmatch.fnmatch(filename,self.match_file)
+            return fnmatch.fnmatch(filename,self.__match_file)
         # match_glob()
         
         def match_filename(filename):
-            if (PLATFORM_WIN32):
-                fn = filename.replace("/","\\")
-                if (self.match_file.endswith("\\")):
-                    if fn == self.match_file[:-1] or fn.startswith(self.match_file):
-                        return True
-                elif fn == self.match_file:
+            if (self.match_file.endswith('/')):
+                if filename == self.match_file[:-1] or filename.startswith(self.match_file):
                     return True
-            else:
-                    if (self.match_file.endswith('/')):
-                        if fn == self.match_file[:-1] or fn.startswith(self.match_file):
-                            return True
-                    elif fn == self.match_file:
-                        return True                        
+            elif filename == self.match_file:
+                return True                        
             return False
         # match_filename()
         
@@ -369,6 +362,7 @@ class GameData(GObject):
         :type: list[GameFileMatcher]
         """
         return self.__ignorematchers
+    
     @ignore_matchers.setter
     def ignore_matchers(self,im:list[GameFileMatcher]|None):
         self.__ignorematchers = []

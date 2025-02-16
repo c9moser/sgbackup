@@ -224,7 +224,7 @@ class GameFileMatcher(GObject):
             raise TypeError("match_type is not a GameFileType instance!")
         self.__match_type = match_type
         
-    @Property
+    @Property(type=str)
     def match_file(self)->str:
         """
         match_file The matcher value.

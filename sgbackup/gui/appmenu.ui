@@ -14,12 +14,12 @@
                 <attribute name='label' translatable='true'>_Steam</attribute>
                 <section>
                     <item>
-                        <attribute name='label' translatable='true'>Manage libraries</attribute>
-                        <attribute name='action'>app.steam-manage-libraries</attribute>
+                        <attribute name='label' translatable='true'>New Steam Apps</attribute>
+                        <attribute name='action'>app.steam-new-apps</attribute>
                     </item>
                     <item>
-                        <attribute name='label' translatable='true'>Manage new apps</attribute>
-                        <attribute name='action'>app.steam-new-apps</attribute>
+                        <attribute name='label' translatable='true'>Manage Steam Libraries</attribute>
+                        <attribute name='action'>app.steam-manage-libraries</attribute>
                     </item>
                 </section>
             </submenu>

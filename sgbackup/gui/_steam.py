@@ -223,6 +223,7 @@ class NewSteamAppsDialog(Gtk.Dialog):
         self.__listview = Gtk.ListView.new(selection,factory)
         self.__listview.set_vexpand(True)
         self.__listview.set_show_separators(True)
+        self.__listview.set_single_click_activate(True)
         
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_child(self.__listview)
@@ -286,8 +287,10 @@ class NewSteamAppsDialog(Gtk.Dialog):
         child.name_label.set_markup("<span weight='bold' size='large'>{}</span>".format(GLib.markup_escape_text(data.name)))
         child.appid_label.set_text(str(data.appid))
         child.installdir_label.set_text(data.installdir)
-        child.add_app_button.connect('clicked',self._on_add_steamapp_button_clicked,data)
-        child.ignore_app_button.connect('clicked',self._on_ignore_steamapp_button_clicked,data)
+        if not hasattr(child.add_app_button,'_signal_clicked_connector'):
+            child.add_app_button._signal_clicked_connector = child.add_app_button.connect('clicked',self._on_add_steamapp_button_clicked,data)
+        if not hasattr(child.ignore_app_button,'_signal_clicked_connector'):
+            child.ignore_app_button._signal_clicked_connector = child.ignore_app_button.connect('clicked',self._on_ignore_steamapp_button_clicked,data)
         
     def _on_add_steamapp_button_clicked(self,button,data:SteamApp,*args):
         def on_dialog_response(dialog,response):

@@ -396,7 +396,10 @@ class Settings(GObject.GObject):
         return self.get_string('variables',name,"")
         
     def get_variables(self)->dict[str:str]:
-        ret = dict(os.environ)
+        if PLATFORM_WINDOWS:
+            ret = dict(((name.upper(),value) for name,value in os.environ.items()))
+        else:
+            ret = dict(os.environ)
         ret.update({
             "DOCUMENTS": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS),
             "DOCUMENTS_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS),

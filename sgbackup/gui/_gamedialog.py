@@ -1025,9 +1025,9 @@ class GameDialog(Gtk.Dialog):
             self.__game_linux = None
             
         if self.get_is_valid_savegame_type(SavegameType.MACOS):
-            data = get_game_data(self.__linux)
-            binary = self.__linux.binary_entry.get_text()
-            if self.__game.linux:
+            data = get_game_data(self.__macos)
+            binary = self.__macos.binary_entry.get_text()
+            if self.__game.macos:
                 mg = self.__game.macos
                 mg.savegame_root = data['sgroot']
                 mg.savegame_dir = data['sgdir']
@@ -1187,7 +1187,8 @@ class GameDialog(Gtk.Dialog):
     def _on_variable_name_bind(self,factory,item):
         label = item.get_child()
         data = item.get_item()
-        data.bind_property('name',label,'label',BindingFlags.SYNC_CREATE)
+        if not hasattr(label,'_property_data_to_label_binding'):
+            label._property_data_to_label_binding = data.bind_property('name',label,'label',BindingFlags.SYNC_CREATE)
         
     def _on_variable_value_setup(self,factory,item):
         label = Gtk.Label()
@@ -1196,7 +1197,8 @@ class GameDialog(Gtk.Dialog):
     def _on_variable_value_bind(self,factory,item):
         label = item.get_child()
         data = item.get_item()
-        data.bind_property('value',label,'label',BindingFlags.SYNC_CREATE)
+        if not hasattr(label,'_property_value_to_label_binding'):
+            label._property_value_to_label_binding = data.bind_property('value',label,'label',BindingFlags.SYNC_CREATE)
         
     def _on_filematch_dropdown_selection_changed(self,dropdown,data,item):
         data = item.get_item()
@@ -1221,7 +1223,8 @@ class GameDialog(Gtk.Dialog):
             if (data.match_type == self.__filematch_dropdown_model.get_item(i).match_type):
                 dropdown.set_selected(i)
                 break
-        dropdown.connect('notify::selected-item',self._on_filematch_dropdown_selection_changed,item)
+        if not hasattr(dropdown,'_signal_notify_selected_item_connector'):
+            dropdown._signal_notify_selected_item_connector = dropdown.connect('notify::selected-item',self._on_filematch_dropdown_selection_changed,item)
         
     def _on_filematch_value_setup(self,factory,item,widget):
         label = Gtk.EditableLabel()
@@ -1232,11 +1235,13 @@ class GameDialog(Gtk.Dialog):
         data = item.get_item()
         if (data.match_file):
             label.set_text(data.match_file)
-            label.bind_property('text',data,'match_file',BindingFlags.DEFAULT)
-            label.connect('notify::editing',self._on_filematch_value_notify_editing,widget)
-        else:
-            label.bind_property('text',data,'match_file',BindingFlags.DEFAULT)
-            label.connect('notify::editing',self._on_filematch_value_notify_editing,widget)
+            
+        if not hasattr(label,'_property_text_to_matchfile_binding'):
+            label._property_text_to_matchfile_binding = label.bind_property('text',data,'match_file',BindingFlags.DEFAULT)
+        if not hasattr(label,'_signal_notify_editing_connector'):
+            label._signal_notify_editing_connector = label.connect('notify::editing',self._on_filematch_value_notify_editing,widget)
+            
+        if not label.get_text():
             label.grab_focus()
             label.start_editing()
             
@@ -1293,23 +1298,20 @@ class GameDialog(Gtk.Dialog):
         if not label.get_text().strip():
             model = widget.columnview.get_model().get_model()
             i = 0
-            while i < model.get_n_items():
+            for i in reversed(range(model.get_n_items())):
                 item = model.get_item(i)
                 if not item.match_file.strip():
                     model.remove(i)
-                    continue
-                i += 1
+                    
     def _on_filematch_value_notify_editing(self,label,param,widget):
         if label.props.editing == False:
             if not label.get_text().strip():
                 model = widget.columnview.get_model().get_model()
                 i = 0
-                while i < model.get_n_items():
+                for i in reversed(range(model.get_n_items())):
                     item = model.get_item(i)
                     if not item.match_file.strip():
                         model.remove(i)
-                        continue
-                    i += 1
                 
     def _on_windows_regkey_add_button_clicked(self,button,widget):
         widget.listview.get_model().get_model().append(RegistryKeyData())

@@ -17,7 +17,7 @@
 ###############################################################################
 
 from gi.repository import Gtk,GLib,Gio
-from gi.repository.GObject import GObject,Signal,Property,SignalFlags
+from gi.repository.GObject import GObject,Signal,Property,SignalFlags,BindingFlags
 
 from ..settings import settings
 from ..archiver import ArchiverManager,Archiver
@@ -65,6 +65,38 @@ class ZipfileCompressorDataSorter(Gtk.Sorter):
             return Gtk.Ordering.EQUAL
     
 
+class VariableData(GObject):
+    def __init__(self,name:str,value:str):
+        GObject.__init__(self)
+        self.__name = name
+        self.__value = value
+        
+    @Property(type=str)
+    def name(self)->str:
+        return self.__name
+    
+    @name.setter
+    def name(self,name:str):
+        self.__name = name
+        
+    @Property(type=str)
+    def value(self)->str:
+        return self.__value
+    
+    @value.setter
+    def value(self,value:str):
+        self.__value = value
+        
+class VariableDataSorter(Gtk.Sorter):
+    def do_compare(self,item1,item2):
+        if (item1.name < item2.name):
+            return Gtk.Ordering.SMALLER
+        elif (item1.name > item2.name):
+            return Gtk.Ordering.LARGER
+        else:
+            return Gtk.Ordering.EQUAL
+        
+
 class SettingsDialog(Gtk.Dialog):
     def __init__(self,parent=None):
         Gtk.Dialog.__init__(self)
@@ -80,6 +112,7 @@ class SettingsDialog(Gtk.Dialog):
         self.__stack_sidebar = Gtk.StackSidebar.new()
         self.__general_page = self.__add_general_settings_page()
         self.__archiver_page = self.__add_archiver_settings_page()
+        self.__variables_page = self.__add_variables_settings_page()
     
         sidebar_scrolled=Gtk.ScrolledWindow()
         sidebar_scrolled.set_child(self.__stack_sidebar)
@@ -89,7 +122,6 @@ class SettingsDialog(Gtk.Dialog):
         paned.set_end_child(self.__stack)
         paned.set_vexpand(True)
         self.__stack_sidebar.set_stack(self.__stack)
-        
         
         vbox.append(paned)
     
@@ -157,7 +189,6 @@ class SettingsDialog(Gtk.Dialog):
         grid.attach(page.archiver_dropdown,1,3,2,1)
         
         
-            
         vbox.append(grid)
         page.set_child(vbox)
         
@@ -212,6 +243,99 @@ class SettingsDialog(Gtk.Dialog):
         self.add_page(page,"zipfile","Archiver Settings")
         return page
     
+    def _on_variable_add_button_clicked(self,button):
+        variable_model = self.__variables_page.variable_columnview.get_model()
+        while hasattr(variable_model,'get_model'):
+            variable_model = variable_model.get_model()
+        variable_model.append(VariableData("",""))
+        
+    def __add_variables_settings_page(self):
+        page = Gtk.Box.new(Gtk.Orientation.VERTICAL,0)
+        
+        actions = Gtk.ActionBar()
+        icon=Gtk.Image.new_from_icon_name('list-add-symbolic')
+        button = Gtk.Button()
+        button.set_child(icon)
+        button.connect('clicked',self._on_variable_add_button_clicked)
+        actions.pack_end(button)
+        page.append(actions)
+        
+        scrolled = Gtk.ScrolledWindow()
+        
+        model = Gio.ListStore.new(VariableData)
+        for vname,vvalue in settings.variables.items():
+            model.append(VariableData(vname,vvalue))
+                        
+        sorted_model = Gtk.SortListModel.new(model,VariableDataSorter())
+        
+        vname_factory = Gtk.SignalListItemFactory()
+        vname_factory.connect('setup',self._on_variable_name_factory_setup)
+        vname_factory.connect('bind',self._on_variable_name_factory_bind)
+        
+        vvalue_factory = Gtk.SignalListItemFactory()
+        vvalue_factory.connect('setup',self._on_variable_value_factory_setup)
+        vvalue_factory.connect('bind',self._on_variable_value_factory_bind)
+        
+        selection = Gtk.SingleSelection(model=sorted_model)
+        page.variable_columnview = Gtk.ColumnView.new(selection)
+        
+        vname_column = Gtk.ColumnViewColumn.new("Name",vname_factory)
+        vname_column.set_expand(True)
+        page.variable_columnview.append_column(vname_column)
+        
+        vvalue_column = Gtk.ColumnViewColumn.new("Value",vvalue_factory)
+        page.variable_columnview.append_column(vvalue_column)
+        
+        page.variable_columnview.set_vexpand(True)
+        scrolled.set_child(page.variable_columnview)
+        scrolled.set_hexpand(True)
+        page.append(scrolled)
+        
+        self.add_page(page,"variables","Variables")
+        
+        return page
+        
+        
+    def _on_variable_name_notify_editing(self,label,param,*data):
+        if label.props.editing == False:
+            if not label.get_text():
+                model = self.__variables_page.variable_columnview.get_model()
+                while hasattr(model,'get_model'):
+                    model = model.get_model()
+                
+                for i in reversed(range(model.get_n_items())):
+                    if not model.get_item(i).name:
+                        model.remove(i)
+            
+        
+    def _on_variable_name_factory_setup(self,factory,item):
+        label = Gtk.EditableLabel()
+        item.set_child(label)
+        
+    def _on_variable_name_factory_bind(self,factory,item):
+        data = item.get_item()
+        label = item.get_child()
+        label.set_text(data.name)
+        if not hasattr(label,'_property_text_to_name_binding'):
+            label._property_text_to_name_binding = label.bind_property('text',data,'name',BindingFlags.DEFAULT)
+        if not hasattr(label,'_signal_notify_editing_connection'):
+            label._signal_notify_editing_connection = label.connect('notify::editing',self._on_variable_name_notify_editing)
+        
+        if not data.name:
+            label.grab_focus()
+            label.start_editing()
+        
+    def _on_variable_value_factory_setup(self,factory,item):
+        label = Gtk.EditableLabel()
+        item.set_child(label)
+        
+    def _on_variable_value_factory_bind(self,factory,item):
+        label = item.get_child()
+        data = item.get_item()
+        label.set_text(data.value)
+        if not hasattr(label,'_property_text_to_value_binding'):
+            label._property_text_to_value_binding = label.bind_property('text',data,'name',BindingFlags.DEFAULT)
+        
     def _on_archiver_factory_setup(self,factory,item):
         label = Gtk.Label()
         item.set_child(label)
@@ -277,4 +401,13 @@ class SettingsDialog(Gtk.Dialog):
         settings.zipfile_compression = self.archiver_page.zf_compressor_dropdown.get_selected_item().compressor
         settings.zipfile_compresslevel = self.archiver_page.zf_compresslevel_spinbutton.get_value_as_int()
         
+        variables = {}
+        variable_model = self.__variables_page.variable_columnview.get_model()
+        while hasattr(variable_model,'get_model'):
+            variable_model = variable_model.get_model()
+        for i in range(variable_model.get_n_items()):
+            vdata = variable_model.get_item(i)
+            if vdata.name:
+                variables[vdata.name] = vdata.value
+        settings.variables = variables
         

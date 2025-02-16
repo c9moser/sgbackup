@@ -9,7 +9,7 @@ if [ ! -d "$PYTHON_VENV_DIR" ]; then
     mkdir -pv "$PYTHON_VENV_DIR"
 fi
 
-python -m venv --system-site-packages "${PYTHON_VENV_SIR}/sgbackup"
+python -m venv --system-site-packages "${PYTHON_VENV_DIR}/sgbackup"
 . "${PYTHON_VENV_DIR}/sgbackup/bin/activate"
 pip install --upgrade pip
 pip install -r "${PROJECT_ROOT}/requirements.txt"
@@ -19,7 +19,7 @@ if [ ! -d ~/.local/bin ]; then
     mkdir -pv ~/.local/bin
 fi
 
-cat > "${PYTHON_VENV_DIR}/bin/sgbackup" << EOF
+cat > "${PYTHON_VENV_DIR}/sgbackup/bin/sgbackup" << EOF
 #!/bin/bash
 
 SELF="\$(realpath "$0")"
@@ -33,10 +33,10 @@ exit_code=\$?
 deactivate
 exit \$exit_code
 EOF
-chmod +x "${PYTHON_VENV_DIR}/bin/sgbackup"
-ln -sv "${PYHTHON_VENV_DIR}/bin/sgbackup" ~/.local/bin/sgbackup
+chmod +x "${PYTHON_VENV_DIR}/sgbackup/bin/sgbackup"
+ln -sv "${PYHTHON_VENV_DIR}/sgbackup/bin/sgbackup" ~/.local/bin/sgbackup
 
-cat > "${PYTHON_VENV_DIR}/bin/gsgbackup" << EOF
+cat > "${PYTHON_VENV_DIR}/sgbackup/bin/gsgbackup" << EOF
 #!/bin/bash
 
 SELF="\$(realpath "$0")"
@@ -50,6 +50,6 @@ exit_code=\$?
 deactivate
 exit \$exit_code
 EOF
-chmod +x "${PYTHON_VENV_DIR}/bin/gsbackup"
-ln -sv "${PYTHON_VENV_DIR}/bin/gsgbackup" ~/.local/bin/gsgbackup
+chmod +x "${PYTHON_VENV_DIR}/sgbackup/bin/gsbackup"
+ln -sv "${PYTHON_VENV_DIR}/sgbackup/bin/gsgbackup" ~/.local/bin/gsgbackup
 

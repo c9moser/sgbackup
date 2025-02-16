@@ -5,15 +5,15 @@ requires = ['setuptools >= 61.0']
 [project]
 dynamic = ["version"]
 name = 'sgbackup'
-version = '0.0.0'
-requires_python = '>= 3.11'
+#version = '0.0.0'
+requires-python = '>= 3.11'
 description = 'Savegame Backup Tool'
 readme = 'README.md'
 license = {file = 'LICENSE'}
 authors = [
   {name = 'Christian Moser', email = 'christian@mydevel.at'},
 ]
-dependencies = ['gi','yaml']
+dependencies = ['PyGObject','rapidfuzz']
 
 [project.scripts]
 sgbackup = 'sgbackup:cli_main'
@@ -21,4 +21,15 @@ csgbackup = 'sgbackup:curses_main'
 
 [project.gui-scripts]
 gsgbackup = 'sgbackup:gui_main'
+
+[tool.setuptools]
+include-package-data = true
+
+
+[tool.setuptools.packages.find]
+where=["."]
+include=["sgbackup"]
+exclude=[".venv","sphinx","apidoc","scripts"]
+
+
 

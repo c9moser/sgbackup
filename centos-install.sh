@@ -22,29 +22,31 @@ fi
 cat > "${PYTHON_VENV_DIR}/sgbackup/bin/sgbackup" << EOF
 #!/bin/bash
 
-SELF="\$(realpath "$0")"
-VENV_BINDR="\$(dirname "\$SELF")"
-
+SELF="\$(realpath "\$0")"
+echo \$SELF
+VENV_BINDIR="\$(dirname "\$SELF")"
+echo \$VENV_BINDIR
 . "\$VENV_BINDIR/activate"
 
-python -m sgbackup
+echo "\$@"
+python -m sgbackup "\$@"
 exit_code=\$?
 
 deactivate
 exit \$exit_code
 EOF
 chmod +x "${PYTHON_VENV_DIR}/sgbackup/bin/sgbackup"
-ln -sv "${PYHTHON_VENV_DIR}/sgbackup/bin/sgbackup" ~/.local/bin/sgbackup
+ln -sv "${PYTHON_VENV_DIR}/sgbackup/bin/sgbackup" ~/.local/bin/sgbackup
 
 cat > "${PYTHON_VENV_DIR}/sgbackup/bin/gsgbackup" << EOF
 #!/bin/bash
 
-SELF="\$(realpath "$0")"
-VENV_BINDR="\$(dirname "\$SELF")"
+SELF="\$(realpath "\$0")"
+VENV_BINDIR="\$(dirname "\$SELF")"
 
 . "\$VENV_BINDIR/activate"
 
-python -m sgbackup.gui
+python -m sgbackup.gui "\$@"
 exit_code=\$?
 
 deactivate

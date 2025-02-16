@@ -24,12 +24,12 @@ gsgbackup = 'sgbackup:gui_main'
 
 [tool.setuptools]
 include-package-data = true
+packages = ["sgbackup","sgbackup.archiver","sgbackup.commands","sgbackup.gui"]
+package-data = {"sgbackup"=["sgbackup/icons/*.ico","sgbackup/icons/hicolor/*/*/*","sgbackup/icons/hicolor/*/*/*/*"]}
 
-
-[tool.setuptools.packages.find]
-where=["."]
-include=["sgbackup"]
-exclude=[".venv","sphinx","apidoc","scripts"]
-
-
+#[tool.setuptools.packages.find]
+#namespaces = false 
+#where = ["."]
+#include = []
+#exclude = [".venv","sphinx","apidoc","scripts"]
 

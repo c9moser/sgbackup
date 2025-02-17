@@ -228,7 +228,6 @@ class NewSteamAppsDialog(Gtk.Dialog):
         factory = Gtk.SignalListItemFactory()
         factory.connect('setup',self._on_listitem_setup)
         factory.connect('bind',self._on_listitem_bind)
-        factory.connect('unbind',self._on_listitem_unbind)
         
         self.__listview = Gtk.ListView.new(selection,factory)
         self.__listview.set_vexpand(True)
@@ -294,6 +293,8 @@ class NewSteamAppsDialog(Gtk.Dialog):
         child = item.get_child()
         data = item.get_item()
         
+        print("bind:",data.name)
+        
         child.name_label.set_markup("<span weight='bold' size='large'>{}</span>".format(GLib.markup_escape_text(data.name)))
         child.appid_label.set_text(str(data.appid))
         child.installdir_label.set_text(data.installdir)
@@ -311,17 +312,14 @@ class NewSteamAppsDialog(Gtk.Dialog):
             child.ignore_app_button.disconnect(child.ignore_app_button._signal_clicked_connector)
         child.ignore_app_button._signal_clicked_connector = child.ignore_app_button.connect('clicked',self._on_ignore_steamapp_button_clicked,data)
         
-    def _on_listitem_unbind(self,factory,item):
-        child = item.get_child()
-        data = item.get_item()
         
     def _on_add_steamapp_button_clicked(self,button,data:SteamApp,*args):
         def on_dialog_response(dialog,response):
-            if response == Gtk.ResponseType.APPLY:
-                for i in range(self.__listmodel.get_n_items()):
-                    if data.appid == self.__listmodel.get_item(i).appid:
-                        self.__listmodel.remove(i)
-                        break
+            if (response == Gtk.ResponseType.APPLY):
+                for i in reversed(range(self.__listmodel.get_n_items())):
+                    item = self.__listmodel.get_item(i)
+                    if item.appid == data.appid:
+                        self.__listmodel.remove(item)
                     
         game = Game("Enter key",data.name,"")
         if PLATFORM_WINDOWS:
@@ -340,29 +338,29 @@ class NewSteamAppsDialog(Gtk.Dialog):
             game.steam_macos = SteamMacOSGame(data.appid,"","")
             game.savegame_type = SavegameType.STEAM_MACOS
         
-        if self.__gamedialog is None:
-            self.__gamedialog = GameDialog(self,game)
-            self.__gamedialog.set_title("sgbackup: Add Steam Game")
-            self.__gamedialog.set_modal(False)
-            self.__gamedialog.connect('response',on_dialog_response)
-            self.__gamedialog.present()
+        gamedialog = GameDialog(self,game)
+        gamedialog.set_title("sgbackup: Add Steam Game")
+        gamedialog.set_modal(False)
+        gamedialog.connect_after('response',on_dialog_response)
+        gamedialog.present()
     
-    def _on_ignore_steamapp_button_clicked(self,button,data,*args):
-        def on_dialog_response(dialog,response,data):
+    def _on_ignore_steamapp_button_clicked(self,button,data:SteamApp,*args):
+        def on_dialog_response(dialog,response,data:SteamApp):
+            dialog.hide()
+            dialog.destroy()
             if response == Gtk.ResponseType.YES:
                 ignore = IgnoreSteamApp(data.appid,data.name,dialog.reason_entry.get_text())
                 self.__steam.add_ignore_app(ignore)
-                for i in range(self.__listmodel.get_n_items()):
-                    if data.appid == self.__listmodel.get_item(i).appid:
-                        self.__listmodel.remove(i)
-                        break
-            dialog.hide()
-            dialog.destroy()
+                for i in reversed(range(self.__listmodel.get_n_items())):
+                    item = self.__listmodel.get_item(i)
+                    if item.appid == data.appid:
+                        self.__listmodel.remove(item)
         
         dialog = Gtk.MessageDialog(buttons=Gtk.ButtonsType.YES_NO)
         dialog.set_transient_for(self)
         dialog.set_modal(False)
-        dialog.props.text = "Do you want to put <span weight=\"bold\">\"{steamapp}\"</span> on the ignore list?".format(steamapp=data.name)
+        dialog.props.text = "Do you want to put <span weight=\"bold\">\"{steamapp}\"</span> on the ignore list?".format(
+            steamapp=GLib.markup_escape_text(data.name))
         dialog.props.use_markup = True
         
         dialog.props.secondary_text = "Please enter the reason for ignoring this app."
@@ -373,6 +371,11 @@ class NewSteamAppsDialog(Gtk.Dialog):
         dialog.connect('response',on_dialog_response,data)
         dialog.present()
     
+    def refresh(self):
+        self.__listmodel.remove_all()
+        for app in self.__steam.find_new_steamapps():
+            self.__listmodel.append(app)
+            
     def do_response(self,response):
         self.hide()
         self.destroy()        

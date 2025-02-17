@@ -172,8 +172,17 @@ class SteamLibrariesDialog(Gtk.Dialog):
         lib = item.get_item()
         child.label.set_text(lib.directory)
         child.label.bind_property('text',lib,'directory',BindingFlags.DEFAULT)
-        child.chooser_button.connect('clicked',self._on_list_chooser_button_clicked,child.label)
-        child.remove_button.connect('clicked',self._on_list_remove_button_clicked,child.label)
+        if hasattr(child.chooser_button,'_signal_clicked_connector'):
+            child.chooser_button.disconnect(child.chooser_button._signal_clicked_connector)
+        child.chooser_button._signal_clicked_connector = child.chooser_button.connect('clicked',
+                                                                                      self._on_list_chooser_button_clicked,
+                                                                                      child.label)
+        
+        if hasattr(child.remove_button,'_signal_clicked_connector'):
+            child.remove_button.disconnect(child.remove_button._signal_clicked_connector)
+        child.remove_button._signal_clicked_connector = child.remove_button.connect('clicked',
+                                                                                    self._on_list_remove_button_clicked,
+                                                                                    child.label)
         
     def do_response(self,response):
         if response == Gtk.ResponseType.APPLY:
@@ -219,6 +228,7 @@ class NewSteamAppsDialog(Gtk.Dialog):
         factory = Gtk.SignalListItemFactory()
         factory.connect('setup',self._on_listitem_setup)
         factory.connect('bind',self._on_listitem_bind)
+        factory.connect('unbind',self._on_listitem_unbind)
         
         self.__listview = Gtk.ListView.new(selection,factory)
         self.__listview.set_vexpand(True)
@@ -287,23 +297,32 @@ class NewSteamAppsDialog(Gtk.Dialog):
         child.name_label.set_markup("<span weight='bold' size='large'>{}</span>".format(GLib.markup_escape_text(data.name)))
         child.appid_label.set_text(str(data.appid))
         child.installdir_label.set_text(data.installdir)
-        if not hasattr(child.add_app_button,'_signal_clicked_connector'):
-            child.add_app_button._signal_clicked_connector = child.add_app_button.connect('clicked',self._on_add_steamapp_button_clicked,data)
-        if not hasattr(child.ignore_app_button,'_signal_clicked_connector'):
-            child.ignore_app_button._signal_clicked_connector = child.ignore_app_button.connect('clicked',self._on_ignore_steamapp_button_clicked,data)
+        
+        # Check if we are already connected.
+        # if we dont check we might have more than one dialog open
+        # due to Gtk4 reusing the widgets.
+        # When selecting a row in the columnview this method is called so we 
+        # need to ensure that the last binding is used to work as expected.
+        if hasattr(child.add_app_button,'_signal_clicked_connector'):
+            child.add_app_button.disconnect(child.add_app_button._signal_clicked_connector)
+        child.add_app_button._signal_clicked_connector = child.add_app_button.connect('clicked',self._on_add_steamapp_button_clicked,data)
+        
+        if hasattr(child.ignore_app_button,'_signal_clicked_connector'):
+            child.ignore_app_button.disconnect(child.ignore_app_button._signal_clicked_connector)
+        child.ignore_app_button._signal_clicked_connector = child.ignore_app_button.connect('clicked',self._on_ignore_steamapp_button_clicked,data)
+        
+    def _on_listitem_unbind(self,factory,item):
+        child = item.get_child()
+        data = item.get_item()
         
     def _on_add_steamapp_button_clicked(self,button,data:SteamApp,*args):
         def on_dialog_response(dialog,response):
-            self.__gamedialog = None
             if response == Gtk.ResponseType.APPLY:
                 for i in range(self.__listmodel.get_n_items()):
                     if data.appid == self.__listmodel.get_item(i).appid:
                         self.__listmodel.remove(i)
                         break
                     
-        if self.__gamedialog is not None:
-            return
-        
         game = Game("Enter key",data.name,"")
         if PLATFORM_WINDOWS:
             game.steam_windows = SteamWindowsGame(data.appid,"","",installdir=data.installdir)

@@ -29,9 +29,9 @@ def cli_main():
     logger.debug("Running cli_main()")
     return 0
 
-def curses_main():
-    logger.debug("Running curses_main()")
-    return 0
+#def curses_main():
+#    logger.debug("Running curses_main()")
+#    return 0
 
 def gui_main():
     logger.debug("Running gui_main()")

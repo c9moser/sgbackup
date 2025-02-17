@@ -164,9 +164,6 @@ class GameView(Gtk.Box):
             pass
             self.__liststore.append(g)
         self.__sort_model = Gtk.SortListModel.new(self._liststore,self.__name_sorter)
-        self.__sort_model
-        self.__action_dialog = None
-        self.__backup_dialog = None
             
         factory_icon = Gtk.SignalListItemFactory.new()
         factory_icon.connect('setup',self._on_icon_column_setup)
@@ -319,12 +316,14 @@ class GameView(Gtk.Box):
     def _on_key_column_setup(self,factory,item):
         label = Gtk.Label()
         label.set_xalign(0.0)
+        label.set_use_markup(True)
         item.set_child(label)
         
     def _on_key_column_bind(self,factory,item):
         label = item.get_child()
         game = item.get_item()
-        game.bind_property('key',label,'label',BindingFlags.SYNC_CREATE)
+        game.bind_property('key',label,'label',BindingFlags.SYNC_CREATE,
+                           lambda _binding,s: '<span size="large">{}</span>'.format(GLib.markup_escape_text(s)))
         
     def _on_name_column_setup(self,factory,item):
         label = Gtk.Label()
@@ -424,8 +423,13 @@ class GameView(Gtk.Box):
         game = item.get_item()
         archiver_manager = ArchiverManager.get_global()
         
-        if not hasattr(child.backup_button,'_signal_clicked_connection'):
-            child.backup_button._signal_clicked_connection = child.backup_button.connect('clicked',self._on_columnview_backup_button_clicked,item)
+        # check if we are already connected.
+        # if we dont check we might have more than one dialog open or execute backups more than once 
+        # due to Gtk4 reusing the widgets. When selecting a row in the columnview this method is called.
+        if hasattr(child.backup_button,'_signal_clicked_connection'):
+            child.backup_button.disconnect(child.backup_button._signal_clicked_connection)
+        child.backup_button._signal_clicked_connection = child.backup_button.connect('clicked',self._on_columnview_backup_button_clicked,item)
+        
         if not hasattr(child.backup_button,'_property_backup_in_progress_binding'):
             child.backup_button._property_backup_in_progress_binding = archiver_manager.bind_property('backup-in-progress',
                                                                                                       child.backup_button,
@@ -433,8 +437,9 @@ class GameView(Gtk.Box):
                                                                                                       BindingFlags.SYNC_CREATE,
                                                                                                       lambda binding,x: False if x else True)
             
-        if not hasattr(child.edit_button,'_signal_clicked_connection'):
-            child.edit_button._signal_clicked_connection = child.edit_button.connect('clicked',self._on_columnview_edit_button_clicked,item)
+        if hasattr(child.edit_button,'_signal_clicked_connection'):
+            child.edit_button.disconnect(child.edit_button._signal_clicked_connection)
+        child.edit_button._signal_clicked_connection = child.edit_button.connect('clicked',self._on_columnview_edit_button_clicked,item)
             
         if not hasattr(child.edit_button,'_property_backup_in_progress_binding'):
             child.edit_button._property_backup_in_progress_binding = archiver_manager.bind_property('backup-in-progress',
@@ -443,8 +448,10 @@ class GameView(Gtk.Box):
                                                                                                     BindingFlags.SYNC_CREATE,
                                                                                                     lambda binding,x: False if x else True)
             
-        if not hasattr(child.remove_button,'_signal_clicked_connection'):
-            child.remove_button._signal_clicked_connection = child.remove_button.connect('clicked',self._on_columnview_remove_button_clicked,item)
+        if hasattr(child.remove_button,'_signal_clicked_connection'):
+            child.remove_button.disconnect(child.remove_button._signal_clicked_connection)
+        child.remove_button._signal_clicked_connection = child.remove_button.connect('clicked',self._on_columnview_remove_button_clicked,item)
+        
         if not hasattr(child.remove_button,'_property_backup_in_progress_binding'):
             child.remove_button._property_backup_in_progress_binding = archiver_manager.bind_property('backup-in-progress',
                                                                                                       child.remove_button,'sensitive',
@@ -458,30 +465,22 @@ class GameView(Gtk.Box):
             child.backup_button.set_sensitive(False)
             
     def _on_columnview_backup_button_clicked(self,button,item):
-        def on_dialog_response(dialog,response):
-            self.__backup_dialog = None
-            
-        if self.__backup_dialog is None:
-            game = item.get_item()
-            self.__backup_dialog = BackupSingleDialog(self.get_root(),game)
-            self.__backup_dialog.connect('response',on_dialog_response)
-            self.__backup_dialog.run()
+        game = item.get_item()
+        dialog = BackupSingleDialog(self.get_root(),game)
+        dialog.connect('response',on_dialog_response)
+        dialog.run()
     
     def _on_columnview_edit_button_clicked(self,button,item):
         def on_dialog_response(dialog,response):
             if response == Gtk.ResponseType.APPLY:
                 self.refresh()
-            self.__action_dialog = None
         
-        if self.__action_dialog is None:        
-            game = item.get_item()
+        game = item.get_item()
         
-            self.__action_dialog = GameDialog(self.get_root(),game)
-            self.__action_dialog.set_modal(False)
-            self.__action_dialog.connect('response',on_dialog_response)
-            self.__action_dialog.present()
-        else:
-            self.__action_dialog.present()
+        dialog = GameDialog(self.get_root(),game)
+        dialog.set_modal(False)
+        dialog.connect('response',on_dialog_response)
+        dialog.present()
         
         
     def _on_columnview_remove_button_clicked(self,button,item):
@@ -497,21 +496,17 @@ class GameView(Gtk.Box):
                    
             dialog.hide()
             dialog.destroy()
-            self.__action_dialog = None
             
         game = item.get_item()
-        if self.__action_dialog is None:
-            self.__action_dialog = Gtk.MessageDialog(buttons=Gtk.ButtonsType.YES_NO,
-                                                     text="Do you really want to remove the game <span weight='bold'>{game}</span>?".format(
-                                                     game=game.name),
-                                                     use_markup=True,
-                                                     secondary_text="Removing games cannot be undone!!!")
-            self.__action_dialog.set_transient_for(self.get_root())
-            self.__action_dialog.set_modal(False)
-            self.__action_dialog.connect('response',on_dialog_response,game)
-            self.__action_dialog.present()
-        else:
-            self.__action_dialog.present()
+        dialog = Gtk.MessageDialog(buttons=Gtk.ButtonsType.YES_NO,
+                                   text="Do you really want to remove the game <span weight='bold'>{game}</span>?".format(
+                                   game=game.name),
+                                   use_markup=True,
+                                   secondary_text="Removing games cannot be undone!!!")
+        dialog.set_transient_for(self.get_root())
+        dialog.set_modal(False)
+        dialog.connect('response',on_dialog_response,game)
+        dialog.present()
         
 # GameView class
 

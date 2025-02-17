@@ -21,7 +21,7 @@ from . import _import_gtk
 __version__ = "0.0.1"
 from .settings import settings
 from . import _logging
-from .main import cli_main,curses_main,gui_main
+from .main import cli_main,gui_main
 from . import game
 from .command import Command
 from . import commands
@@ -31,7 +31,7 @@ __ALL__ = [
     "settings"
     "cli_main",
     "gui_main",
-    "curses_main",
+    #"curses_main",
     'game',
     "Command",
     "commands",

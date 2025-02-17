@@ -100,7 +100,10 @@ class RegistryKeyData(GObject):
         """
         GObject.__init__(self)
         if not regkey:
-            self.__regkey = ""
+            self.regkey = ""
+        else:
+            self.regkey = regkey
+        
             
     @Property(type=str)
     def regkey(self)->str:
@@ -972,12 +975,12 @@ class GameDialog(Gtk.Dialog):
             irk = []
             
             for i in range(grk_model.get_n_items()):
-                item = grk.model.get_item(i)
+                item = grk_model.get_item(i)
                 if item.regkey:
                     grk.append(item.regkey)
                 
             for i in range(irk_model.get_n_items()):
-                item = irk.model.get_item(i)
+                item = irk_model.get_item(i)
                 if item.regkey:
                     irk.append(item.regkey)
             
@@ -1255,8 +1258,8 @@ class GameDialog(Gtk.Dialog):
         label = item.get_child()
         data = item.get_item()
         label.set_text(data.regkey)
-        label.bind_property('text',data,'regkey',GObject.BindingFlags.DEFAULT)
-        label.connect('changed',self._on_windows_regkey_label_changed,widget)
+        label.bind_property('text',data,'regkey',BindingFlags.DEFAULT)
+        label.connect('notify::editing',self._on_windows_regkey_label_notify_editing,widget)
         if not label.get_text():
             label.start_editing()
             label.grab_focus()
@@ -1316,16 +1319,15 @@ class GameDialog(Gtk.Dialog):
     def _on_windows_regkey_add_button_clicked(self,button,widget):
         widget.listview.get_model().get_model().append(RegistryKeyData())
         
-    def _on_windows_regkey_label_changed(self,label,widget):
-        if not label.get_text():
-            model = widget.listview.get_model().get_model()
-            i = 0
-            while i < model.get_n_items():
-                item = model.get_item(i)
-                if not item.regkey:
-                    model.remove(i)
-                    continue
-                i += 1
+    def _on_windows_regkey_label_notify_editing(self,label,state,widget):
+        if not label.get_editing():
+            if not label.get_text():
+                model = widget.listview.get_model().get_model()
+                i = 0
+                for  i in reversed(range(model.get_n_items())):
+                    item = model.get_item(i)
+                    if not item.regkey:
+                        model.remove(i)
 
     def do_response(self,response):
         if (response == Gtk.ResponseType.APPLY):

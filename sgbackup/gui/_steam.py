@@ -317,7 +317,7 @@ class NewSteamAppsDialog(Gtk.Dialog):
                 for i in reversed(range(self.__listmodel.get_n_items())):
                     item = self.__listmodel.get_item(i)
                     if item.appid == data.appid:
-                        self.__listmodel.remove(item)
+                        self.__listmodel.remove(i)
                     
         game = Game("Enter key",data.name,"")
         if PLATFORM_WINDOWS:
@@ -352,7 +352,7 @@ class NewSteamAppsDialog(Gtk.Dialog):
                 for i in reversed(range(self.__listmodel.get_n_items())):
                     item = self.__listmodel.get_item(i)
                     if item.appid == data.appid:
-                        self.__listmodel.remove(item)
+                        self.__listmodel.remove(i)
         
         dialog = Gtk.MessageDialog(buttons=Gtk.ButtonsType.YES_NO)
         dialog.set_transient_for(self)

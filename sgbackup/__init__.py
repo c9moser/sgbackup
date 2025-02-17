@@ -17,7 +17,7 @@
 ###############################################################################
 
 from . import _import_gtk
-from .version VERSION
+from .version import VERSION
 __version__ = VERSION
 from .settings import settings
 from . import _logging

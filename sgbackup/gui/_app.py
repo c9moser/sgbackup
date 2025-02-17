@@ -465,9 +465,17 @@ class GameView(Gtk.Box):
             child.backup_button.set_sensitive(False)
             
     def _on_columnview_backup_button_clicked(self,button,item):
+        def on_dialog_response(self,dialog,parent):
+            if hasattr(parent,'statusbar'):
+                parent.statusbar.pop(1)
+                
         game = item.get_item()
-        dialog = BackupSingleDialog(self.get_root(),game)
-        dialog.connect('response',on_dialog_response)
+        parent = self.get_root()
+        dialog = BackupSingleDialog(parent,game)
+        
+        if hasattr(parent,'statusbar'):
+            parent.statusbar.push(1,"Backing up \"{game}\" ...".format(game=game.name))
+        dialog.connect('response',on_dialog_response,parent)
         dialog.run()
     
     def _on_columnview_edit_button_clicked(self,button,item):

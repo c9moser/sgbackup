@@ -293,8 +293,6 @@ class NewSteamAppsDialog(Gtk.Dialog):
         child = item.get_child()
         data = item.get_item()
         
-        print("bind:",data.name)
-        
         child.name_label.set_markup("<span weight='bold' size='large'>{}</span>".format(GLib.markup_escape_text(data.name)))
         child.appid_label.set_text(str(data.appid))
         child.installdir_label.set_text(data.installdir)

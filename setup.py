@@ -8,18 +8,22 @@ import bz2
 
 PACKAGE_ROOT=os.path.dirname(__file__)
 
-sys.path.insert(0,PACKAGE_ROOT)
-import sgbackup
+VERSION="0.0.1"
+with open(os.path.join(PACKAGE_ROOT,'sgbackup','version.py'),'w') as version_file:
+    version_file.write("""# This file was automatically created by setup.py
+
+VERSION="{version}"
+""".format(version=VERSION))
 
 setup(
     name='sgbackup',
-    version=sgbackup.__version__
+    version=VERSION,
     description='A backup tool for savegames.',
     author="Christian Moser",
     author_email="christian@cmoser.eu",
     packages=[
         'sgbackup',
-        'sgbackup.archivers',
+        'sgbackup.archiver',
         'sgbackup.commands',
         'sgbackup.curses',
         'sgbackup.help',

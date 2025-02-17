@@ -17,8 +17,8 @@
 ###############################################################################
 
 from . import _import_gtk
-
-__version__ = "0.0.1"
+from .version VERSION
+__version__ = VERSION
 from .settings import settings
 from . import _logging
 from .main import cli_main,gui_main

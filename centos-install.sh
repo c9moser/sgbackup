@@ -4,7 +4,11 @@
 SELF="$(realpath "$0")"
 PROJECT_ROOT="$(dirname "$SELF")"
 : ${PYTHON_VENV_DIR:=${HOME}/.local/venv}
-"${PROJECT_ROOT}/centos-install-requirements.sh"
+
+if [ "$INSTALL_REQUIREMENTS" = "yes" ]; then
+    "${PROJECT_ROOT}/centos-install-requirements.sh"
+fi
+
 if [ ! -d "$PYTHON_VENV_DIR" ]; then
     mkdir -pv "$PYTHON_VENV_DIR"
 fi
@@ -52,6 +56,6 @@ exit_code=\$?
 deactivate
 exit \$exit_code
 EOF
-chmod +x "${PYTHON_VENV_DIR}/sgbackup/bin/gsbackup"
+chmod +x "${PYTHON_VENV_DIR}/sgbackup/bin/gsgbackup"
 ln -sv "${PYTHON_VENV_DIR}/sgbackup/bin/gsgbackup" ~/.local/bin/gsgbackup
 

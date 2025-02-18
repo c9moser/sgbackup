@@ -16,10 +16,14 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.   #
 ###############################################################################
 
-from gi.repository import Gtk,GLib
+from gi.repository import Gtk,GLib,GObject,Gio
 from ..game import GameManager,Game
 from ..archiver import ArchiverManager
 from threading import Thread,ThreadError
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 class BackupSingleDialog(Gtk.Dialog):
     def __init__(self,parent:Gtk.Window,game:Game):
@@ -97,4 +101,61 @@ class BackupSingleDialog(Gtk.Dialog):
         self.__am_signal_finished = am.connect('backup-game-finished',self._on_am_backup_game_finished)
         thread = Thread(target=_thread_func,args=(am,self.__game),daemon=True)
         thread.start()
+
+class BackupGameData(GObject.GObject):
+    def __init__(self,game:Game):
+        GObject.__init__(self)
+        self.__progress = 0.0
+        self.__game = game
+
+    @GObject.Property
+    def game(self)->Game:
+        return self.__game
+
+    @GObject.Property(type=float)
+    def progress(self)->float:
+        return self.__progress
+    
+    @progress.setter
+    def progress(self,fraction:float):
+        if fraction < 0.0:
+            fraction = 0.0
+        elif fraction > 1.0:
+            fraction = 1.0
+
+        self.__progress = fraction
+
+class BackupMultiDialog(Gtk.Dialog):
+    logger = logger.getChild('BackupMultiDialog')
+    def __init__(self,parent:Gtk.Window|None=None,games:list[Game]|None=None):
+        Gtk.Dialog.__init__(self)
+        if parent:
+            self.set_transient_for(parent)
+
+        self.__scrolled = Gtk.ScrolledWindow()
+        self.__games_liststore = Gio.Liststore(BackupGameData)
+
+        self.__ok_button = self.add_button("Close",Gtk.ResponseType.OK)
+
+        self.games = games
+
         
+
+    @GObject.Property
+    def games(self)->list[Game]:
+            return self.__games
+    
+    @games.setter
+    def games(self,games:list[Game]|None):
+        self.__games = []
+        if games:
+            for g in games:
+                if not isinstance(g,Game):
+                    self.__games = []
+                    raise TypeError("\"games\" is not an Iterable of \"Game\" instances!")
+                if g.get_backup_files():
+                    self.__games.append(Game)
+        if self.__games:
+            self.__ok_button.set_sensitive(False)
+        else:
+            self.__ok_button.set_sensitive(True)

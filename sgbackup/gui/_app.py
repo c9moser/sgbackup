@@ -29,7 +29,8 @@ from ..settings import settings
 from ._settingsdialog import SettingsDialog
 from ._gamedialog import GameDialog
 from ..game import Game,GameManager,SAVEGAME_TYPE_ICONS
-from ._steam import SteamLibrariesDialog,NewSteamAppsDialog
+from ._steam import SteamLibrariesDialog,NewSteamAppsDialog,NoNewSteamAppsDialog
+from ..steam import Steam
 from ._backupdialog import BackupSingleDialog
 from ..archiver import ArchiverManager
 
@@ -147,10 +148,7 @@ class GameView(Gtk.Box):
         backup_active_live_button.connect('clicked',self._on_backup_active_live_button_clicked)
         self.actionbar.pack_start(backup_active_live_button)
         
-        
-        
         # Add a the search entry
-        
         self.__search_entry = Gtk.Entry()
         self.__search_entry.set_hexpand(True)
         self.actionbar.pack_end(self.__search_entry)
@@ -275,10 +273,15 @@ class GameView(Gtk.Box):
         dialog.present()
         
     def _on_new_steam_games_button_clicked(self,button):
-        dialog = NewSteamAppsDialog(parent=self.get_root())
-        dialog.connect('response',self._on_new_steamapps_dialog_response)
-        dialog.present()
-        
+        steam = Steam()
+        if steam.find_new_steamapps():
+            dialog = NewSteamAppsDialog(parent=self.get_root())
+            dialog.connect('response',self._on_new_steamapps_dialog_response)
+            dialog.present()
+        else:
+            dialog = NoNewSteamAppsDialog(parent=self.get_root())
+            dialog.present()
+
     def _on_backup_active_live_button_clicked(self,button):
         backup_games = []
         for i in range(self._liststore.get_n_items()):
@@ -1004,10 +1007,15 @@ class Application(Gtk.Application):
         def on_dialog_response(dialog,response):
             self.appwindow.refresh()
             
-        dialog = NewSteamAppsDialog(self.appwindow)
-        dialog.connect('response',on_dialog_response)
-        dialog.present()
-        
+        steam = Steam()
+        if steam.find_new_steamapps():
+            dialog = NewSteamAppsDialog(self.appwindow)
+            dialog.connect('response',on_dialog_response)
+            dialog.present()
+        else:
+            dialog = NoNewSteamAppsDialog(self.appwindow)
+            dialog.present()
+
     def new_settings_dialog(self)->SettingsDialog:
         """
         new_settings_dialog Create a new `SettingsDialog`.

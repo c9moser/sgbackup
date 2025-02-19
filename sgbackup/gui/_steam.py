@@ -376,5 +376,17 @@ class NewSteamAppsDialog(Gtk.Dialog):
             
     def do_response(self,response):
         self.hide()
-        self.destroy()        
-    
+        self.destroy()
+
+class NoNewSteamAppsDialog(Gtk.MessageDialog):
+    def __init__(self,parent:Gtk.Window|None=None):
+        Gtk.MessageDialog.__init__(self,buttons=Gtk.ButtonsType.OK)
+        if parent:
+            self.set_transient_for(parent)
+
+        self.props.text = "There were no new Steam-Apps found!"
+        self.props.use_markup = False
+
+    def do_response(self,response):
+        self.hide()
+        self.destroy()

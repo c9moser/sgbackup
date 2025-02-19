@@ -104,14 +104,19 @@ class BackupSingleDialog(Gtk.Dialog):
 
 class BackupGameData(GObject.GObject):
     def __init__(self,game:Game):
-        GObject.__init__(self)
+        GObject.GObject.__init__(self)
         self.__progress = 0.0
         self.__game = game
+        self.__finished = False
 
     @GObject.Property
     def game(self)->Game:
         return self.__game
 
+    @GObject.Property(type=str)
+    def key(self)->str:
+        return self.__game.key
+        
     @GObject.Property(type=float)
     def progress(self)->float:
         return self.__progress
@@ -124,6 +129,42 @@ class BackupGameData(GObject.GObject):
             fraction = 1.0
 
         self.__progress = fraction
+        
+    @GObject.Property(type=bool,nick='finished',default=False)
+    def finished(self)->bool:
+        return self.__finished
+    
+    @finished.setter
+    def finished(self,is_finished:bool):
+        self.__finished = is_finished
+        
+class BackupGameDataSorter(Gtk.Sorter):
+    def do_compare(self,item1,item2):
+        name1 = item1.game.name.lower()
+        name2 = item2.game.name.lower()
+        
+        if item1.finsihed:
+            if not item2.finished:
+                return Gtk.Ordering.LARGER
+            elif name1 > name2:
+                return Gtk.Ordering.LARGER
+            elif name1 > name2:
+                return Gtk.Ordering.SMALLER
+            else:
+                return Gtk.Ordering.EQUAL
+        elif item2.finished:
+            return Gtk.Ordering.SMALLER
+        elif item1.progress > item2.progress:
+            return Gtk.Ordering.LARGER
+        elif item1.progress < item2.progress:
+            return Gtk.Ordering.SMALLER
+        elif name1 > name2:
+            return Gtk.Ordering.LARGER
+        elif name1 < name2:
+            return Gtk.Ordering.SMALLER
+        else:
+            return Gtk.Ordering.EQUAL
+
 
 class BackupMultiDialog(Gtk.Dialog):
     logger = logger.getChild('BackupMultiDialog')
@@ -131,14 +172,39 @@ class BackupMultiDialog(Gtk.Dialog):
         Gtk.Dialog.__init__(self)
         if parent:
             self.set_transient_for(parent)
-
+        self.set_decorated(False)
+        self.set_modal(False)
+        
         self.__scrolled = Gtk.ScrolledWindow()
-        self.__games_liststore = Gio.Liststore(BackupGameData)
+        self.__games_liststore = Gio.ListStore(BackupGameData)
+        self.__games_sortmodel = Gtk.SortListModel.new(self.__games_liststore,
+                                                       BackupGameDataSorter())
+        name_factory = Gtk.SignalListItemFactory()
+        name_factory.connect('setup',self._on_column_name_setup)
+        name_factory.connect('bind',self._on_column_name_bind)
+        name_column = Gtk.ColumnViewColumn.new('Name',name_factory)
+        
+        progress_factory = Gtk.SignalListItemFactory()
+        progress_factory.connect('setup',self._on_column_progress_setup)
+        progress_factory.connect('bind',self._on_column_progress_bind)
+        progress_column = Gtk.ColumnViewColumn.new('Progress',progress_factory)
+        progress_column.set_expand(True)
+        
+        self.__games_columnview = Gtk.ColumnView.new(self.__games_sortmodel)
+        self.__games_columnview.append_column(name_column)
+        self.__games_columnview.append_column(progress_column)
+        
+        self.__scrolled.set_child(self.__games_columnview)
+        self.get_content_area().append(self.__scrolled)
+        
+        self.__progressbar = Gtk.ProgressBar()
+        self.__progressbar.set_hexpand(True)
+        self.__progressbar.set_show_text(False)
+        self.get_content_area().append(self.__progressbar)
 
         self.__ok_button = self.add_button("Close",Gtk.ResponseType.OK)
-
+        
         self.games = games
-
         
 
     @GObject.Property
@@ -151,11 +217,111 @@ class BackupMultiDialog(Gtk.Dialog):
         if games:
             for g in games:
                 if not isinstance(g,Game):
-                    self.__games = []
+                    self.__games = {}
                     raise TypeError("\"games\" is not an Iterable of \"Game\" instances!")
                 if g.get_backup_files():
-                    self.__games.append(Game)
+                    self.__games.append(g)
         if self.__games:
             self.__ok_button.set_sensitive(False)
         else:
             self.__ok_button.set_sensitive(True)
+        
+    def do_response(self,response):
+        self.hide()
+        self.destroy()
+        
+    def run(self):
+        def thread_func(self,games):
+            am = ArchiverManager.get_global()
+            am.backup_many(games)
+            return 0
+        
+        def on_am_backup_game_progress(am,game,progress,message):
+            GLib.idle_add(self._on_backup_game_progress,game,progress)
+            
+        def on_am_backup_game_finished(am,game):
+            GLib.idle_add(self._on_backup_game_finished,game)
+            
+        def on_am_backup_progress(am,progress):
+            GLib.idle_add(self._on_backup_progress)
+            
+        def on_am_backup_finished(am):
+            GLib.idle_add(self._on_backup_finished)
+            
+        if not self.games:
+            self.response(Gtk.Response.OK)
+            return
+        
+        self.present()
+        
+        am = ArchiverManager.get_global()
+        am.connect('backup-progress',on_am_backup_progress)
+        am.connect('backup-finished',on_am_backup_finished)
+        am.connect('backup-game-progress',on_am_backup_game_progress)
+        am.connect('backup-game-finished',on_am_backup_game_finished)
+        
+        thread = Thread(target=thread_func,args=(list(self.__games),),daemon=True)
+        thread.start()        
+        
+    def _on_column_name_setup(self,factory,item):
+        label = Gtk.Label()
+        label.set_xalign(0.0)
+        item.set_child(label)
+        
+    def _on_column_name_bind(self,factory,item):
+        label = item.get_child()
+        data = item.get_item()
+        label.set_text(data.game.name)
+        
+    def _on_column_progress_setup(self,factory,item):
+        progressbar = Gtk.ProgressBar()
+        progressbar.set_show_text(False)
+        progressbar.set_hexpand(True)
+        item.set_child(progressbar)
+        
+    def _on_column_progress_bind(self,factory,item):
+        progressbar = item.get_child()
+        data = item.get_item()
+        
+        if not hasattr(progressbar,'_property_progress_binding'):
+            progressbar._property_progress_binding = data.bind_property('progress',progressbar,'fraction',GObject.BindingFlags.SYNC_CREATE)
+            
+    def _on_backup_game_progress(self,game:Game,progress:float):
+        for i in reversed(range(self.__games_liststore.get_n_items())):
+            gamedata = self.__games_liststore.get_item(i)
+            if gamedata.key == game.key:
+                gamedata.progress = progress
+                return
+        gamedata = BackupGameData(game)
+        gamedata.progress = progress
+        self.__games_liststore.append(gamedata)
+        
+        return False
+        
+    def _on_backup_game_finished(self,game):
+        for i in reversed(range(self.__games_liststore.get_n_items())):
+            gamedata = self.__games_liststore.get_item(i)
+            if gamedata.key == game.key:
+                gamedata.progress = 1.0
+                gamedata.finished = True
+                return
+        gamedata = BackupGameData(game)
+        gamedata.progress = 1.0
+        gamedata.finished = True
+        self.__games_liststore.append(gamedata)
+        
+        return False
+        
+    def _on_backup_progress(self,progress:float):
+        self.__progressbar.set_fraction(progress)
+        
+        return False
+        
+    def _on_backup_finished(self):
+        self.__progressbar.set_fraction(1.0)
+        self.__ok_button.set_sensitive(True)
+        self.set_decorated(True)
+        
+        return False
+        
+        

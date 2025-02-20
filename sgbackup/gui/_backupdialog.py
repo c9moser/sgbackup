@@ -46,12 +46,9 @@ class BackupSingleDialog(Gtk.Dialog):
         self.__progressbar.set_fraction(0.0)
         
         self.get_content_area().append(self.__progressbar)
-        self.set_modal(False)
+        self.set_modal(True)
         
         self.__ok_button = self.add_button('Close',Gtk.ResponseType.OK)
-        self.__am_signal_progress = None
-        self.__am_signal_finished = None
-        
         
     def _on_propgress(self,fraction,message):
         self.__progressbar.set_text(message if message else "Working ...")
@@ -70,11 +67,11 @@ class BackupSingleDialog(Gtk.Dialog):
         
         if self.__am_signal_finished is not None:
             am.disconnect(self.__am_signal_finished)
-            self.__am_signal_finished = None
+            del self.__am_signal_finished
             
         if self.__am_signal_progress is not None:
             am.disconnect(self.__am_signal_progress)
-            self.__am_signal_progress = None
+            del self.__am_signal_progress
             
         #if settings.backup_dialog_close_when_finished:
         #    self.response(Gtk.ResponseType.OK)
@@ -97,8 +94,10 @@ class BackupSingleDialog(Gtk.Dialog):
         
         
         am = ArchiverManager.get_global()
-        self.__am_signal_progress = am.connect('backup-game-progress',self._on_am_backup_game_progress)
-        self.__am_signal_finished = am.connect('backup-game-finished',self._on_am_backup_game_finished)
+        if not hasattr(self,'__am_signal_progress'):
+            self.__am_signal_progress = am.connect('backup-game-progress',self._on_am_backup_game_progress)
+        if not hasattr(self,'__am_signal_finished'):
+            self.__am_signal_finished = am.connect('backup-game-finished',self._on_am_backup_game_finished)
         thread = Thread(target=_thread_func,args=(am,self.__game),daemon=True)
         thread.start()
 
@@ -143,7 +142,7 @@ class BackupGameDataSorter(Gtk.Sorter):
         name1 = item1.game.name.lower()
         name2 = item2.game.name.lower()
         
-        if item1.finsihed:
+        if item1.finished:
             if not item2.finished:
                 return Gtk.Ordering.LARGER
             elif name1 > name2:
@@ -166,19 +165,23 @@ class BackupGameDataSorter(Gtk.Sorter):
             return Gtk.Ordering.EQUAL
 
 
-class BackupMultiDialog(Gtk.Dialog):
+class BackupManyDialog(Gtk.Dialog):
     logger = logger.getChild('BackupMultiDialog')
     def __init__(self,parent:Gtk.Window|None=None,games:list[Game]|None=None):
         Gtk.Dialog.__init__(self)
         if parent:
             self.set_transient_for(parent)
         self.set_decorated(False)
-        self.set_modal(False)
+        self.set_modal(True)
+        self.set_default_size(640,480)
         
         self.__scrolled = Gtk.ScrolledWindow()
-        self.__games_liststore = Gio.ListStore(BackupGameData)
+        self.__games_liststore = Gio.ListStore.new(BackupGameData)
+        self.__games_progress_sorter = BackupGameDataSorter()
         self.__games_sortmodel = Gtk.SortListModel.new(self.__games_liststore,
-                                                       BackupGameDataSorter())
+                                                       self.__games_progress_sorter)
+        self.__games_selection = Gtk.SingleSelection.new(self.__games_sortmodel)
+        
         name_factory = Gtk.SignalListItemFactory()
         name_factory.connect('setup',self._on_column_name_setup)
         name_factory.connect('bind',self._on_column_name_bind)
@@ -190,11 +193,13 @@ class BackupMultiDialog(Gtk.Dialog):
         progress_column = Gtk.ColumnViewColumn.new('Progress',progress_factory)
         progress_column.set_expand(True)
         
-        self.__games_columnview = Gtk.ColumnView.new(self.__games_sortmodel)
+        self.__games_columnview = Gtk.ColumnView.new(self.__games_selection)
+        self.__games_columnview.set_vexpand(True)
         self.__games_columnview.append_column(name_column)
         self.__games_columnview.append_column(progress_column)
         
         self.__scrolled.set_child(self.__games_columnview)
+        self.__scrolled.set_vexpand(True)
         self.get_content_area().append(self.__scrolled)
         
         self.__progressbar = Gtk.ProgressBar()
@@ -221,18 +226,17 @@ class BackupMultiDialog(Gtk.Dialog):
                     raise TypeError("\"games\" is not an Iterable of \"Game\" instances!")
                 if g.get_backup_files():
                     self.__games.append(g)
-        if self.__games:
-            self.__ok_button.set_sensitive(False)
-        else:
-            self.__ok_button.set_sensitive(True)
+        #if self.__games:
+            #self.__ok_button.set_sensitive(False)
+        #else:
+            #self.__ok_button.set_sensitive(True)
         
     def do_response(self,response):
         self.hide()
         self.destroy()
         
     def run(self):
-        def thread_func(self,games):
-            am = ArchiverManager.get_global()
+        def thread_func(am,games):
             am.backup_many(games)
             return 0
         
@@ -243,25 +247,39 @@ class BackupMultiDialog(Gtk.Dialog):
             GLib.idle_add(self._on_backup_game_finished,game)
             
         def on_am_backup_progress(am,progress):
-            GLib.idle_add(self._on_backup_progress)
+            GLib.idle_add(self._on_backup_progress,progress)
             
         def on_am_backup_finished(am):
             GLib.idle_add(self._on_backup_finished)
             
         if not self.games:
+            print("no games to backup!")
+            self.desotroy()
             self.response(Gtk.Response.OK)
             return
         
-        self.present()
         
         am = ArchiverManager.get_global()
-        am.connect('backup-progress',on_am_backup_progress)
-        am.connect('backup-finished',on_am_backup_finished)
-        am.connect('backup-game-progress',on_am_backup_game_progress)
-        am.connect('backup-game-finished',on_am_backup_game_finished)
         
-        thread = Thread(target=thread_func,args=(list(self.__games),),daemon=True)
+        if not hasattr(self,'__signal_backup_progress'):
+            self.__signal_backup_progress =  am.connect('backup-progress',
+                                                        on_am_backup_progress)
+        if not hasattr(self,'__signal_backup_finished'):
+            self.__signal_backup_finished = am.connect('backup-finished',
+                                                       on_am_backup_finished)    
+        if not hasattr(self,'__signal_backup_game_progress'):
+            self.__signal_backup_game_progress = am.connect('backup-game-progress',
+                                                            on_am_backup_game_progress)    
+        if not hasattr(self,'__signal_backup_game_finished'):
+            self.__signal_backup_game_finished = am.connect('backup-game-finished',
+                                                            on_am_backup_game_finished)
+                
+        print ("Starting thread")
+        print(self.games)
+        thread = Thread(target=thread_func,args=(am,list(self.__games)),daemon=True)
+        self.present()
         thread.start()        
+        
         
     def _on_column_name_setup(self,factory,item):
         label = Gtk.Label()
@@ -291,10 +309,13 @@ class BackupMultiDialog(Gtk.Dialog):
             gamedata = self.__games_liststore.get_item(i)
             if gamedata.key == game.key:
                 gamedata.progress = progress
+                self.__games_progress_sorter.changed(Gtk.SorterChange.DIFFERENT)
                 return
         gamedata = BackupGameData(game)
         gamedata.progress = progress
         self.__games_liststore.append(gamedata)
+        vadjustment = self.__scrolled.get_vadjustment()
+        vadjustment.set_value(vadjustment.get_upper() - vadjustment.get_page_size())
         
         return False
         
@@ -304,11 +325,15 @@ class BackupMultiDialog(Gtk.Dialog):
             if gamedata.key == game.key:
                 gamedata.progress = 1.0
                 gamedata.finished = True
+                self.__games_progress_sorter.changed(Gtk.SorterChange.DIFFERENT)
                 return
         gamedata = BackupGameData(game)
         gamedata.progress = 1.0
         gamedata.finished = True
         self.__games_liststore.append(gamedata)
+        self.__games_progress_sorter.changed(Gtk.SorterChange.DIFFERENT)
+        vadjustment = self.__scrolled.get_vadjustment()
+        vadjustment.set_value(vadjustment.get_upper() - vadjustment.get_page_size())
         
         return False
         
@@ -321,6 +346,20 @@ class BackupMultiDialog(Gtk.Dialog):
         self.__progressbar.set_fraction(1.0)
         self.__ok_button.set_sensitive(True)
         self.set_decorated(True)
+        
+        am = ArchiverManager.get_global()
+        if hasattr(self,'__signal_backup_game_finished'):
+            am.diconnect(self.__signal_backup_game_finished)
+            del self.__signal_backup_game_finished
+        if hasattr(self,'__signal_backup_game_progress'):
+            am.disconnect(self.__signal_backup_game_progress)
+            del self.__signal_backup_game_progress
+        if hasattr(self,'__signal_backup_finished'):
+            am.disconnect(self.__signal_backup_finished)
+            del self.__signal_backup_finished
+        if hasattr(self,'__signal_backup_progress'):
+            am.disconnect(self.__signal_backup_progress)
+            del self.__signal_backup_progress
         
         return False
         

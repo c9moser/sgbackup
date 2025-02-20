@@ -157,13 +157,6 @@ class ArchiverManager(GObject):
     def archivers(self):
         return self.__archivers
     
-    def _on_archiver_backup_progress_single(self,game:Game,fraction:float,message:str):
-        self.emit('backup-game-progress',game,fraction,str)
-    
-    def _on_archiver_backup_progress_multi(self,fraction):
-        self.emit('backup-progress',fraction)
-    
-    
     @Signal(name="backup-game-progress",return_type=None,arg_types=(Game,float,str),flags=SignalFlags.RUN_FIRST)
     def do_backup_game_progress(self,game,fraction,message):
         pass
@@ -198,7 +191,7 @@ class ArchiverManager(GObject):
             if not multi_backups:
                 self.emit("backup-progress",fraction)
             
-        if self.backup_in_progress:
+        if not multi_backups and self.backup_in_progress:
             raise RuntimeError("A backup is already in progress!!!")
         
         self.backup_in_progress = True
@@ -220,59 +213,79 @@ class ArchiverManager(GObject):
         self.backup_in_progress = False
         
     def backup_many(self,games:list[Game]):
-        def on_game_progress(game,fraction,message,game_progress):
-            with game_progress._mutex:
+        def on_game_progress(archiver,game,fraction,message,game_progress,mutex):
+            with mutex:
                 game_progress[game.key] = fraction
                 sum_fractions = 0.0
                 for f in game_progress.values():
                     sum_fractions += f
                 n = len(game_progress)
             
-            self._on_archiver_backup_progress_multi(sum_fractions/n if n > 0 else 0.0)
-            
+            progress = ((sum_fractions / n) if n > 0 else 1.0)
+            if progress < 0.0:
+                progress = 0.0
+            elif progress > 1.0:
+                progress = 1.0
+                
+            self.emit('backup-progress',progress)
             
         def thread_function(game):
-            archiver = self.standard_archiver
             self.backup(game,True)
+
         
         if self.backup_in_progress:
             raise RuntimeError("A backup is already in progress!!!")
         self.backup_in_progress = True
         game_list = list(games)
-        game_progress = dict(((game.key,0.0) for game in game_list))
-        game_progress._mutex = threading.RLock()
-        game_progress._game_progress_connection = self.connect('backup-game-progress',game_progress)
+        print(games)
+        game_progress = dict([(game.key,0.0) for game in game_list])
+        mutex = threading.RLock()
+        
+        self.__backup_many_game_progress_connection = self.connect('backup-game-progress',on_game_progress,game_progress,mutex)
         threadpool = {}
         
-        if len(game_list) > settings.backup_threads:
-            n = settings.backup_threads
+        if settings.backup_threads == 0:
+            backup_threads = 1
+        else:
+            backup_threads = settings.backup_threads
+        if len(game_list) > backup_threads:
+            n = backup_threads
         else:
             n = len(games)
             
+        print("Starting backup with {n} threads".format(n=n))
+        
         for i in range(n):
             game=game_list[0]
             del game_list[0]
             
-            thread = threading.Thread(thread_function,args=game,daemon=True)
-            threadpool.append(thread)
+            
+            thread = threading.Thread(target=thread_function,args=(game,),daemon=True)
+            threadpool[i]=thread
             thread.start()
         
         while threadpool:
-            time.sleep(0.02)
-            for i in range(len(threadpool)):
+            rm_thread=[]
+            for i in threadpool.keys():
                 thread = threadpool[i]
                 if thread.is_alive():
                     continue
-                del threadpool[i]
                 
                 if game_list:
                     game = game_list[0]
                     del game_list[0]
-                    thread = threading.Thread(thread_function,args=game,daemon=True)
-                    threadpool.append(thread)
+                    thread = threading.Thread(target=thread_function,args=(game,),daemon=True)
+                    threadpool[i] = thread
                     thread.start()
+                else:
+                    rm_thread.append(i)
                     
-        self.disconnect(game_progress._game_progress_connection)
+            for i in rm_thread:
+                del threadpool[i]
+                    
+            time.sleep(0.02)
+                    
+        self.disconnect(self.__backup_many_game_progress_connection)
         self.emit("backup-finished")
         self.backup_in_progress = False
         

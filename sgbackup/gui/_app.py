@@ -31,7 +31,7 @@ from ._gamedialog import GameDialog
 from ..game import Game,GameManager,SAVEGAME_TYPE_ICONS
 from ._steam import SteamLibrariesDialog,NewSteamAppsDialog,NoNewSteamAppsDialog
 from ..steam import Steam
-from ._backupdialog import BackupSingleDialog
+from ._backupdialog import BackupSingleDialog,BackupManyDialog
 from ..archiver import ArchiverManager
 
 
@@ -289,10 +289,10 @@ class GameView(Gtk.Box):
             if game.is_live and game.is_active and os.path.exists(os.path.join(game.savegame_root,game.savegame_dir)):
                 backup_games.append(game)
          
-        # TODO:       
-        #dialog =  BackupManyDialog(parent=self.get_root(),games=backup_games)
-        #dialog.set_modal(False)
-        #dialog.present()
+ 
+        dialog =  BackupManyDialog(parent=self.get_root(),games=backup_games)
+        dialog.set_modal(False)
+        dialog.run()
         
     def _on_icon_column_setup(self,factory,item):
         image = Gtk.Image()

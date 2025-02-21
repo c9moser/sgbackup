@@ -144,19 +144,19 @@ class BackupGameDataSorter(Gtk.Sorter):
         
         if item1.finished:
             if not item2.finished:
-                return Gtk.Ordering.LARGER
+                return Gtk.Ordering.SMALLER
             elif name1 > name2:
                 return Gtk.Ordering.LARGER
-            elif name1 > name2:
+            elif name1 < name2:
                 return Gtk.Ordering.SMALLER
             else:
                 return Gtk.Ordering.EQUAL
         elif item2.finished:
-            return Gtk.Ordering.SMALLER
-        elif item1.progress > item2.progress:
             return Gtk.Ordering.LARGER
-        elif item1.progress < item2.progress:
+        elif item1.progress > item2.progress:
             return Gtk.Ordering.SMALLER
+        elif item1.progress < item2.progress:
+            return Gtk.Ordering.LARGER
         elif name1 > name2:
             return Gtk.Ordering.LARGER
         elif name1 < name2:

@@ -28,7 +28,7 @@ from pathlib import Path
 from ..settings import settings
 from ._settingsdialog import SettingsDialog
 from ._gamedialog import GameDialog
-from ..game import Game,GameManager,SAVEGAME_TYPE_ICONS
+from ..game import Game,GameManager,SAVEGAME_TYPE_ICONS,SavegameType
 from ._steam import SteamLibrariesDialog,NewSteamAppsDialog,NoNewSteamAppsDialog
 from ..steam import Steam
 from ._backupdialog import BackupSingleDialog,BackupManyDialog
@@ -532,13 +532,43 @@ class BackupViewData(GObject):
         self.__filename = filename
         
         basename = os.path.basename(filename)
-        self.__is_live = (os.path.basename(os.path.dirname(filename)) == 'live')
         parts = basename.split('.')
+        
         self.__savegame_name = parts[0]
-        self.__timestamp = DateTime.strptime(parts[2],"%Y%m%d-%H%M%S")
+        self.__timestamp = DateTime.strptime(parts[1],"%Y%m%d-%H%M%S")
+        self.__is_live = parts[3] == 'live'
+        self.__sgtype = SavegameType.from_string(parts[2])
         
-        self.__extension = '.' + '.'.join(parts[3:])
+            
+        WINDOWS_TYPES = [
+            SavegameType.WINDOWS,
+            SavegameType.STEAM_WINDOWS,
+            SavegameType.EPIC_WINDOWS,
+            SavegameType.GOG_WINDOWS,
+        ]
+        LINUX_TYPES = [
+            SavegameType.LINUX,
+            SavegameType.STEAM_LINUX,
+            SavegameType.EPIC_LINUX,
+            SavegameType.GOG_LINUX,
+        ]
+        MACOS_TYPES = [
+            SavegameType.MACOS,
+            SavegameType.STEAM_MACOS,
+        ]
         
+        if self.__sgtype in WINDOWS_TYPES:
+            self.__sgos = 'windows'
+        elif self.__sgtype in LINUX_TYPES:
+            self.__sgos = 'linux'
+        elif self.__sgtype in MACOS_TYPES:
+            self.__sgos = 'macos'
+        else:
+            self.__sgos = ''
+            
+        self.__extension = '.' + '.'.join(parts[5:])
+        
+    
     @property
     def game(self)->Game:
         """
@@ -547,6 +577,24 @@ class BackupViewData(GObject):
         :type: Game
         """
         return self.__game
+    
+    @Property
+    def savegame_type(self)->SavegameType:
+        return self.__sgtype
+    
+    @Property(type=str)
+    def savegame_type_icon_name(self)->str:
+        return SAVEGAME_TYPE_ICONS[self.__sgtype]
+    
+    @Property(type=str)
+    def savegame_os_icon_name(self)->str:
+        if self.__sgos:
+            return SAVEGAME_TYPE_ICONS[self.__sgos]
+        return ""
+    
+    @Property(type=str)
+    def ostype_icon_name(self):
+        pass
     
     @Property(type=str)
     def savegame_name(self)->str:
@@ -618,6 +666,16 @@ class BackupView(Gtk.Box):
         self.__liststore = Gio.ListStore()
         selection = Gtk.SingleSelection.new(self.__liststore)
         
+        sgtype_factory = Gtk.SignalListItemFactory()
+        sgtype_factory.connect('setup',self._on_sgtype_column_setup)
+        sgtype_factory.connect('bind',self._on_sgtype_column_bind)
+        sgtype_column = Gtk.ColumnViewColumn.new("",sgtype_factory)
+        
+        sgos_factory = Gtk.SignalListItemFactory()
+        sgos_factory.connect('setup',self._on_sgos_column_setup)
+        sgos_factory.connect('bind',self._on_sgos_column_bind)
+        sgos_column = Gtk.ColumnViewColumn.new("OS",sgos_factory)
+        
         live_factory = Gtk.SignalListItemFactory()
         live_factory.connect('setup',self._on_live_column_setup)
         live_factory.connect('bind',self._on_live_column_bind)
@@ -640,6 +698,8 @@ class BackupView(Gtk.Box):
         size_column = Gtk.ColumnViewColumn.new("Size",size_factory)
         
         self.__columnview = Gtk.ColumnView.new(selection)
+        self.__columnview.append_column(sgtype_column)
+        self.__columnview.append_column(sgos_column)
         self.__columnview.append_column(live_column)
         self.__columnview.append_column(sgname_column)
         self.__columnview.append_column(timestamp_column)
@@ -662,6 +722,27 @@ class BackupView(Gtk.Box):
         """
         return self.__gameview
 
+    def _on_sgtype_column_setup(self,factory,item):
+        icon = Gtk.Image()
+        icon.set_pixel_size(16)
+        item.set_child(icon)
+        
+    def _on_sgtype_column_bind(self,factory,item):
+        icon = item.get_child()
+        data = item.get_item()
+        icon.set_from_icon_name(data.savegame_type_icon_name)
+        
+    def _on_sgos_column_setup(self,factory,item):
+        icon = Gtk.Image()
+        icon.set_pixel_size(16)
+        item.set_child(icon)
+        
+    def _on_sgos_column_bind(self,factory,item):
+        icon = item.get_child()
+        data = item.get_item()
+        if data.savegame_os_icon_name:
+            icon.set_from_icon_name(data.savegame_os_icon_name)
+        
     def _on_live_column_setup(self,factory,item):
         checkbutton = Gtk.CheckButton()
         checkbutton.set_sensitive(False)

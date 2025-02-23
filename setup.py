@@ -31,6 +31,7 @@ setup(
     ],
     package_data={
         'sgbackup':[
+            'logger.conf',
             'icons/sgbackup.ico',
             'icons/hicolor/symbolic/*/*.svg'
         ],

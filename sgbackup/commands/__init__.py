@@ -20,7 +20,7 @@ import os
 
 COMMANDS = {}
 
-_mods = ['commandbase']
+_mods = []
 
 for _f in os.listdir(os.path.dirname(__file__)):
     if _f.startswith('_'):
@@ -35,14 +35,11 @@ for _f in os.listdir(os.path.dirname(__file__)):
         if _m not in _mods:
             exec("\n".join([
                 "from . import " + _m,
-                "_mods += _m",
+                "_mods.append(_m)",
                 "_mod = " + _m]))
-            if hasattr(_mod,"COMMANDS") and len(_mod.COMMANDS) > 0:
-                for _cmd in _mod.COMMANDS:
-                    COMMANDS[_cmd.get_id()] = _cmd
-                del _cmd
+            if hasattr(_mod,"COMMANDS"): #and _mod.COMMANDS:
+                COMMANDS.update(_mod.COMMANDS)
                     
 del _mods
 del _f
 del _m
-del _mod

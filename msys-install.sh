@@ -23,7 +23,8 @@ if [ ! -d "$bindir" ]; then
     mkdir -p "$bindir"
 fi
 
-pythonpath="$( python -c 'import sys; print(sys.executable)' )" 
+pythonpath="$( python -c 'import sys; print(sys.executable)' )"
+pythonwpath="$( pythonw -c 'import sys; print(sys.executable)' )"
 cat > "${bindir}/sgbackup" << EOF
 #!/bin/bash
 
@@ -52,7 +53,7 @@ install_ps1="${PRJECT_DIR}/install.ps1"
 wproject_dir="$( cygpath -w "${PROJECT_DIR}" )"
 
 cat > "$install_ps1" << EOF
-[Environment]::SetEnvironemtnVariable("Path","\$env:PATH;$wbindir","User")
+[Environment]::SetEnvironmentVariable("Path","\$env:PATH;$wbindir","User")
 
 \$desktop_dir=[Environment]::getFolderPath("Desktop")
 \$startmenu_dir=[Environment]::getFolderPath("StartMenu")
@@ -62,8 +63,9 @@ Copy-Item -Path "$wproject_dir\\sgbackup\\icons\\sgbackup.ico" -Destination "\$p
 
 foreach (\$dir in \$desktop_dir,\$startmenu_dir) {
     \$shell=New-Object -ComObject WScript.Shell
-    \$shortcut=\$shell.CreateShortcut('\$dir\\sgbackup.lnk')
-    \$shortcut.TargetPath='$wbindir\\gsgbackup.cmd'
+    \$shortcut=\$shell.CreateShortcut("\$dir\\sgbackup.lnk")
+    \$shortcut.TargetPath='$pythonwpath'
+    \$shortcut.Arguments='-m sgbackup.gui'
     \$shortcut.IconLocation="\$picture_dir\\sgbackup.ico"
     \$shortcut.Save()
 }

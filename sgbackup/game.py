@@ -144,6 +144,19 @@ class SavegameType(StrEnum):
         return st.UNSET
     
     
+VALID_SAVEGAME_TYPES = [
+    SavegameType.WINDOWS,
+    SavegameType.LINUX,
+    SavegameType.MACOS,
+    SavegameType.STEAM_LINUX,
+    SavegameType.STEAM_MACOS,
+    SavegameType.STEAM_WINDOWS,
+    #SavegameType.EPIC_LINUX,
+    #SavegameType.EPIC_WINDOWS,
+    #SavegameType.GOG_LINUX,
+    #SavegameType.GOG_WINDOWS,
+]
+
 SAVEGAME_TYPE_ICONS = {
     SavegameType.UNSET : None,
     SavegameType.WINDOWS: 'windows-svgrepo-com-symbolic',

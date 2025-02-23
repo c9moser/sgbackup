@@ -29,7 +29,7 @@ import os
 import threading
 import time
 
-from ..game import Game
+from ..game import Game,SavegameType,VALID_SAVEGAME_TYPES,SAVEGAME_TYPE_ICONS
 from ..settings import settings
 from ..utility import sanitize_path,sanitize_windows_path
 
@@ -72,9 +72,8 @@ class Archiver(GObject):
         return False
             
     def backup(self,game:Game)->bool:
-        self._logger.info("Backing up {game}".format(game=game.key))
         if not game.get_backup_files():
-            self._logger.warning("No files SaveGame files for game {game}!".format(game=game.key))
+            self._logger.warning("[backup] No files SaveGame files for game {game}!".format(game=game.key))
             return False
         
         filename = self.generate_new_backup_filename(game)
@@ -82,18 +81,24 @@ class Archiver(GObject):
         if not os.path.isdir(dirname):
             os.makedirs(dirname)
             
-        self._logger.info("Backing up {game} -> {filename}".format(
+        self._logger.info("[backup] {game} -> {filename}".format(
             game=game.key,filename=filename))
         return self.emit('backup',game,filename)
     
     def generate_new_backup_filename(self,game:Game)->str:
         dt = datetime.datetime.now()
+        
         basename = '.'.join((game.savegame_name,
-                            game.savegame_subdir,
                             dt.strftime("%Y%m%d-%H%M%S"),
+                            game.savegame_type.value,
+                            game.savegame_subdir,
                             "sgbackup",
                             self.extensions[0][1:] if self.extensions[0].startswith('.') else self.extensions[0]))
-        return sanitize_path(os.path.join(settings.backup_dir,game.savegame_name,game.subdir,basename))
+        return sanitize_path(os.path.join(settings.backup_dir,
+                                          game.savegame_name,
+                                          game.savegame_type.value,
+                                          game.subdir,
+                                          basename))
         
     def _backup_progress(self,game:Game,fraction:float,message:str|None):
         if fraction > 1.0:
@@ -201,10 +206,11 @@ class ArchiverManager(GObject):
         archiver.backup(game)
         archiver.disconnect(backup_sc)
         if game.is_live and settings.backup_versions > 0:
-            backups = sorted(self.get_live_backups(game))
+            backups = sorted(self.get_live_backups_for_type(game,game.savegame_type),reverse=True)
             if backups and len(backups) > settings.backup_versions:
                 for filename in backups[settings.backup_versions:]:
                     self.remove_backup(game,filename)
+                    
             
             
         self.emit("backup-game-finished",game)
@@ -253,8 +259,6 @@ class ArchiverManager(GObject):
         else:
             n = len(games)
             
-        print("Starting backup with {n} threads".format(n=n))
-        
         for i in range(n):
             game=game_list[0]
             del game_list[0]
@@ -307,34 +311,48 @@ class ArchiverManager(GObject):
         
     def get_live_backups(self,game:Game):
         ret = []
-        backupdir = os.path.join(settings.backup_dir,game.savegame_name,'live')
+        for sgtype in VALID_SAVEGAME_TYPES:
+            backupdir = os.path.join(settings.backup_dir,game.savegame_name,sgtype.value,'live')
         
-        if os.path.isdir(backupdir):
-            for basename in os.listdir(backupdir):
-                filename = os.path.join(backupdir,basename)
-                if (self.is_archive(filename)):
-                    ret.append(filename)
-        return ret
-    
-    def get_finished_backups(self,game:Game):
-        ret=[]
-        backupdir = os.path.join(settings.backup_dir,game.savegame_name,'finished')
-        
-        if os.path.isdir(backupdir):
-            for basename in os.listdir(backupdir):
-                filename = os.path.join(backupdir,basename)
-                if (self.is_archive(filename)):
-                    ret.append(filename)
-        return ret
-    
-    def get_backups(self,game:Game):
-        ret = []
-        for backupdir in [os.path.join(settings.backup_dir,game.savegame_name,i) for i in ('live','finished')]:
             if os.path.isdir(backupdir):
                 for basename in os.listdir(backupdir):
                     filename = os.path.join(backupdir,basename)
                     if (self.is_archive(filename)):
                         ret.append(filename)
                         
+        return ret
+    
+    def get_live_backups_for_type(self,game:Game,type:SavegameType):
+        ret = []
+        backupdir = os.path.join(settings.backup_dir,game.savegame_name,type.value,'live')
+        if (os.path.isdir(backupdir)):
+            for basename in os.listdir(backupdir):
+                filename = os.path.join(backupdir,basename)
+                if (self.is_archive(filename)):
+                    ret.append(filename)
+        return ret  
+    
+    def get_finished_backups(self,game:Game):
+        ret=[]
+        for sgtype in VALID_SAVEGAME_TYPES:
+            backupdir = os.path.join(settings.backup_dir,game.savegame_name,sgtype.value,'finished')
+        
+            if os.path.isdir(backupdir):
+                for basename in os.listdir(backupdir):
+                    filename = os.path.join(backupdir,basename)
+                    if (self.is_archive(filename)):
+                        ret.append(filename)
+                        
+        return ret
+    
+    def get_backups(self,game:Game):
+        ret = []
+        for sgtype in VALID_SAVEGAME_TYPES:
+            for backupdir in [os.path.join(settings.backup_dir,game.savegame_name,sgtype.value,i) for i in ('live','finished')]:
+                if os.path.isdir(backupdir):
+                    for basename in os.listdir(backupdir):
+                        filename = os.path.join(backupdir,basename)
+                        if (self.is_archive(filename)):
+                            ret.append(filename)
         return ret
     

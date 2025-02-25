@@ -394,9 +394,7 @@ class GameView(Gtk.Box):
         
         
         for name,match,pos in result:
-            item = self._liststore.get_item(pos)
-            item.fuzzy_match = match
-            print("\"{}\" | \"{}\"".format(name,item.name),match,pos)
+            self._liststore.get_item(pos).fuzzy_match = match
         
         print("-"*80)
         self.__filter_model.set_filter(GameViewMatchFilter())

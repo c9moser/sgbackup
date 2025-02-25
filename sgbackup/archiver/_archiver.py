@@ -355,4 +355,3 @@ class ArchiverManager(GObject):
                         if (self.is_archive(filename)):
                             ret.append(filename)
         return ret
-    

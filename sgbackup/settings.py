@@ -340,6 +340,21 @@ class Settings(GObject.GObject):
             max_threads = 1
         self.set_integer('sgbackup','maxBackupThreads',max_threads)
         
+    @GObject.Property(type=int)
+    def search_max_results(self)->int:
+        return self.get_integer('search','maxResults',10)
+    
+    @search_max_results.setter
+    def search_max_results(self,max:int):
+        self.set_integer('search','maxResults',max)
+        
+    @GObject.Property(type=int)
+    def search_min_chars(self)->int:
+        return self.get_integer('search','minChars',3)
+    
+    @search_min_chars.setter
+    def search_min_chars(self,min_chars:int):
+        self.set_integer('search','minChars',min_chars)
     
     @GObject.Property
     def variables(self)->dict[str:str]:

@@ -56,7 +56,7 @@ cat > "$install_ps1" << EOF
 [Environment]::SetEnvironmentVariable("Path","\$env:PATH;$wbindir","User")
 
 \$desktop_dir=[Environment]::getFolderPath("Desktop")
-\$startmenu_dir=[Environment]::getFolderPath("StartMenu")
+\$startmenu_dir=[Environment]::getFolderPath("StartMenu") + "\\Programs"
 \$picture_dir=[Environment]::getFolderPath("MyPictures")
 
 Copy-Item -Path "$wproject_dir\\sgbackup\\icons\\sgbackup.ico" -Destination "\$picture_dir\\sgbackup.ico" -Force
@@ -64,7 +64,7 @@ Copy-Item -Path "$wproject_dir\\sgbackup\\icons\\sgbackup.ico" -Destination "\$p
 foreach (\$dir in \$desktop_dir,\$startmenu_dir) {
     \$shell=New-Object -ComObject WScript.Shell
     \$shortcut=\$shell.CreateShortcut("\$dir\\sgbackup.lnk")
-    \$shortcut.TargetPath='$pythonwpath'
+    \$shortcut.TargetPath='$pythonpath'
     \$shortcut.Arguments='-m sgbackup.gui'
     \$shortcut.IconLocation="\$picture_dir\\sgbackup.ico"
     \$shortcut.Save()

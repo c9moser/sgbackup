@@ -18,6 +18,7 @@
 
 from gi.repository import Gtk,Gio,Gdk,GLib
 from gi.repository.GObject import GObject,Signal,Property,SignalFlags,BindingFlags
+import rapidfuzz
 
 import logging; logger=logging.getLogger(__name__)
 
@@ -37,6 +38,37 @@ from ..archiver import ArchiverManager
 
 __gtype_name__ = __name__
 
+class GameViewData(GObject):
+    def __init__(self,game:Game):
+        GObject.__init__(self)
+        self.__game = game
+        self.__fuzzy_match = 0.0
+        
+    @property
+    def game(self)->Game:
+        return self.__game
+    
+    @Property(type=str)
+    def name(self)->str:
+        return self.game.name
+    
+    @Property(type=str)
+    def key(self)->str:
+        return self.game.key
+    
+    @Property
+    def savegame_type(self)->SavegameType:
+        return self.game.savegame_type
+    
+    @Property(type=float)
+    def fuzzy_match(self)->float:
+        return self.__fuzzy_match
+    
+    @fuzzy_match.setter
+    def fuzzy_match(self,match:float):
+        self.__fuzzy_match = match
+        
+        
 class GameViewKeySorter(Gtk.Sorter):
     def __init__(self,sort_ascending:bool=True,*args,**kwargs):
         Gtk.Sorter.__init__(self)
@@ -97,6 +129,48 @@ class GameViewNameSorter(Gtk.Sorter):
                 return Gtk.Ordering.SMALLER
             else:
                 return Gtk.Ordering.EQUAL
+            
+class GameViewColumnSorter(Gtk.ColumnViewSorter):
+    def __init__(self,*args,**kwargs):
+        Gtk.ColumnViewSorter.__init__(self,*args,**kwargs)
+        self.__key_sorter = GameViewKeySorter
+        self.__name_sorter = GameViewNameSorter
+        
+    def do_compare(self,item1,item2):
+        game1 = item1.game
+        game2 = item2.game
+        column = self.get_primary_sort_column()
+        sort_ascending = (self.get_primary_sort_order() == Gtk.SortType.ASCENDING)
+        if column == 1:
+            self.__key_sorter.sort_ascending == sort_ascending
+            return self.__key_sorter.do_compare(game1,game2)
+        else:
+            self.__name_sorter.sort_ascending = sort_ascending
+            return self.__name_sorter.do_comapre(game1,game2)            
+        
+class GameViewMatchSorter(Gtk.Sorter):
+    def do_compare(self,item1:GameViewData,item2:GameViewData):
+        if item1.fuzzy_match < item2.fuzzy_match:
+            return Gtk.Ordering.LARGER
+        elif item1.fuzzy_match > item2.fuzzy_match:
+            return Gtk.Ordering.SMALLER
+        
+        name1 = item1.name.lower()
+        name2 = item2.name.lower()
+        if name1 > name2:
+            return Gtk.Ordering.LARGER
+        elif name1 < name2:
+            return Gtk.Ordering.SMALLER
+        else:
+            return Gtk.Ordering.EQUAL
+
+class GameViewMatchFilter(Gtk.Filter):
+    def do_match(self,item:GameViewData|None):
+        if item is None:
+            return False
+        
+        return item.fuzzy_match > 0.0
+
 class GameView(Gtk.Box):
     """
     GameView The View for games.
@@ -151,33 +225,39 @@ class GameView(Gtk.Box):
         # Add a the search entry
         self.__search_entry = Gtk.Entry()
         self.__search_entry.set_hexpand(True)
+        self.__search_entry.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY,'edit-find-symbolic')
+        self.__search_entry.set_icon_from_icon_name(Gtk.EntryIconPosition.SECONDARY,'edit-clear-symbolic')
+        self.__search_entry.connect('icon-release',self._on_search_entry_icon_release)
+        self.__search_entry.connect('changed',self._on_search_entry_changed)
         self.actionbar.pack_end(self.__search_entry)
         self.actionbar.pack_end(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
         
         self.append(self.actionbar)
         
-        
-        self.__liststore = Gio.ListStore.new(Game)
+        self.__columnview = Gtk.ColumnView()
+        columnview_sorter = self.columnview.get_sorter()
+        self.__liststore = Gio.ListStore.new(GameViewData)
         for g in GameManager.get_global().games.values():
-            pass
-            self.__liststore.append(g)
-        self.__sort_model = Gtk.SortListModel.new(self._liststore,self.__name_sorter)
+            self.__liststore.append(GameViewData(g))
+        self.__filter_model = Gtk.FilterListModel.new(self._liststore,None)
+        self.__sort_model = Gtk.SortListModel.new(self.__filter_model,columnview_sorter)
             
         factory_icon = Gtk.SignalListItemFactory.new()
         factory_icon.connect('setup',self._on_icon_column_setup)
         factory_icon.connect('bind',self._on_icon_column_bind)
-        factory_icon.connect('unbind',self._on_icon_column_unbind)
         column_icon = Gtk.ColumnViewColumn.new("",factory_icon)
         
         factory_key = Gtk.SignalListItemFactory.new()
         factory_key.connect('setup',self._on_key_column_setup)
         factory_key.connect('bind',self._on_key_column_bind)
         column_key = Gtk.ColumnViewColumn.new("Key",factory_key)
+        column_key.set_sorter(GameViewKeySorter())
         
         factory_name = Gtk.SignalListItemFactory.new()
         factory_name.connect('setup',self._on_name_column_setup)
         factory_name.connect('bind',self._on_name_column_bind)
-        column_name = Gtk.ColumnViewColumn.new("Name",factory_name) 
+        column_name = Gtk.ColumnViewColumn.new("Name",factory_name)
+        column_name.set_sorter(GameViewNameSorter())
         column_name.set_expand(True)
         
         factory_active = Gtk.SignalListItemFactory.new()
@@ -195,11 +275,16 @@ class GameView(Gtk.Box):
         factory_actions = Gtk.SignalListItemFactory.new()
         factory_actions.connect('setup',self._on_actions_column_setup)
         factory_actions.connect('bind',self._on_actions_column_bind)
-        #factory_actions.connect('ubind',self._on_actions_column_unbind)
+        #factory_actions.connect('unbind',self._on_actions_column_unbind)
         column_actions = Gtk.ColumnViewColumn.new("",factory_actions)
         
-        selection = Gtk.SingleSelection.new(self.__sort_model)
-        self.__columnview = Gtk.ColumnView.new(selection)
+        selection = Gtk.SingleSelection()
+        selection.set_autoselect(False)
+        selection.set_can_unselect(True)
+        selection.set_model(self.__sort_model)
+        self.columnview.set_model(selection)
+        
+        
         self.columnview.set_vexpand(True)
         self.columnview.set_hexpand(True)
         self.columnview.append_column(column_icon)
@@ -208,12 +293,11 @@ class GameView(Gtk.Box):
         self.columnview.append_column(column_active)
         self.columnview.append_column(column_live)
         self.columnview.append_column(column_actions)
+        self.columnview.sort_by_column(column_name,Gtk.SortType.ASCENDING)
         self.columnview.set_single_click_activate(True)
-        
+        self.columnview.get_vadjustment().set_value(0)
         scrolled.set_child(self.columnview)
-        
         self.append(scrolled)
-        self.refresh()
         
     @property
     def _liststore(self)->Gio.ListStore:
@@ -249,8 +333,10 @@ class GameView(Gtk.Box):
     @Signal(name="refresh",return_type=None,arg_types=(),flags=SignalFlags.RUN_FIRST)
     def do_refresh(self):
         self._liststore.remove_all()
+        self.__search_entry.set_text("")
+        
         for game in GameManager.get_global().games.values():
-            self._liststore.append(game)
+            self._liststore.append(GameViewData(game))
             
     def _on_game_dialog_response(self,dialog,response):
         if response == Gtk.ResponseType.APPLY:
@@ -285,7 +371,7 @@ class GameView(Gtk.Box):
     def _on_backup_active_live_button_clicked(self,button):
         backup_games = []
         for i in range(self._liststore.get_n_items()):
-            game = self._liststore.get_item(i)
+            game = self._liststore.get_item(i).game
             if game.is_live and game.is_active and os.path.exists(os.path.join(game.savegame_root,game.savegame_dir)):
                 backup_games.append(game)
          
@@ -293,6 +379,51 @@ class GameView(Gtk.Box):
         dialog =  BackupManyDialog(parent=self.get_root(),games=backup_games)
         dialog.set_modal(False)
         dialog.run()
+        
+    def __real_search(self,search_name:str):
+        choices = []
+        for i in range(self._liststore.get_n_items()):
+            item = self._liststore.get_item(i)
+            choices.append(item.name)
+            item.fuzzy_match = 0.0
+            
+        result = rapidfuzz.process.extract(query=search_name,
+                                           choices=choices,
+                                           limit=settings.search_max_results,
+                                           scorer=rapidfuzz.fuzz.WRatio)
+        
+        
+        for name,match,pos in result:
+            item = self._liststore.get_item(pos)
+            item.fuzzy_match = match
+            print("\"{}\" | \"{}\"".format(name,item.name),match,pos)
+        
+        print("-"*80)
+        self.__filter_model.set_filter(GameViewMatchFilter())
+        self.__sort_model.set_sorter(GameViewMatchSorter())
+    
+    def _on_search_entry_icon_release(self,entry,icon_pos):
+        #TODO###############################################
+        if icon_pos == Gtk.EntryIconPosition.PRIMARY:
+            search_name=entry.get_text()
+            if len(search_name) == 0:
+                self.__filter_model.set_filter(None)
+                self.__sort_model.set_sorter(self.columnview.get_sorter())
+            else:
+                self.__real_search(entry.get_text())
+        elif icon_pos == Gtk.EntryIconPosition.SECONDARY:
+            self.__search_entry.set_text("")
+            self.__filter_model.set_filter(None)
+            self.__sort_model.set_sorter(self.columnview.get_sorter())
+    
+    def _on_search_entry_changed(self,entry):
+        #TODO###############################################
+        search_name = entry.get_text()
+        if len(search_name) == 0:
+            self.__filter_model.set_filter(None)
+            self.__sort_model.set_sorter(self.columnview.get_sorter())
+        elif len(search_name) >= settings.search_min_chars:
+            self.__real_search(search_name)
         
     def _on_icon_column_setup(self,factory,item):
         image = Gtk.Image()
@@ -306,15 +437,9 @@ class GameView(Gtk.Box):
                 return icon_name
             return ""
         icon = item.get_child()
-        game = item.get_item()
+        game = item.get_item().game
         if not hasattr(game,'_savegame_type_to_icon_name_binding'):
             game._savegame_type_to_icon_name_binding = game.bind_property('savegame_type',icon,'icon_name',BindingFlags.SYNC_CREATE,transform_to_icon_name)        
-        
-    def _on_icon_column_unbind(self,factory,item):
-        game = item.get_item()
-        if hasattr(game,'_savegame_type_to_icon_name_binding'):
-            game._savegame_type_to_icon_name_binding.unbind()
-            del game._savegame_type_to_icon_name_binding
         
     def _on_key_column_setup(self,factory,item):
         label = Gtk.Label()
@@ -324,7 +449,7 @@ class GameView(Gtk.Box):
         
     def _on_key_column_bind(self,factory,item):
         label = item.get_child()
-        game = item.get_item()
+        game = item.get_item().game
         game.bind_property('key',label,'label',BindingFlags.SYNC_CREATE,
                            lambda _binding,s: '<span size="large">{}</span>'.format(GLib.markup_escape_text(s)))
         
@@ -336,7 +461,7 @@ class GameView(Gtk.Box):
         
     def _on_name_column_bind(self,factory,item):
         label = item.get_child()
-        game = item.get_item()
+        game = item.get_item().game
         if not hasattr(label,'_property_label_from_name_binding'):
             label._property_label_from_name_binding = game.bind_property('name',
                                                                          label,
@@ -350,7 +475,7 @@ class GameView(Gtk.Box):
         
     def _on_active_column_bind(self,factory,item):
         switch = item.get_child()
-        game = item.get_item()
+        game = item.get_item().game
         switch.set_active(game.is_active)
         item._signal_active_state_set = switch.connect('state-set',self._on_active_state_set,game)
         
@@ -369,7 +494,7 @@ class GameView(Gtk.Box):
         
     def _on_live_column_bind(self,factory,item):
         switch = item.get_child()
-        game = item.get_item()
+        game = item.get_item().game
         switch.set_active(game.is_live)
         if not hasattr(item,'_signal_live_state_set'):
             item._signal_live_state_set = switch.connect('state-set',self._on_live_state_set,game)
@@ -423,7 +548,7 @@ class GameView(Gtk.Box):
         
     def _on_actions_column_bind(self,action,item):
         child = item.get_child()
-        game = item.get_item()
+        game = item.get_item().game
         archiver_manager = ArchiverManager.get_global()
         
         # check if we are already connected.
@@ -472,7 +597,7 @@ class GameView(Gtk.Box):
             if hasattr(parent,'statusbar'):
                 parent.statusbar.pop(1)
                 
-        game = item.get_item()
+        game = item.get_item().game
         parent = self.get_root()
         dialog = BackupSingleDialog(parent,game)
         
@@ -486,7 +611,7 @@ class GameView(Gtk.Box):
             if response == Gtk.ResponseType.APPLY:
                 self.refresh()
         
-        game = item.get_item()
+        game = item.get_item().game
         
         dialog = GameDialog(self.get_root(),game)
         dialog.set_modal(False)
@@ -508,7 +633,7 @@ class GameView(Gtk.Box):
             dialog.hide()
             dialog.destroy()
             
-        game = item.get_item()
+        game = item.get_item().game
         dialog = Gtk.MessageDialog(buttons=Gtk.ButtonsType.YES_NO,
                                    text="Do you really want to remove the game <span weight='bold'>{game}</span>?".format(
                                    game=game.name),
@@ -798,7 +923,7 @@ class BackupView(Gtk.Box):
         
     def _on_gameview_columnview_activate(self,columnview,position):
         model = columnview.get_model().get_model()
-        game = model.get_item(position)
+        game = model.get_item(position).game
         
         self._title_label.set_markup("<span size='large' weight='bold'>{}</span>".format(GLib.markup_escape_text(game.name)))
         
@@ -876,7 +1001,7 @@ class AppWindow(Gtk.ApplicationWindow):
         n_active = 0
         n_finished = 0
         for i in range(n_games):
-            game = self.gameview._liststore.get_item(i)
+            game = self.gameview._liststore.get_item(i).game
             if game.is_live:
                 n_live += 1
             else:
@@ -944,7 +1069,7 @@ class AppWindow(Gtk.ApplicationWindow):
         n_live = 0
         n_finished = 0
         for i in range(n_games):
-            game = gameview._liststore.get_item(i)
+            game = gameview._liststore.get_item(i).game
             if game.is_live:
                 n_live += 1
             else:

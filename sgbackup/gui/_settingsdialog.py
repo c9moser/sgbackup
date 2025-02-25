@@ -138,7 +138,9 @@ class SettingsDialog(Gtk.Dialog):
     
     def __add_general_settings_page(self):
         page = Gtk.ScrolledWindow()
-        vbox = Gtk.Box.new(Gtk.Orientation.VERTICAL,4)
+        vbox = Gtk.Box.new(Gtk.Orientation.VERTICAL,8)
+        backup_frame = Gtk.Frame.new('Backup Settings')
+        
         grid = Gtk.Grid()
         
         label = Gtk.Label.new('Backup directory:')
@@ -187,11 +189,30 @@ class SettingsDialog(Gtk.Dialog):
                 break
         grid.attach(label,0,3,1,1)
         grid.attach(page.archiver_dropdown,1,3,2,1)
+        backup_frame.set_child(grid)
+        vbox.append(backup_frame)
         
+        search_frame = Gtk.Frame.new('Search Settings')
+        search_grid = Gtk.Grid()
         
-        vbox.append(grid)
+        label = Gtk.Label.new("Minimum Characters:")
+        page.search_minchars_spinbutton = Gtk.SpinButton.new_with_range(1,32,1)
+        page.search_minchars_spinbutton.set_value(settings.search_min_chars)
+        page.search_minchars_spinbutton.set_hexpand(True)
+        search_grid.attach(label,0,0,1,1)
+        search_grid.attach(page.search_minchars_spinbutton,1,0,1,1)
+        
+        label = Gtk.Label.new("Maximum Results:")
+        page.search_maxresults_spinbutton = Gtk.SpinButton.new_with_range(1,100,1)
+        page.search_maxresults_spinbutton.set_value(settings.search_max_results)
+        page.search_maxresults_spinbutton.set_hexpand(True)
+        search_grid.attach(label,0,1,1,1)
+        search_grid.attach(page.search_maxresults_spinbutton,1,1,1,1)
+        
+        search_frame.set_child(search_grid)        
+        vbox.append(search_frame)
+        
         page.set_child(vbox)
-        
         self.add_page(page,"general","Generic settings")
         return page
     
@@ -398,8 +419,11 @@ class SettingsDialog(Gtk.Dialog):
         settings.backup_versions = self.general_page.backup_versions_spinbutton.get_value_as_int()
         settings.backup_threads = self.general_page.backup_threads_spinbutton.get_value_as_int()
         settings.archiver = self.general_page.archiver_dropdown.get_selected_item().key
+        settings.search_min_chars = self.general_page.search_minchars_spinbutton.get_value_as_int()
+        settings.search_max_results = self.general_page.search_maxresults_spinbutton.get_value_as_int()
         settings.zipfile_compression = self.archiver_page.zf_compressor_dropdown.get_selected_item().compressor
         settings.zipfile_compresslevel = self.archiver_page.zf_compresslevel_spinbutton.get_value_as_int()
+        
         
         variables = {}
         variable_model = self.__variables_page.variable_columnview.get_model()

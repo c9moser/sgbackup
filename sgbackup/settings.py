@@ -356,6 +356,22 @@ class Settings(GObject.GObject):
     def search_min_chars(self,min_chars:int):
         self.set_integer('search','minChars',min_chars)
     
+    @GObject.Property(type=bool,default=False)
+    def gui_autoclose_backup_dialog(self)->bool:
+        return self.get_boolean('gui','autocloseBackupDialog',False)
+    
+    @gui_autoclose_backup_dialog.setter
+    def gui_autoclose_backup_dialog(self,autoclose:bool):
+        self.set_boolean('gui','autocloseBackupDialog',autoclose)    
+    
+    @GObject.Property(type=bool,default=False)
+    def gui_autoclose_restore_dialog(self)->bool:
+        return self.get_boolean('gui','autocloseRestoreDialog',False)
+    
+    @gui_autoclose_restore_dialog.setter
+    def gui_autoclose_restore_dialog(self,autoclose:bool):
+        self.set_boolean('gui','autocloseRestoreDialog',autoclose)
+    
     @GObject.Property
     def variables(self)->dict[str:str]:
         ret = {}

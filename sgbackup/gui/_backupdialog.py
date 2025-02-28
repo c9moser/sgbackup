@@ -19,7 +19,9 @@
 from gi.repository import Gtk,GLib,GObject,Gio
 from ..game import GameManager,Game
 from ..archiver import ArchiverManager
+from ..settings import settings
 from threading import Thread,ThreadError
+
 
 import logging
 
@@ -73,8 +75,8 @@ class BackupSingleDialog(Gtk.Dialog):
             am.disconnect(self.__am_signal_progress)
             del self.__am_signal_progress
             
-        #if settings.backup_dialog_close_when_finished:
-        #    self.response(Gtk.ResponseType.OK)
+        if settings.gui_autoclose_backup_dialog:
+            self.response(Gtk.ResponseType.OK)
         
         return False
             
@@ -173,8 +175,8 @@ class BackupManyDialog(Gtk.Dialog):
             self.set_transient_for(parent)
         self.set_decorated(False)
         self.set_modal(True)
-        self.set_default_size(640,480)
-        
+        self.set_default_size(640,480)        
+                
         self.__scrolled = Gtk.ScrolledWindow()
         self.__games_liststore = Gio.ListStore.new(BackupGameData)
         self.__games_progress_sorter = BackupGameDataSorter()
@@ -230,7 +232,7 @@ class BackupManyDialog(Gtk.Dialog):
             #self.__ok_button.set_sensitive(False)
         #else:
             #self.__ok_button.set_sensitive(True)
-        
+    
     def do_response(self,response):
         self.hide()
         self.destroy()
@@ -253,11 +255,13 @@ class BackupManyDialog(Gtk.Dialog):
             GLib.idle_add(self._on_backup_finished)
             
         if not self.games:
-            print("no games to backup!")
-            self.desotroy()
+            logger.warning("No games to backup!")
+            self.hide()
+            self.destroy()
             self.response(Gtk.Response.OK)
             return
         
+        self.__ok_button.set_sensitive(False)
         
         am = ArchiverManager.get_global()
         
@@ -274,12 +278,11 @@ class BackupManyDialog(Gtk.Dialog):
             self.__signal_backup_game_finished = am.connect('backup-game-finished',
                                                             on_am_backup_game_finished)
                 
-        print ("Starting thread")
-        print(self.games)
         thread = Thread(target=thread_func,args=(am,list(self.__games)),daemon=True)
         self.present()
         thread.start()        
-        
+
+    
         
     def _on_column_name_setup(self,factory,item):
         label = Gtk.Label()
@@ -334,7 +337,7 @@ class BackupManyDialog(Gtk.Dialog):
         self.__games_progress_sorter.changed(Gtk.SorterChange.DIFFERENT)
         vadjustment = self.__scrolled.get_vadjustment()
         vadjustment.set_value(vadjustment.get_upper() - vadjustment.get_page_size())
-        
+
         return False
         
     def _on_backup_progress(self,progress:float):
@@ -360,7 +363,10 @@ class BackupManyDialog(Gtk.Dialog):
         if hasattr(self,'__signal_backup_progress'):
             am.disconnect(self.__signal_backup_progress)
             del self.__signal_backup_progress
-        
+
+        if settings.gui_autoclose_backup_dialog:
+            self.response(Gtk.ResponseType.OK)
+                    
         return False
         
         

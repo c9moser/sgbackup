@@ -22,7 +22,7 @@ import rapidfuzz
 
 import logging; logger=logging.getLogger(__name__)
 
-import os
+import os,sys
 from datetime import datetime as DateTime
 from pathlib import Path
 
@@ -641,7 +641,6 @@ class GameView(Gtk.Box):
         dialog.set_modal(False)
         dialog.connect('response',on_dialog_response,game)
         dialog.present()
-        
 # GameView class
 
 class BackupViewData(GObject):
@@ -710,14 +709,27 @@ class BackupViewData(GObject):
         return SAVEGAME_TYPE_ICONS[self.__sgtype]
     
     @Property(type=str)
+    def savegame_os(self)->str:
+        return self.__sgos
+    
+    @Property(type=bool,default=False)
+    def savegame_os_is_host_os(self):
+        platform = "unknown"
+        if (sys.platform.lower().startswith('win')):
+            platform = 'windows'
+        elif (sys.platform.lower() == 'macos'):
+            paltform = 'macos'
+        elif (sys.platform.lower() in ('linux','freebsd','netbsd','openbsd','dragonfly')):
+            platform = 'linux'
+            
+        return (self.savegame_os == platform)
+        
+    @Property(type=str)
     def savegame_os_icon_name(self)->str:
         if self.__sgos:
             return SAVEGAME_TYPE_ICONS[self.__sgos]
         return ""
     
-    @Property(type=str)
-    def ostype_icon_name(self):
-        pass
     
     @Property(type=str)
     def savegame_name(self)->str:
@@ -786,6 +798,10 @@ class BackupView(Gtk.Box):
         scrolled = Gtk.ScrolledWindow()
         self.__gameview = gameview
         
+        self.__action_group = Gio.SimpleActionGroup.new()
+        self.__create_actions()
+        self.insert_action_group("backupview",self.action_group)
+        
         self.__liststore = Gio.ListStore()
         selection = Gtk.SingleSelection.new(self.__liststore)
         
@@ -836,6 +852,18 @@ class BackupView(Gtk.Box):
         self.append(self._title_label)
         self.append(scrolled)
         
+        gesture = Gtk.GestureClick.new()
+        gesture.set_button(3)
+        self.__columnview.add_controller(gesture)
+        gesture.connect('pressed',self._on_gesture_button3_press)
+        
+        builder = Gtk.Builder()
+        builder.add_from_file(os.path.join(os.path.dirname(__file__),'appmenu.ui'))
+        self.__contextmenu_model = builder.get_object('backupview-contextmenu')
+        self.__contextmenu_popover = Gtk.PopoverMenu.new_from_model(self.__contextmenu_model)
+        self.__contextmenu_popover.set_parent(self.__columnview)
+        self.__contextmenu_popover.set_has_arrow(False)
+        
     @property
     def gameview(self)->GameView:
         """
@@ -844,7 +872,112 @@ class BackupView(Gtk.Box):
         :type: GameView
         """
         return self.__gameview
+    
+    @property
+    def action_group(self)->Gio.SimpleActionGroup:
+        return self.__action_group
 
+    def __create_actions(self):
+        self.__restore_action = Gio.SimpleAction.new("restore",None)
+        self.__restore_action.connect('activate',self._on_action_restore)
+        self.action_group.add_action(self.__restore_action)
+        
+        self.__convert_to_windows_action = Gio.SimpleAction.new("convert-to-windows",None)
+        self.__convert_to_windows_action.connect('activate',self._on_action_convert_to_windows)
+        self.action_group.add_action(self.__convert_to_windows_action)
+        
+        self.__convert_to_linux_action = Gio.SimpleAction.new("convert-to-linux",None)
+        self.__convert_to_linux_action.connect('activate',self._on_action_convert_to_linux)
+        self.action_group.add_action(self.__convert_to_linux_action)
+        
+        self.__convert_to_macos_action = Gio.SimpleAction.new("convert-to-macos",None)
+        self.__convert_to_macos_action.connect('activate',self._on_action_convert_to_macos)
+        self.action_group.add_action(self.__convert_to_macos_action)
+        
+        self.__convert_to_epic_linux_action = Gio.SimpleAction.new("convert-to-epic-linux",None)
+        self.__convert_to_epic_linux_action.connect('activate',self._on_action_convert_to_epic_linux)
+        self.action_group.add_action(self.__convert_to_epic_linux_action)
+        
+        self.__convert_to_epic_windows_action = Gio.SimpleAction.new("convert-to-epic-windows",None)
+        self.__convert_to_epic_windows_action.connect('activate',self._on_action_convert_to_epic_windows)
+        self.action_group.add_action(self.__convert_to_epic_windows_action)
+        
+        self.__convert_to_gog_linux_action = Gio.SimpleAction.new("convert-to-gog-linux",None)
+        self.__convert_to_gog_linux_action.connect('activate',self._on_action_convert_to_gog_linux)
+        self.action_group.add_action(self.__convert_to_gog_linux_action)
+        
+        self.__convert_to_gog_windows_action = Gio.SimpleAction.new("convert-to-gog-windows",None)
+        self.__convert_to_gog_windows_action.connect('activate',self._on_action_convert_to_gog_windows)
+        self.action_group.add_action(self.__convert_to_gog_windows_action)
+        
+        self.__convert_to_steam_linux_action = Gio.SimpleAction.new("convert-to-steam-linux",None)
+        self.__convert_to_steam_linux_action.connect('activate',self._on_action_convert_to_steam_linux)
+        self.action_group.add_action(self.__convert_to_steam_linux_action)
+        
+        self.__convert_to_steam_macos_action = Gio.SimpleAction.new("convert-to-steam-macos",None)
+        self.__convert_to_steam_macos_action.connect('activate',self._on_action_convert_to_steam_macos)
+        self.action_group.add_action(self.__convert_to_steam_macos_action)
+        
+        self.__convert_to_steam_windows_action = Gio.SimpleAction.new("convert-to-steam-windows",None)
+        self.__convert_to_steam_windows_action.connect('activate',self._on_action_convert_to_steam_windows)
+        self.action_group.add_action(self.__convert_to_steam_windows_action)
+        
+    def _on_action_restore(self,action,param):
+        pass
+    
+    def _on_action_convert_to_windows(self,action,param):
+        pass
+    
+    def _on_action_convert_to_linux(self,action,param):
+        pass
+    
+    def _on_action_convert_to_macos(self,action,param):
+        pass
+    
+    def _on_action_convert_to_steam_windows(self,action,param):
+        pass
+    
+    def _on_action_convert_to_steam_linux(self,action,param):
+        pass
+    
+    def _on_action_convert_to_steam_macos(self,action,param):
+        pass
+    
+    def _on_action_convert_to_epic_windows(self,action,param):
+        pass
+    
+    def _on_action_convert_to_epic_linux(self,action,param):
+        pass
+    
+    def _on_action_convert_to_gog_windows(self,action_param):
+        pass
+    
+    def _on_action_convert_to_gog_linux(self,action,param):
+        pass
+    
+    
+    def _on_gesture_button3_press(self,gesture,n_press,x,y):
+        item = self.__columnview.get_model().get_selected_item()
+        self.__restore_action.set_enabled(item.savegame_os_is_host_os)
+        
+        #######################################################################
+        #TODO: implement converter
+        self.__convert_to_linux_action.set_enabled(False)
+        self.__convert_to_macos_action.set_enabled(False)
+        self.__convert_to_windows_action.set_enabled(False)
+        self.__convert_to_epic_linux_action.set_enabled(False)
+        self.__convert_to_epic_windows_action.set_enabled(False)
+        self.__convert_to_gog_linux_action.set_enabled(False)
+        self.__convert_to_gog_windows_action.set_enabled(False)
+        self.__convert_to_steam_linux_action.set_enabled(False)
+        self.__convert_to_steam_macos_action.set_enabled(False)
+        self.__convert_to_steam_windows_action.set_enabled(False)
+        #######################################################################
+        
+        self.__contextmenu_popover.popup()
+        
+        
+    
     def _on_sgtype_column_setup(self,factory,item):
         icon = Gtk.Image()
         icon.set_pixel_size(16)
@@ -875,7 +1008,6 @@ class BackupView(Gtk.Box):
         checkbutton = item.get_child()
         data = item.get_item()
         checkbutton.set_active(data.is_live)
-        
     
     def _on_savegamename_column_setup(self,factory,item):
         label = Gtk.Label()

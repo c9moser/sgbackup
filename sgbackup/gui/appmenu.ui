@@ -58,4 +58,39 @@
             </item>
         </section>
     </menu>
+
+    <menu id="backupview-contextmenu">
+        <section>
+            <item>
+                <attribute name='label' translatable="true">_Restore</attribute>
+                <attribute name='action'>backupview.restore</attribute>                
+            </item>            
+        </section>
+        <section>
+            <item>
+                <attribute name='label' translatable="true">Convert to _Windows</attribute>
+                <attribute name='action'>backupview.convert-to-windows</attribute>
+            </item>
+            <item>
+                <attribute name='label' translatable="true">Convert to _Linux</attribute>
+                <attribute name='action'>backupview.convert-to-linux</attribute>
+            </item>
+            <item>
+                <attribute name='label' translatable="true">Convert to _Mac OS</attribute>
+                <attribute name='action'>backupview.convert-to-macos</attribute>
+            </item>
+            <item>
+                <attribute name='label' translatable="true">Convert to _Steam Windows</attribute>
+                <attribute name='action'>backupview.convert-to-steam-windows</attribute>
+            </item>
+            <item>
+                <attribute name='label' translatable="true">Convert to Steam Linux</attribute>
+                <attribute name='action'>backupview.convert-to-steam-linux</attribute>
+            </item>
+            <item>
+                <attribute name="label" translatable="true">Convert to Steam Mac OS</attribute>
+                <attribute name="action">backupview.convert-to-steam-macos</attribute>
+            </item>
+        </section>
+    </menu>
 </interface>

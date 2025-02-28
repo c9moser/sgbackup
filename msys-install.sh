@@ -4,7 +4,7 @@
 SELF="$( realpath "$0" )"
 PROJECT_DIR="$( dirname "$SELF")"
 
-PACKAGES="gtk4 gobject-introspection python-gobject python-rapidfuzz"
+PACKAGES="gtk4 gobject-introspection python-pip python-gobject python-rapidfuzz"
 
 _install_pkg="base-devel"
 for i in $PACKAGES; do
@@ -15,7 +15,7 @@ pacman -Sy
 pacman -S --noconfirm $_install_pkg
 
 cd $PROJECT_DIR
-pip install --user .
+pip install --break-system-packages --verbose --user .
 
 bindir=$( realpath ~/bin )
 wbindir=$( cygpath -w "$bindir" )

@@ -128,6 +128,31 @@ class SettingsDialog(Gtk.Dialog):
         self.add_button("Apply",Gtk.ResponseType.APPLY)
         self.add_button("Cancel",Gtk.ResponseType.CANCEL)
     
+    def create_frame(self,label_text:str):
+        label = Gtk.Label()
+        label.set_markup("<span weight=\"bold\">{}</span>".format(GLib.markup_escape_text(label_text)))
+        frame = Gtk.Frame()
+        frame.set_label_widget(label)
+        frame.set_margin_start(5)
+        frame.set_margin_end(5)
+        frame.set_margin_top(5)
+        frame.set_margin_bottom(5)
+        return frame
+    
+    def create_grid(self):
+        grid = Gtk.Grid()
+        grid.set_margin_start(5)
+        grid.set_margin_end(5)
+        grid.set_margin_top(5)
+        grid.set_margin_bottom(5)
+        grid.set_column_spacing(3)
+        return grid
+        
+    def create_label(self,label_text:str):
+        label = Gtk.Label.new(label_text)
+        label.set_xalign(0.0)
+        return label
+    
     @property
     def general_page(self):
         return self.__general_page
@@ -136,14 +161,18 @@ class SettingsDialog(Gtk.Dialog):
     def archiver_page(self):
         return self.__archiver_page
     
+    @property
+    def variables_page(self):
+        return self.__variables_page
+    
     def __add_general_settings_page(self):
         page = Gtk.ScrolledWindow()
         vbox = Gtk.Box.new(Gtk.Orientation.VERTICAL,8)
-        backup_frame = Gtk.Frame.new('Backup Settings')
+        backup_frame = self.create_frame('Backup Settings')
         
-        grid = Gtk.Grid()
+        grid = self.create_grid()
         
-        label = Gtk.Label.new('Backup directory:')
+        label = self.create_label('Backup directory:')
         grid.attach(label,0,0,1,1)
         page.backupdir_label = Gtk.Label.new(settings.backup_dir)
         page.backupdir_label.set_hexpand(True)
@@ -155,21 +184,21 @@ class SettingsDialog(Gtk.Dialog):
         backupdir_button.connect('clicked',self._on_backupdir_button_clicked)
         grid.attach(backupdir_button,2,0,1,1)
         
-        label = Gtk.Label.new('Backup versions:')
+        label = self.create_label('Backup versions:')
         grid.attach(label,0,1,1,1)
         page.backup_versions_spinbutton = Gtk.SpinButton.new_with_range(0,1000,1)
         page.backup_versions_spinbutton.set_hexpand(True)
         page.backup_versions_spinbutton.set_value(settings.backup_versions)
         grid.attach(page.backup_versions_spinbutton,1,1,2,1)
         
-        label = Gtk.Label.new('Max. Backup Threads:')
+        label = self.create_label('Max. Backup Threads:')
         page.backup_threads_spinbutton = Gtk.SpinButton.new_with_range(1,256,1)
         page.backup_threads_spinbutton.set_hexpand(True)
         page.backup_threads_spinbutton.set_value(settings.backup_threads)
         grid.attach(label,0,2,1,1)
         grid.attach(page.backup_threads_spinbutton,1,2,2,1)
         
-        label = Gtk.Label.new("Archiver:")
+        label = self.create_label("Archiver:")
         archiver_model = Gio.ListStore.new(Archiver)
         for archiver in ArchiverManager.get_global().archivers.values():
             archiver_model.append(archiver)
@@ -192,17 +221,18 @@ class SettingsDialog(Gtk.Dialog):
         backup_frame.set_child(grid)
         vbox.append(backup_frame)
         
-        search_frame = Gtk.Frame.new('Search Settings')
-        search_grid = Gtk.Grid()
+        ### Search Settings
+        search_frame = self.create_frame('Search Settings')
+        search_grid = self.create_grid()
         
-        label = Gtk.Label.new("Minimum Characters:")
+        label = self.create_label("Minimum Characters:")
         page.search_minchars_spinbutton = Gtk.SpinButton.new_with_range(1,32,1)
         page.search_minchars_spinbutton.set_value(settings.search_min_chars)
         page.search_minchars_spinbutton.set_hexpand(True)
         search_grid.attach(label,0,0,1,1)
         search_grid.attach(page.search_minchars_spinbutton,1,0,1,1)
         
-        label = Gtk.Label.new("Maximum Results:")
+        label = self.create_label("Maximum Results:")
         page.search_maxresults_spinbutton = Gtk.SpinButton.new_with_range(1,100,1)
         page.search_maxresults_spinbutton.set_value(settings.search_max_results)
         page.search_maxresults_spinbutton.set_hexpand(True)
@@ -212,6 +242,31 @@ class SettingsDialog(Gtk.Dialog):
         search_frame.set_child(search_grid)        
         vbox.append(search_frame)
         
+        ### GUI settings
+        gui_frame = self.create_frame('GUI')
+        gui_grid = self.create_grid()
+        
+        label = self.create_label("Automatic close Backup Dialogs?")
+        page.gui_autoclose_backup_dialog_switch = Gtk.Switch()
+        page.gui_autoclose_backup_dialog_switch.set_active(settings.gui_autoclose_backup_dialog)
+        filler = Gtk.Label()
+        filler.set_hexpand(True)
+        gui_grid.attach(label,0,0,1,1)
+        gui_grid.attach(filler,1,0,1,1)
+        gui_grid.attach(page.gui_autoclose_backup_dialog_switch,2,0,1,1)
+        
+        label = self.create_label("Automatic close Restore Dialogs?")
+        page.gui_autoclose_restore_dialog_switch = Gtk.Switch()
+        page.gui_autoclose_restore_dialog_switch.set_active(settings.gui_autoclose_restore_dialog)
+        filler = Gtk.Label()
+        filler.set_hexpand(True)
+        gui_grid.attach(label,0,1,1,1)
+        gui_grid.attach(filler,1,1,1,1)
+        gui_grid.attach(page.gui_autoclose_restore_dialog_switch,2,1,1,1)
+        
+        gui_frame.set_child(gui_grid)
+        vbox.append(gui_frame)
+        
         page.set_child(vbox)
         self.add_page(page,"general","Generic settings")
         return page
@@ -219,10 +274,8 @@ class SettingsDialog(Gtk.Dialog):
     def __add_archiver_settings_page(self):
         page = Gtk.ScrolledWindow()
         page.vbox = Gtk.Box.new(Gtk.Orientation.VERTICAL,4)
-        self._widget_set_margin(page.vbox,4)
         
-        grid = Gtk.Grid()
-        self._widget_set_margin(grid,4)
+        grid = self.create_grid()
         
         zf_compressors = [
             (zipfile.ZIP_STORED,"Stored",True),
@@ -231,8 +284,8 @@ class SettingsDialog(Gtk.Dialog):
             (zipfile.ZIP_LZMA,"LZMA",False),
         ]
         
-        zipfile_frame = Gtk.Frame.new("ZipFile Archiver")
-        label = Gtk.Label.new("Compressor:")
+        zipfile_frame = self.create_frame("ZipFile Archiver")
+        label = self.create_label("Compressor:")
         zf_compressor_model = Gio.ListStore.new(ZipfileCompressorData)
         for i in zf_compressors:
             zf_compressor_model.append(ZipfileCompressorData(*i))
@@ -250,7 +303,7 @@ class SettingsDialog(Gtk.Dialog):
         grid.attach(label,0,0,1,1)
         grid.attach(page.zf_compressor_dropdown,1,0,1,1)
         
-        label = Gtk.Label.new("Compression Level:")
+        label = self.create_label("Compression Level:")
         page.zf_compresslevel_spinbutton = Gtk.SpinButton.new_with_range(0.0,9.0,1.0)
         page.zf_compresslevel_spinbutton.set_value(settings.zipfile_compresslevel)
         page.zf_compresslevel_spinbutton.set_hexpand(True)
@@ -419,11 +472,12 @@ class SettingsDialog(Gtk.Dialog):
         settings.backup_versions = self.general_page.backup_versions_spinbutton.get_value_as_int()
         settings.backup_threads = self.general_page.backup_threads_spinbutton.get_value_as_int()
         settings.archiver = self.general_page.archiver_dropdown.get_selected_item().key
+        settings.gui_autoclose_backup_dialog = self.general_page.gui_autoclose_backup_dialog_switch.get_active()
+        settings.gui_autoclose_restore_dialog = self.general_page.gui_autoclose_restore_dialog_switch.get_active()
         settings.search_min_chars = self.general_page.search_minchars_spinbutton.get_value_as_int()
         settings.search_max_results = self.general_page.search_maxresults_spinbutton.get_value_as_int()
         settings.zipfile_compression = self.archiver_page.zf_compressor_dropdown.get_selected_item().compressor
         settings.zipfile_compresslevel = self.archiver_page.zf_compresslevel_spinbutton.get_value_as_int()
-        
         
         variables = {}
         variable_model = self.__variables_page.variable_columnview.get_model()

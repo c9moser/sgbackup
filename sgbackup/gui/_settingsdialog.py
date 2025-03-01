@@ -408,7 +408,7 @@ class SettingsDialog(Gtk.Dialog):
         data = item.get_item()
         label.set_text(data.value)
         if not hasattr(label,'_property_text_to_value_binding'):
-            label._property_text_to_value_binding = label.bind_property('text',data,'name',BindingFlags.DEFAULT)
+            label._property_text_to_value_binding = label.bind_property('text',data,'value',BindingFlags.DEFAULT)
         
     def _on_archiver_factory_setup(self,factory,item):
         label = Gtk.Label()

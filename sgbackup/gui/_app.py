@@ -34,7 +34,7 @@ from ._steam import SteamLibrariesDialog,NewSteamAppsDialog,NoNewSteamAppsDialog
 from ..steam import Steam
 from ._backupdialog import BackupSingleDialog,BackupManyDialog
 from ..archiver import ArchiverManager
-
+from ._dialogs import AboutDialog
 
 __gtype_name__ = __name__
 
@@ -335,7 +335,9 @@ class GameView(Gtk.Box):
         self._liststore.remove_all()
         self.__search_entry.set_text("")
         
-        for game in GameManager.get_global().games.values():
+        gamemanager = GameManager.get_global()
+        gamemanager.load()
+        for game in gamemanager.games.values():
             self._liststore.append(GameViewData(game))
             
     def _on_game_dialog_response(self,dialog,response):
@@ -429,15 +431,19 @@ class GameView(Gtk.Box):
         item.set_child(image)
         
     def _on_icon_column_bind(self,factory,item):
-        def transform_to_icon_name(_bidning,sgtype):
-            icon_name = SAVEGAME_TYPE_ICONS[sgtype] if sgtype in SAVEGAME_TYPE_ICONS else None
-            if icon_name:
-                return icon_name
-            return ""
+        def transform_to_icon_name(_binding,sgtype):
+            icon_name = SAVEGAME_TYPE_ICONS[sgtype] if sgtype in SAVEGAME_TYPE_ICONS else ""
+            if not icon_name:
+                logger.warning("No icon-name for sgtype {}".format(sgtype.value))
+            return icon_name
+            
         icon = item.get_child()
         game = item.get_item().game
+        
+        icon.props.icon_name = transform_to_icon_name(None,game.savegame_type)
+        
         if not hasattr(game,'_savegame_type_to_icon_name_binding'):
-            game._savegame_type_to_icon_name_binding = game.bind_property('savegame_type',icon,'icon_name',BindingFlags.SYNC_CREATE,transform_to_icon_name)        
+            game._savegame_type_to_icon_name_binding = game.bind_property('savegame_type',icon,'icon_name',BindingFlags.DEFAULT,transform_to_icon_name)        
         
     def _on_key_column_setup(self,factory,item):
         label = Gtk.Label()
@@ -957,7 +963,6 @@ class BackupView(Gtk.Box):
     def _on_action_convert_to_gog_linux(self,action,param):
         pass
     
-    
     def _on_columnview_selection_changed(self,selection,position,n_items):
         data = selection.get_selected_item()
         
@@ -1369,7 +1374,9 @@ class Application(Gtk.Application):
         self.appwindow.present()
         
     def _on_action_about(self,action,param):
-        pass
+        dialog = AboutDialog()
+        dialog.present()
+        #dialog.connect('response',lambda dlg,response: dlg.destroy())
     
     def _on_action_settings(self,action,param):
         dialog = self.new_settings_dialog()

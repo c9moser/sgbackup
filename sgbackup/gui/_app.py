@@ -803,7 +803,10 @@ class BackupView(Gtk.Box):
         self.insert_action_group("backupview",self.action_group)
         
         self.__liststore = Gio.ListStore()
-        selection = Gtk.SingleSelection.new(self.__liststore)
+        selection = Gtk.SingleSelection(model=self.__liststore,
+                                        autoselect=False,
+                                        can_unselect=True)
+        selection.connect('selection-changed',self._on_columnview_selection_changed)        
         
         sgtype_factory = Gtk.SignalListItemFactory()
         sgtype_factory.connect('setup',self._on_sgtype_column_setup)
@@ -836,6 +839,11 @@ class BackupView(Gtk.Box):
         size_factory.connect('bind',self._on_size_column_bind)
         size_column = Gtk.ColumnViewColumn.new("Size",size_factory)
         
+        actions_factory = Gtk.SignalListItemFactory()
+        actions_factory.connect('setup',self._on_actions_column_setup)
+        actions_factory.connect('bind',self._on_actions_column_bind)
+        actions_column = Gtk.ColumnViewColumn.new("",actions_factory)
+        
         self.__columnview = Gtk.ColumnView.new(selection)
         self.__columnview.append_column(sgtype_column)
         self.__columnview.append_column(sgos_column)
@@ -843,7 +851,9 @@ class BackupView(Gtk.Box):
         self.__columnview.append_column(sgname_column)
         self.__columnview.append_column(timestamp_column)
         self.__columnview.append_column(size_column)
+        self.__columnview.append_column(actions_column)
         self.__columnview.set_vexpand(True)
+        self.__columnview.set_single_click_activate(True)
         
         self.gameview.columnview.connect('activate',self._on_gameview_columnview_activate)
         
@@ -852,18 +862,10 @@ class BackupView(Gtk.Box):
         self.append(self._title_label)
         self.append(scrolled)
         
-        gesture = Gtk.GestureClick.new()
-        gesture.set_button(3)
-        self.__columnview.add_controller(gesture)
-        gesture.connect('pressed',self._on_gesture_button3_press)
-        
         builder = Gtk.Builder()
         builder.add_from_file(os.path.join(os.path.dirname(__file__),'appmenu.ui'))
-        self.__contextmenu_model = builder.get_object('backupview-contextmenu')
-        self.__contextmenu_popover = Gtk.PopoverMenu.new_from_model(self.__contextmenu_model)
-        self.__contextmenu_popover.set_parent(self.__columnview)
-        self.__contextmenu_popover.set_has_arrow(False)
-        
+        self.__convertmenu = builder.get_object('backupview-convert-menu')
+                
     @property
     def gameview(self)->GameView:
         """
@@ -956,9 +958,8 @@ class BackupView(Gtk.Box):
         pass
     
     
-    def _on_gesture_button3_press(self,gesture,n_press,x,y):
-        item = self.__columnview.get_model().get_selected_item()
-        self.__restore_action.set_enabled(item.savegame_os_is_host_os)
+    def _on_columnview_selection_changed(self,selection,position,n_items):
+        data = selection.get_selected_item()
         
         #######################################################################
         #TODO: implement converter
@@ -973,14 +974,10 @@ class BackupView(Gtk.Box):
         self.__convert_to_steam_macos_action.set_enabled(False)
         self.__convert_to_steam_windows_action.set_enabled(False)
         #######################################################################
-        
-        self.__contextmenu_popover.popup()
-        
-        
     
     def _on_sgtype_column_setup(self,factory,item):
         icon = Gtk.Image()
-        icon.set_pixel_size(16)
+        icon.set_pixel_size(24)
         item.set_child(icon)
         
     def _on_sgtype_column_bind(self,factory,item):
@@ -990,7 +987,7 @@ class BackupView(Gtk.Box):
         
     def _on_sgos_column_setup(self,factory,item):
         icon = Gtk.Image()
-        icon.set_pixel_size(16)
+        icon.set_pixel_size(24)
         item.set_child(icon)
         
     def _on_sgos_column_bind(self,factory,item):
@@ -1016,7 +1013,8 @@ class BackupView(Gtk.Box):
     def _on_savegamename_column_bind(self,factory,item):
         label = item.get_child()
         data = item.get_item()
-        label.set_text(data.savegame_name)
+        label.set_markup("<span size=\"large\">{}</span>".format(
+            GLib.markup_escape_text(data.savegame_name)))
         
     def _on_timestamp_column_setup(self,factory,item):
         label = Gtk.Label()
@@ -1025,7 +1023,8 @@ class BackupView(Gtk.Box):
     def _on_timestamp_column_bind(self,factory,item):
         label = item.get_child()
         data = item.get_item()
-        label.set_text(data.timestamp.strftime("%d.%m.%Y %H:%M:%S"))
+        label.set_markup("<span size=\"large\">{}</span>".format(
+            GLib.markup_escape_text(data.timestamp.strftime("%d.%m.%Y %H:%M:%S"))))
         
     def _on_size_column_setup(self,factory,item):
         label = Gtk.Label()
@@ -1037,7 +1036,7 @@ class BackupView(Gtk.Box):
         file = Path(data.filename).resolve()
 
         if not file.is_file():
-            label.set_text("0 B")
+            label.set_markup("<span size=\"large\">0 B</span>")
             return
         
         size = file.stat().st_size
@@ -1049,8 +1048,61 @@ class BackupView(Gtk.Box):
             display_size = ".".join((str(int(size / 1024)), str(int(((size * 10) / 1024) % 10)))) + " KiB"
         else:
             display_size = str(size) + " B"
-        label.set_text(display_size)
+        label.set_markup("<span size=\"large\">{}</span>".format(
+            GLib.markup_escape_text(display_size)))
         
+    def _on_actions_column_setup(self,factory,item):
+        child = Gtk.Box.new(Gtk.Orientation.HORIZONTAL,2)
+        child.restore_button = Gtk.Button()
+        icon = Gtk.Image.new_from_icon_name('document-revert-symbolic')
+        icon.set_pixel_size(16)
+        child.restore_button.set_child(icon)
+        child.restore_button.set_tooltip_text("Restore the SaveGameBackup.")
+        child.append(child.restore_button)
+        
+        child.convert_button = Gtk.MenuButton()
+        child.convert_button.set_icon_name('document-properties-symbolic')
+        child.convert_button.set_tooltip_text("Convert to another SaveGameBackup.")
+        child.convert_button.set_menu_model(self.__convertmenu)
+        child.convert_button.set_direction(Gtk.ArrowType.UP)
+        child.append(child.convert_button)
+        
+        child.delete_button = Gtk.Button()
+        icon = Gtk.Image.new_from_icon_name('list-remove-symbolic')
+        icon.set_pixel_size(16)
+        child.delete_button.set_child(icon)
+        child.delete_button.set_tooltip_text("Delete this SaveGameBackup.")
+        child.append(child.delete_button)
+        
+        item.set_child(child)
+        
+    def _on_actions_column_bind(self,factory,item):
+        child = item.get_child()
+        data = item.get_item()
+        
+        if hasattr(child.restore_button,'_signal_clicked_connector'):
+            child.restore_button.disconnect(child.restore_button._signal_clicked_connector)
+            del child.restore_button._signal_clicked_connector
+        #if hasattr(child.convert_button,'_signal_clicked_connector'):
+        #    child.convert_button.disconnect(child.convert_button._signal_clicked_connector)
+        #    del child.convert_button._signal_clicked_connector
+        if hasattr(child.delete_button,'_signal_clicked_connector'):
+            child.delete_button.disconnect(child.delete_button._signal_clicked_connector)
+            del child.delete_button._signal_clicked_connector
+        child.restore_button._signal_clicked_connector = child.restore_button.connect('clicked',self._on_restore_button_clicked,data)
+        #child.convert_button._signal_clicked_connector = child.convert_button.connect('clicked',self._on_convert_button_clicked,data)
+        child.delete_button._signal_clicked_connector = child.delete_button.connect('clicked',self._on_delete_button_clicked,data)
+        
+        
+    def _on_restore_button_clicked(self,button,data:BackupViewData):
+        pass
+    
+    def _on_convert_button_clicked(self,button,data:BackupViewData):
+        pass
+    
+    def _on_delete_button_clicked(self,button,data:BackupViewData):
+        pass
+    
     def _on_gameview_columnview_activate(self,columnview,position):
         model = columnview.get_model().get_model()
         game = model.get_item(position).game
@@ -1063,7 +1115,6 @@ class BackupView(Gtk.Box):
                 self.__liststore.append(BackupViewData(game,bf))
             except: 
                 pass
-        
         
 
 class AppWindow(Gtk.ApplicationWindow):

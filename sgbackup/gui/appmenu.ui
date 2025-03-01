@@ -59,13 +59,7 @@
         </section>
     </menu>
 
-    <menu id="backupview-contextmenu">
-        <section>
-            <item>
-                <attribute name='label' translatable="true">_Restore</attribute>
-                <attribute name='action'>backupview.restore</attribute>                
-            </item>            
-        </section>
+    <menu id="backupview-convert-menu">
         <section>
             <item>
                 <attribute name='label' translatable="true">Convert to _Windows</attribute>

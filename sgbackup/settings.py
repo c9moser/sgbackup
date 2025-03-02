@@ -26,6 +26,7 @@ from threading import RLock
 
 from .utility import sanitize_path
 
+
 ZIPFILE_COMPRESSION_STR = {
     zipfile.ZIP_STORED: "stored",
     zipfile.ZIP_DEFLATED: "deflated",
@@ -416,6 +417,36 @@ class Settings(GObject.GObject):
     @steam_installpath.setter
     def steam_installpath(self,path:str):
         self.set_string('steam','installpath',path)
+
+    @GObject.Property
+    def cli_pager(self)->str:
+        pager = self.get_string('cli','pager',None)
+        if pager is None:
+            if PLATFORM_WINDOWS:
+                for prg in ['less.exe','more.com']:
+                    pager = GLib.find_program_in_path(prg)
+                    if pager is not None:
+                        return pager
+                return ""
+            else:
+                for prg in ['less','more']:
+                    pager = GLib.find_program_in_path(prg)
+                    if pager is not None:
+                        return pager
+            return None
+        return pager
+    
+    @cli_pager.setter
+    def cli_pager(self,pager:str):
+        value = None
+        if not os.path.isabs(pager):
+            value = GLib.find_program_in_path(pager)
+        elif os.path.isfile(pager):
+            value = pager
+        if value is not None:
+            self.set_string('cli','pager',value)
+        else:
+            self.remove_key('cli','pager')
         
     def add_variable(self,name:str,value:str):
         self.set_string('variables',name,value)

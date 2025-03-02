@@ -398,12 +398,10 @@ class GameView(Gtk.Box):
         for name,match,pos in result:
             self._liststore.get_item(pos).fuzzy_match = match
         
-        print("-"*80)
         self.__filter_model.set_filter(GameViewMatchFilter())
         self.__sort_model.set_sorter(GameViewMatchSorter())
     
     def _on_search_entry_icon_release(self,entry,icon_pos):
-        #TODO###############################################
         if icon_pos == Gtk.EntryIconPosition.PRIMARY:
             search_name=entry.get_text()
             if len(search_name) == 0:
@@ -417,7 +415,6 @@ class GameView(Gtk.Box):
             self.__sort_model.set_sorter(self.columnview.get_sorter())
     
     def _on_search_entry_changed(self,entry):
-        #TODO###############################################
         search_name = entry.get_text()
         if len(search_name) == 0:
             self.__filter_model.set_filter(None)

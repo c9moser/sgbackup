@@ -267,6 +267,19 @@ class SettingsDialog(Gtk.Dialog):
         gui_frame.set_child(gui_grid)
         vbox.append(gui_frame)
         
+        ### CLI Settings
+        cli_frame = self.create_frame("Command Line Interface")
+        cli_grid = self.create_grid()
+        label = self.create_label("Pager:")
+        page.cli_pager_entry = Gtk.Entry()
+        page.cli_pager_entry.set_hexpand(True)
+        page.cli_pager_entry.set_text(settings.cli_pager if settings.cli_pager else "")
+        cli_grid.attach(label,0,0,1,1)
+        cli_grid.attach(page.cli_pager_entry,1,0,1,1)
+        
+        cli_frame.set_child(cli_grid)
+        vbox.append(cli_frame)
+        
         page.set_child(vbox)
         self.add_page(page,"general","Generic settings")
         return page

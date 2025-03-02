@@ -447,7 +447,7 @@ class Settings(GObject.GObject):
             self.set_string('cli','pager',value)
         else:
             self.remove_key('cli','pager')
-        
+    
     def add_variable(self,name:str,value:str):
         self.set_string('variables',name,value)
         
@@ -470,6 +470,15 @@ class Settings(GObject.GObject):
             "CONFIGDIR": GLib.get_user_config_dir(),
             "CONFIG_DIR": GLib.get_user_config_dir(),
             "STEAM_INSTALLPATH": self.steam_installpath,
+            "DESKTOP_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP),
+            "XDG_CONFIG_HOME": GLib.get_user_config_dir(),
+            "XDG_DESKTOP_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP),
+            "XDG_DOCUMENTS_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS),
+            "DOWNLOADS": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOWNLOAD),
+            "XDG_DOWLNLOAD_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOWNLOAD),
+            "XDG_PICTURES_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES),
+            "XDG_MUSIC_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_MUSIC),
+            "XDG_DATA_DIR": GLib.get_user_data_dir(),
         })
         ret.update(self.variables)
         return ret

@@ -249,20 +249,6 @@ class NewSteamAppsDialog(Gtk.Dialog):
         grid.set_hexpand(True)
         grid.set_column_spacing(5)
         
-        vbox = Gtk.Box.new(Gtk.Orientation.VERTICAL,2)
-        
-        icon = Gtk.Image.new_from_icon_name('list-add-symbolic')
-        grid.add_app_button = Gtk.Button()
-        grid.add_app_button.set_child(icon)
-        vbox.append(grid.add_app_button)
-        
-        icon = Gtk.Image.new_from_icon_name('edit-delete-symbolic')
-        grid.ignore_app_button = Gtk.Button()
-        grid.ignore_app_button.set_child(icon)
-        vbox.append(grid.ignore_app_button)
-        
-        grid.attach(vbox,3,0,1,3)
-        
         #label = Gtk.Label.new("Name:")
         #label.set_xalign(0.0)
         grid.name_label = Gtk.Label()
@@ -287,8 +273,43 @@ class NewSteamAppsDialog(Gtk.Dialog):
         grid.attach(label,0,2,1,1)
         grid.attach(grid.installdir_label,1,2,1,1)
         
-        item.set_child(grid)
+        # Buttons    
+        button_grid = Gtk.Grid()
+        button_grid.set_column_spacing(2)
+        button_grid.set_row_spacing(2)
+        
+        icon = Gtk.Image.new_from_icon_name('list-add-symbolic')
+        icon.set_pixel_size(16)
+        grid.add_app_button = Gtk.Button()
+        grid.add_app_button.set_child(icon)
+        grid.add_app_button.set_tooltip_markup('Add SteamApp as new Game.')
+        button_grid.attach(grid.add_app_button,0,0,1,1)
+        
+        icon = Gtk.Image.new_from_icon_name('edit-delete-symbolic')
+        icon.set_pixel_size(16)
+        grid.ignore_app_button = Gtk.Button()
+        grid.ignore_app_button.set_child(icon)
+        grid.ignore_app_button.set_tooltip_text('Add SteamApp to ignore list.')
+        button_grid.attach(grid.ignore_app_button,1,0,1,1)
     
+        icon = Gtk.Image.new_from_icon_name('edit-find-symbolic')
+        icon.set_pixel_size(16)
+        grid.lookup_button = Gtk.Button()
+        grid.lookup_button.set_child(icon)
+        grid.lookup_button.set_tooltip_text("Lookup SteamApp for already registered game.")        
+        button_grid.attach(grid.lookup_button,0,1,1,1)
+        
+        icon = Gtk.Image.new_from_icon_name('folder-download-symbolic')
+        icon.set_pixel_size(16)
+        grid.search_online_button = Gtk.Button()
+        grid.search_online_button.set_child(icon)
+        grid.search_online_button.set_tooltip_text("Lookup SteamApp online.")
+        button_grid.attach(grid.search_online_button,1,1,1,1)
+        
+        grid.attach(button_grid,3,0,1,3)
+        
+        item.set_child(grid)
+        
     def _on_listitem_bind(self,factory,item):
         child = item.get_child()
         data = item.get_item()
@@ -310,6 +331,15 @@ class NewSteamAppsDialog(Gtk.Dialog):
             child.ignore_app_button.disconnect(child.ignore_app_button._signal_clicked_connector)
         child.ignore_app_button._signal_clicked_connector = child.ignore_app_button.connect('clicked',self._on_ignore_steamapp_button_clicked,data)
         
+        if hasattr(child.lookup_button,'_signal_clicked_connector'):
+            child.lookup_button.disconnect(child.lookup_button._signal_clicked_connector)
+        #child.lookup_button._signal_clicked_connector = child.lookup_button.connect('clicked',self._on_lookup_steamapp_button_clicked,data)
+        child.lookup_button.set_sensitive(False)
+        
+        if hasattr(child.search_online_button,'_signal_clicked_connector'):
+            child.search_online_button.disconnect(child.search_online_button._signal_clicked_connector)
+        #child.search_button._signal_clicked_connector = child.search_online_button.connect('clicked',self._on_lookup_steamapp_button_clicked,data)
+        child.search_online_button.set_sensitive(False)
         
     def _on_add_steamapp_button_clicked(self,button,data:SteamApp,*args):
         def on_dialog_response(dialog,response):

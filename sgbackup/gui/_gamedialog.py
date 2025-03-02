@@ -33,6 +33,10 @@ from ..game import (
     SteamLinuxGame,
     SteamWindowsGame,
     SteamMacOSGame,
+    SteamGameData,
+    SteamLinuxData,
+    SteamMacOSData,
+    SteamWindowsData,
     GameManager,
 )
     
@@ -355,9 +359,7 @@ class GameDialog(Gtk.Dialog):
         self.__windows = self.__create_windows_page()
         self.__linux = self.__create_linux_page()
         self.__macos = self.__create_macos_page()
-        self.__steam_windows = self.__create_steam_page('steam-windows','Steam Windows')
-        self.__steam_linux = self.__create_steam_page('steam-linux','Steam Linux')
-        self.__steam_macos = self.__create_steam_page('steam-macos','Steam MacOS')
+        self.__steam = self.__create_steam_page()
         
         
         for stack_page in self.__stack.get_pages():
@@ -615,51 +617,81 @@ class GameDialog(Gtk.Dialog):
         
         return page
 
-    def __create_steam_page(self,name,title):
-        page = Gtk.ScrolledWindow()
-        vbox = Gtk.Box.new(Gtk.Orientation.VERTICAL,2)
-        self.__set_widget_margin(vbox,5)
+    def __create_steam_page(self):
+        def create_notebook_page(title,icon_name):
+            label_widget = Gtk.Box.new(Gtk.Orientation.HORIZONTAL,2)
+            label_icon = Gtk.Image.new_from_icon_name(icon_name)
+            label_icon.set_pixel_size(12)
+            label=Gtk.Label.new(title)
+            label_widget.append(label_icon)
+            label_widget.append(label)
+            
+            nbpage = Gtk.ScrolledWindow()
+            nbvbox = Gtk.Box.new(Gtk.Orientation.VERTICAL,5)
+            nbgrid = Gtk.Grid()
+            self.__set_widget_margin(nbgrid,5)
+            
+            label = Gtk.Label.new("Root directory:")
+            nbpage.sgroot_entry = Gtk.Entry()
+            nbpage.sgroot_entry.set_hexpand(True)
+            nbpage.sgroot_entry.connect('changed',lambda w: self._on_savegame_type_changed())
+            nbgrid.attach(label,0,0,1,1)
+            nbgrid.attach(nbpage.sgroot_entry,1,0,1,1)
+            
+            label = Gtk.Label.new("Backup directory:")
+            nbpage.sgdir_entry = Gtk.Entry()
+            nbpage.sgdir_entry.set_hexpand(True)
+            nbpage.sgdir_entry.connect('changed',lambda w: self._on_savegame_type_changed())
+            nbgrid.attach(label,0,1,1,1)
+            nbgrid.attach(nbpage.sgdir_entry,1,1,1,1)
+            
+            label = Gtk.Label.new("Installation directory:")
+            nbpage.installdir_entry = Gtk.Entry()
+            nbpage.installdir_entry.set_hexpand(True)
+            nbgrid.attach(label,0,3,1,1)
+            nbgrid.attach(nbpage.installdir_entry,1,3,1,1)
+
+            nbvbox.append(nbgrid)
+        
+            nbpage.filematch = self.__create_filematch_widget('Match Files')
+            nbvbox.append(nbpage.filematch)
+        
+            nbpage.ignorematch = self.__create_filematch_widget('Ignore Files')
+            nbvbox.append(nbpage.ignorematch)
+        
+            nbpage.variables = self.__create_variables_widget()
+            nbvbox.append(nbpage.variables)    
+            
+            nbpage.set_child(nbvbox)
+            return nbpage,label_widget
+        # create_notebook_page()
+        
+        page = Gtk.Box.new(Gtk.Orientation.VERTICAL,2)
         
         grid = Gtk.Grid()
+        self.__set_widget_margin(grid,5)
         
         label = Gtk.Label.new("App ID:")
         page.appid_entry = Gtk.Entry()
         page.appid_entry.set_hexpand(True)
         grid.attach(label,0,0,1,1)
         grid.attach(page.appid_entry,1,0,1,1)
-                
-        label = Gtk.Label.new("Root directory:")
-        page.sgroot_entry = Gtk.Entry()
-        page.sgroot_entry.set_hexpand(True)
-        page.sgroot_entry.connect('changed',lambda w: self._on_savegame_type_changed())
-        grid.attach(label,0,1,1,1)
-        grid.attach(page.sgroot_entry,1,1,1,1)
+        page.append(grid)
+
+        page.notebook = Gtk.Notebook()
+        page.notebook.set_hexpand(True)
+        page.notebook.set_vexpand(True)
+        page.windows,nb_label = create_notebook_page('Windows','windows-svgrepo-com-symbolic')
+        page.notebook.append_page(page.windows,nb_label)
         
-        label = Gtk.Label.new("Backup directory:")
-        page.sgdir_entry = Gtk.Entry()
-        page.sgdir_entry.set_hexpand(True)
-        page.sgdir_entry.connect('changed',lambda w: self._on_savegame_type_changed())
-        grid.attach(label,0,2,1,1)
-        grid.attach(page.sgdir_entry,1,2,1,1)
+        page.linux,nb_label = create_notebook_page("Linux",'linux-svgrepo-com-symbolic')
+        page.notebook.append_page(page.linux,nb_label)
         
-        label = Gtk.Label.new("Installation directory:")
-        page.installdir_entry = Gtk.Entry()
-        page.installdir_entry.set_hexpand(True)
-        grid.attach(label,0,3,1,1)
-        grid.attach(page.installdir_entry,1,3,1,1)
-        vbox.append(grid)
+        page.macos,nb_label = create_notebook_page("Mac OS",'apple-svgrepo-com-symbolic')
+        page.notebook.append_page(page.macos,nb_label)
         
-        page.filematch = self.__create_filematch_widget('Match Files')
-        vbox.append(page.filematch)
-        
-        page.ignorematch = self.__create_filematch_widget('Ignore Files')
-        vbox.append(page.ignorematch)
-        
-        page.variables = self.__create_variables_widget()
-        vbox.append(page.variables)
-        
-        page.set_child(vbox)
-        self.__stack.add_titled(page,name,title)
+        page.append(page.notebook)
+        self.__stack.add_titled(page,'steam','Steam')
         stack_page = self.__stack.get_page(page)
         stack_page.set_icon_name("steam-svgrepo-com-symbolic")
         
@@ -869,36 +901,31 @@ class GameDialog(Gtk.Dialog):
         set_game_widget_data(self.__macos,self.__game.macos if self.__game else None)
         self.__macos.binary_entry.set_text(self.__game.macos.binary if self.has_game and self.__game.macos else "")
         
-        #steam windows
-        set_game_widget_data(self.__steam_windows,self.__game.steam_windows if self.has_game else None)
-        self.__steam_windows.appid_entry.set_text(str(self.__game.steam_windows.appid) 
-                                                  if self.has_game and self.__game.steam_windows else "")
-        self.__steam_windows.installdir_entry.set_text(self.__game.steam_windows.installdir 
+        #steam
+        set_game_widget_data(self.__steam.windows,self.__game.steam.windows if self.has_game and self.__game.steam else None)
+        set_game_widget_data(self.__steam.linux,self.__game.steam.linux if self.has_game and self.__game.steam else None)
+        set_game_widget_data(self.__steam.macos,self.__game.steam.macos if self.has_game and self.__game.steam else None)
+        
+        self.__steam.appid_entry.set_text(str(self.__game.steam.appid) 
+                                              if self.has_game and self.__game.steam else "")
+        self.__steam.windows.installdir_entry.set_text(self.__game.steam.windows.installdir 
                                                        if self.has_game 
-                                                       and self.__game.steam_windows 
-                                                       and self.__game.steam_windows.installdir
+                                                       and self.__game.steam
+                                                       and self.__game.steam.windows 
+                                                       and self.__game.steam.windows.installdir
                                                        else "")
-            
-        #steam linux
-        set_game_widget_data(self.__steam_linux,self.__game.steam_linux if self.has_game else None)
-        self.__steam_linux.appid_entry.set_text(str(self.__game.steam_linux.appid) 
-                                                if self.has_game and self.__game.steam_linux else "")
-        self.__steam_linux.installdir_entry.set_text(self.__game.steam_linux.installdir 
+        self.__steam.linux.installdir_entry.set_text(self.__game.steam.linux.installdir 
                                                      if self.has_game 
-                                                     and self.__game.steam_linux
-                                                     and self.__game.steam_linux.installdir 
+                                                     and self.__game.steam
+                                                     and self.__game.steam.linux
+                                                     and self.__game.steam.linux.installdir
                                                      else "")
-        
-        #steam macos
-        set_game_widget_data(self.__steam_macos,self.__game.steam_macos if self.has_game else None)
-        self.__steam_macos.appid_entry.set_text(str(self.__game.steam_macos.appid) 
-                                                if self.has_game and self.__game.steam_macos else "")
-        self.__steam_macos.installdir_entry.set_text(self.__game.steam_macos.installdir 
+        self.__steam.macos.installdir_entry.set_text(self.__game.steam.macos.installdir 
                                                      if self.has_game 
-                                                     and self.__game.steam_macos
-                                                     and self.__game.steam_macos.installdir
+                                                     and self.__game.steam
+                                                     and self.__game.steam.macos
+                                                     and self.__game.steam.macos.installdir
                                                      else "")
-        
     # reset()
     
     def save(self):
@@ -937,7 +964,6 @@ class GameDialog(Gtk.Dialog):
         def get_steam_data(widget):
             conf = get_game_data(widget)
             conf.update({
-                'appid': int(widget.appid_entry.get_text()),
                 'installdir': widget.installdir_entry.get_text(),
             })
             return conf
@@ -1048,72 +1074,77 @@ class GameDialog(Gtk.Dialog):
         elif self.__game.macos:
             self.__game.macos = None
             
-        if self.get_is_valid_savegame_type(SavegameType.STEAM_WINDOWS):
-            data = get_steam_data(self.__steam_windows)
-            if self.__game.steam_windows:
-                sg = self.__game.steam_windows
-                sg.savegame_root = data['sgroot']
-                sg.savegame_dir = data['sgdir']
-                sg.variables = data['variables']
-                sg.file_matchers = data["filematch"]
-                sg.ignore_matchers = data['ignorematch']
-                sg.appid = data['appid']
-                sg.installdir = data['installdir']
+        if (self.get_is_valid_savegame_type(SavegameType.STEAM_WINDOWS) 
+            or self.get_is_valid_savegame_type(SavegameType.STEAM_LINUX)
+            or self.get_is_valid_savegame_type(SavegameType.STEAM_MACOS)):
+            
+            if self.__game.steam:
+                self.__game.steam.appid = int(self.__steam.appid_entry.get_text())
             else:
-                self.__game.steam_windows = SteamWindowsGame(data['appid'],
-                                                             data['sgroot'],
-                                                             data['sgdir'],
-                                                             data['variables'],
-                                                             data['installdir'],
-                                                             data['filematch'],
-                                                             data['ignorematch'])
-        elif self.__steam_windows:
-            self.__steam_windows = None
+                self.__game.steam = SteamGameData(int(self.__steam.appid_entry.get_text()))
                 
-        if self.get_is_valid_savegame_type(SavegameType.STEAM_LINUX):
-            data = get_steam_data(self.__steam_linux)
-            if self.__game.steam_linux:
-                sg = self.__game.steam_linux
-                sg.savegame_root = data['sgroot']
-                sg.savegame_dir = data['sgdir']
-                sg.variables = data['variables']
-                sg.file_matchers = data["filematch"]
-                sg.ignore_matchers = data['ignorematch']
-                sg.appid = data['appid']
-                sg.installdir = data['installdir']
-            else:
-                self.__game.steam_linux = SteamLinuxGame(data['appid'],
-                                                         data['sgroot'],
-                                                         data['sgdir'],
-                                                         data['variables'],
-                                                         data['installdir'],
-                                                         data['filematch'],
-                                                         data['ignorematch'])
-        elif self.__steam_linux:
-            self.__steam_linux = None
             
-        if self.get_is_valid_savegame_type(SavegameType.STEAM_MACOS):
-            data = get_steam_data(self.__steam_macos)
-            if self.__game.steam_macos:
-                sg = self.__game.steam_macos
-                sg.savegame_root = data['sgroot']
-                sg.savegame_dir = data['sgdir']
-                sg.variables = data['variables']
-                sg.file_matchers = data["filematch"]
-                sg.ignore_matchers = data['ignorematch']
-                sg.appid = data['appid']
-                sg.installdir = data['installdir']
-            else:
-                self.__game.steam_macos = SteamMacOSGame(data['appid'],
-                                                         data['sgroot'],
-                                                         data['sgdir'],
-                                                         data['variables'],
-                                                         data['installdir'],
-                                                         data['filematch'],
-                                                         data['ignorematch'])
-        elif self.__steam_macos:
-            self.__steam_macos = None
+            if self.get_is_valid_savegame_type(SavegameType.STEAM_WINDOWS):
+                data = get_steam_data(self.__steam.windows)    
+                if self.__game.steam.windows:
+                    g = self.__game.steam.windows
+                    g.savegame_root = data['sgroot']
+                    g.savegame_dir = data['sgdir']
+                    g.variables = data['variables']
+                    g.file_matchers = data["filematch"]
+                    g.ignore_matchers = data['ignorematch']
+                    g.installdir = data['installdir']
+                else:
+                    self.__game.steam.windows = SteamWindowsData(savegame_root=data['sgroot'],
+                                                                 savegame_dir=data['sgdir'],
+                                                                 variables=data['variables'],
+                                                                 installdir=data['installdir'],
+                                                                 file_match=data['filematch'],
+                                                                 ignore_match=data['ignorematch'])
+            elif self.__game.steam.windows:
+                self.__game.steam.windows = None
+                        
+            if self.get_is_valid_savegame_type(SavegameType.STEAM_LINUX):
+                data = get_steam_data(self.__steam.linux)
+                if self.__game.steam_linux:
+                    g = self.__game.steam.linux
+                    g.savegame_root = data['sgroot']
+                    g.savegame_dir = data['sgdir']
+                    g.variables = data['variables']
+                    g.file_matchers = data["filematch"]
+                    g.ignore_matchers = data['ignorematch']
+                    g.installdir = data['installdir']
+                else:
+                    self.__game.steam_linux = SteamLinuxData(savegame_root=data['sgroot'],
+                                                             savegame_dir=data['sgdir'],
+                                                             variables=data['variables'],
+                                                             installdir=data['installdir'],
+                                                             file_match=data['filematch'],
+                                                             ignore_match=data['ignorematch'])
+            elif self.__game.steam.linux:
+                self.__game.steam.linux = None
             
+            if self.get_is_valid_savegame_type(SavegameType.STEAM_MACOS):
+                data = get_steam_data(self.__steam_macos)
+                if self.__game.steam_macos:
+                    g = self.__game.steam_macos
+                    g.savegame_root = data['sgroot']
+                    g.savegame_dir = data['sgdir']
+                    g.variables = data['variables']
+                    g.file_matchers = data["filematch"]
+                    g.ignore_matchers = data['ignorematch']
+                    g.installdir = data['installdir']
+                else:
+                    self.__game.steam_macos = SteamMacOSData(savegame_root=data['sgroot'],
+                                                             savegame_dir=data['sgdir'],
+                                                             variables=data['variables'],
+                                                             installdir=data['installdir'],
+                                                             file_match=data['filematch'],
+                                                             ignore_match=data['ignorematch'])
+            elif self.__game.steam.macos:
+                self.__game.steam.macos = None
+        # bEND: steam
+          
         self.__game.save()
         GameManager.get_global().add_game(self.__game)
                 
@@ -1141,7 +1172,8 @@ class GameDialog(Gtk.Dialog):
         """
         
         def check_is_valid(widget):
-            return (bool(widget.sgroot_entry.get_text()) and bool(widget.sgdir_entry.get_text()))
+            return (len(widget.sgroot_entry.get_text().strip()) > 0 
+                    and len(widget.sgdir_entry.get_text().strip()) > 0)
         
         if sgtype == SavegameType.WINDOWS:
             return check_is_valid(self.__windows)
@@ -1150,11 +1182,11 @@ class GameDialog(Gtk.Dialog):
         elif sgtype == SavegameType.MACOS:
             return check_is_valid(self.__macos)
         elif sgtype == SavegameType.STEAM_WINDOWS:
-            return check_is_valid(self.__steam_windows)
+            return check_is_valid(self.__steam.windows)
         elif sgtype == SavegameType.STEAM_LINUX:
-            return check_is_valid(self.__steam_linux)
+            return check_is_valid(self.__steam.linux)
         elif sgtype == SavegameType.STEAM_MACOS:
-            return check_is_valid(self.__steam_macos)
+            return check_is_valid(self.__steam.macos)
         #elif sgtype == SavegameType.EPIC_WINDOWS:
         #    return check_is_valid(self.__epic_windows)
         #elif sgtype == SavegameType.EPIC_LINUX:
@@ -1247,8 +1279,6 @@ class GameDialog(Gtk.Dialog):
         if not label.get_text():
             label.grab_focus()
             label.start_editing()
-            
-        
     
     def _on_windows_regkey_setup(self,factory,item):
         label = Gtk.EditableLabel()

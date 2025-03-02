@@ -927,7 +927,207 @@ class SteamMacOSGame(SteamGame):
                            file_match,
                            ignore_match)
 
+class SteamPlatformData(GameData):
+    def __init__(self,
+                 savegame_type:SavegameType,
+                 savegame_root:str,
+                 savegame_dir:str,
+                 variables:dict|None=None,
+                 file_match:str|None=None,
+                 ignore_match:str|None=None,
+                 installdir:str|None=None,
+                 librarydir:str|None=None):
+        
+        if savegame_type not in (SavegameType.STEAM_WINDOWS,
+                                 SavegameType.STEAM_LINUX,
+                                 SavegameType.STEAM_MACOS):
+            raise TypeError("\"savegame_type\" is not valid!")
+        
+        GameData.__init__(self,
+                          savegame_type=savegame_type,
+                          savegame_root=savegame_root,
+                          savegame_dir=savegame_dir,
+                          variables=variables,
+                          file_match=file_match,
+                          ignore_match=ignore_match)
+        self.installdir = installdir
+        self.librarydir = librarydir
+            
+    @Property(type=str)
+    def installdir(self)->str:
+        return self.__installdir if self.__installdir else ""
     
+    @installdir.setter
+    def installdir(self,installdir:str|None):
+        self.__installdir = installdir
+
+
+    @Property(type=str)
+    def librarydir(self)->str:
+        return self.__librarydir if self.__librarydir else ""
+    
+    @librarydir.setter
+    def librarydir(self,steam_libdir:str|None):
+        self.__librarydir = steam_libdir
+
+    def serialize(self)->dict:
+        data = super().serialize()
+        if self.__installdir:
+            data['installdir'] = self.__installdir
+        if self.__librarydir:
+            data['librarydir'] = self.__librarydir
+        
+        return data
+    
+class SteamWindowsData(SteamPlatformData):
+    def __init__(self,
+                 savegame_root:str,
+                 savegame_dir:str,
+                 variables:dict|None=None,
+                 file_match:str|None=None,
+                 ignore_match:str|None=None,
+                 installdir:str|None=None,
+                 librarydir:str|None=None):
+        SteamPlatformData.__init__(self,
+                                   savegame_type=SavegameType.STEAM_WINDOWS,
+                                   savegame_root=savegame_root,
+                                   savegame_dir=savegame_dir,
+                                   variables=variables,
+                                   file_match=file_match,
+                                   ignore_match=ignore_match,
+                                   installdir=installdir,
+                                   librarydir=librarydir)
+
+class SteamLinuxData(SteamPlatformData):
+    def __init__(self,
+                 savegame_root:str,
+                 savegame_dir:str,
+                 variables:dict|None=None,
+                 file_match:str|None=None,
+                 ignore_match:str|None=None,
+                 installdir:str|None=None,
+                 librarydir:str|None=None):
+        SteamPlatformData.__init__(self,
+                                   savegame_type=SavegameType.STEAM_LINUX,
+                                   savegame_root=savegame_root,
+                                   savegame_dir=savegame_dir,
+                                   variables=variables,
+                                   file_match=file_match,
+                                   ignore_match=ignore_match,
+                                   installdir=installdir,
+                                   librarydir=librarydir)
+
+class SteamMacOSData(SteamPlatformData):
+    def __init__(self,
+                 savegame_root:str,
+                 savegame_dir:str,
+                 variables:dict|None=None,
+                 file_match:str|None=None,
+                 ignore_match:str|None=None,
+                 installdir:str|None=None,
+                 librarydir:str|None=None):
+        SteamPlatformData.__init__(self,
+                                   savegame_type=SavegameType.STEAM_MACOS,
+                                   savegame_root=savegame_root,
+                                   savegame_dir=savegame_dir,
+                                   variables=variables,
+                                   file_match=file_match,
+                                   ignore_match=ignore_match,
+                                   installdir=installdir,
+                                   librarydir=librarydir)
+
+class SteamGameData(GObject):
+    def __init__(self,appid:int,
+                 windows:SteamWindowsData|None=None,
+                 linux:SteamLinuxData|None=None,
+                 macos:SteamMacOSData|None=None):
+        GObject.__init__(self)
+        self.__appid = int(appid)
+        self.windows = windows
+        self.linux = linux
+        self.macos = macos
+        
+    @Property(type=int)
+    def appid(self)->int:
+        return self.__appid
+    
+    @appid.setter
+    def appid(self,appid:int):
+        return self.__appid
+    
+    @property
+    def windows(self)->SteamWindowsData|None:
+        return self.__windows_data
+        
+    @windows.setter
+    def windows(self,data:SteamWindowsData|None):
+        self.__windows_data = data
+        
+    @property
+    def linux(self)->SteamLinuxData|None:
+        return self.__linux_data
+    
+    @linux.setter
+    def linux(self,data:SteamLinuxData|None):
+        self.__linux_data = data
+        
+    @property
+    def macos(self)->SteamMacOSData|None:
+        return self.__macos_data
+    
+    @macos.setter
+    def macos(self,data:SteamMacOSData|None):
+        self.__macos_data = data
+        
+    @property
+    def windows_game(self)->SteamWindowsGame|None:
+        if self.windows:
+            return SteamWindowsGame(appid=self.appid,
+                                    savegame_root=self.windows.savegame_root,
+                                    savegame_dir=self.windows.savegame_dir,
+                                    variables=self.windows.variables,
+                                    installdir=self.windows.installdir,
+                                    file_match=self.windows.file_matchers,
+                                    ignore_match=self.windows.ignore_matchers)
+        return None
+    
+    @property
+    def linux_game(self)->SteamLinuxGame|None:
+        if self.linux:
+            return SteamLinuxGame(appid=self.appid,
+                                  savegame_root=self.windows.savegame_root,
+                                  savegame_dir=self.windows.savegame_dir,
+                                  variables=self.windows.variables,
+                                  installdir=self.windows.installdir,
+                                  file_match=self.windows.file_matchers,
+                                  ignore_match=self.windows.ignore_matchers)
+        return None
+    
+    @property
+    def macos_game(self)->SteamLinuxGame|None:
+        if self.macos:
+            return SteamMacOSGame(appid=self.appid,
+                                  savegame_root=self.windows.savegame_root,
+                                  savegame_dir=self.windows.savegame_dir,
+                                  variables=self.windows.variables,
+                                  installdir=self.windows.installdir,
+                                  file_match=self.windows.file_matchers,
+                                  ignore_match=self.windows.ignore_matchers)
+        return None
+    
+    def serialize(self)->dict:
+        data = {
+            'appid': self.appid,
+        }
+        if self.windows:
+            data['windows'] = self.windows.serialize()
+        if self.linux:
+            data['linux'] = self.linux.serialize()
+        if self.macos:
+            data['macos'] = self.macos.serialize()
+            
+        return data
+        
 class Game(GObject):
     __gtype_name__ = "Game"
     
@@ -968,18 +1168,50 @@ class Game(GObject):
                 
             return (file_match,ignore_match)
                 
-        def new_steam_game(conf,cls:SteamGame):
-            appid = conf['appid'] if 'appid' in conf else ""
-            sgroot = conf['savegame_root'] if 'savegame_root' in conf else ""
-            sgdir = conf['savegame_dir'] if 'savegame_dir' in conf else ""
-            vars = conf['variables'] if 'variables' in conf else {}
-            installdir = conf['installdir'] if 'installdir' in conf else ""
-            file_match,ignore_match = get_file_match(conf)
+        def new_steamdata(conf)->SteamGameData|None:
+            def new_steam_platform_data(data:dict,cls:SteamPlatformData)->SteamPlatformData|None:
+                if not 'savegame_root' in data or not 'savegame_dir' in data:
+                    return None
                 
-            if appid is not None and sgroot and sgdir:
-                cls(appid,sgroot,sgdir,vars,installdir,file_match,ignore_match)
-            return cls(appid,sgroot,sgdir,vars,installdir,file_match,ignore_match)
-        # new_steam_game()
+                file_match,ignore_match = get_file_match(data)
+                return cls(
+                    savegame_root=data['savegame_root'],
+                    savegame_dir=data['savegame_dir'],
+                    variables=dict(((v['name'],v['value']) for v in data['variables'])) if ('variables' in data and config['variables']) else None,
+                    file_match=file_match,
+                    ignore_match=ignore_match,
+                    installdir=data['installdir'] if ('installdir' in data and data['installdir']) else None,
+                    librarydir=data['librarydir'] if ('librarydir' in data and data['librarydir']) else None                   
+                )
+            
+            if ('steam' not in conf or not 'appid' in conf['steam']):
+                return None
+            
+            steam=conf['steam']
+            
+            if 'windows' in steam:
+                windows = new_steam_platform_data(steam['windows'],SteamWindowsData)
+            else:
+                windows = None
+                
+            if 'linux' in steam:
+                linux = new_steam_platform_data(steam['linux'],SteamLinuxData)
+            else:
+                linux = None
+                
+            if 'macos' in steam:
+                macos = new_steam_platform_data(steam['macos'],SteamMacOSData)
+            else:
+                macos = None
+                
+            if windows is None and linux is None and macos is None:
+                return None
+            
+            return SteamGameData(steam['appid'],
+                                 windows=windows,
+                                 linux=linux,
+                                 macos=macos)
+        # new_steamdata()
         
         if not 'key' in config or not 'name' in config:
             return None
@@ -1034,12 +1266,7 @@ class Game(GObject):
             file_match,ignore_match = get_file_match(macconf)
             game.macos = MacOSGame(sgroot,sgdir,vars,binary,file_match,ignore_match)
         
-        if 'steam_windows' in config:
-            game.steam_windows = new_steam_game(config['steam_windows'],SteamWindowsGame)
-        if 'steam_linux' in config:
-            game.steam_linux = new_steam_game(config['steam_linux'],SteamLinuxGame)
-        if 'steam_macos' in config:
-            game.steam_macos = new_steam_game(config['steam_macos'],SteamMacOSGame)
+        game.steam = new_steamdata(config)
             
         return game
     
@@ -1070,6 +1297,9 @@ class Game(GObject):
         self.__windows = None
         self.__linux = None
         self.__macos = None
+        self.__steam = None
+        self.__epic = None
+        self.__gog = None
         self.__steam_windows = None
         self.__steam_linux = None
         self.__steam_macos = None
@@ -1175,11 +1405,11 @@ class Game(GObject):
         elif (sgtype == SavegameType.MACOS):
             return self.macos
         elif (sgtype == SavegameType.STEAM_WINDOWS):
-            return self.steam_windows
+            return self.steam.windows_game
         elif (sgtype == SavegameType.STEAM_LINUX):
-            return self.steam_linux
+            return self.steam.linux_game
         elif (sgtype == SavegameType.STEAM_MACOS):
-            return self.steam_macos
+            return self.steam.macos_game
         elif (sgtype == SavegameType.GOG_WINDOWS):
             return self.__gog_windows
         elif (sgtype == SavegameType.GOG_LINUX):
@@ -1227,40 +1457,38 @@ class Game(GObject):
             self.__macos = data
     
     @Property
+    def steam(self)->SteamGameData|None:
+        return self.__steam
+    
+    @steam.setter
+    def steam(self,steam_data:SteamGameData|None):
+        if (not steam_data):
+            self.__steam = steam_data
+            return
+        
+        if (not isinstance(steam_data,SteamGameData)):
+            raise TypeError("\"steam\" is not \"None\" or a \"SteamGameData\" instance!")
+        
+        self.__steam = steam_data
+        
+    @Property
     def steam_windows(self)->SteamWindowsGame|None:
-        return self.__steam_windows
-    @steam_windows.setter
-    def steam_windows(self,data:SteamWindowsGame|None):
-        if not data:
-            self.__steam_windows = None
-        else:
-            if not isinstance(data,SteamWindowsGame):
-                raise TypeError("SteamWindowsGame")
-            self.__steam_windows = data
-            
+        if self.steam:
+            return self.steam.windows_game
+        return None
+    
     @Property
     def steam_linux(self)->SteamLinuxGame|None:
-        return self.__steam_linux
-    @steam_linux.setter
-    def steam_linux(self,data:SteamLinuxGame|None):
-        if not data:
-            self.__steam_linux = None
-        else:
-            if not isinstance(data,SteamLinuxGame):
-                raise TypeError("SteamLinuxGame")
-            self.__steam_linux = data
+        if self.steam:
+            return self.steam.linux_game
+        return None
+    
             
     @Property
     def steam_macos(self)->SteamMacOSGame|None:
-        return self.__steam_macos
-    @steam_macos.setter
-    def steam_macos(self,data:SteamMacOSGame|None):
-        if not data:
-            self.__steam_macos = None
-        else:
-            if not isinstance(data,SteamMacOSGame):
-                raise TypeError("SteamMacOSGame")
-            self.__steam_macos = data
+        if self.steam:
+            return self.steam.macos_game
+        return None
     
     @Property
     def savegame_root(self)->str|None:
@@ -1315,12 +1543,9 @@ class Game(GObject):
             ret['linux'] = self.linux.serialize()
         if (self.macos):
             ret['macos'] = self.macos.serialize()
-        if (self.steam_windows):
-            ret['steam_windows'] = self.steam_windows.serialize()
-        if (self.steam_linux):
-            ret['steam_linux'] = self.steam_linux.serialize()
-        if (self.steam_macos):
-            ret['steam_macos'] = self.steam_macos.serialize()
+        if (self.steam):
+            ret['steam'] = self.steam.serialize()
+            
         #if self.gog_windows:
         #    ret['gog_windows'] = self.gog_windows.serialize()
         #if self.gog_linux:

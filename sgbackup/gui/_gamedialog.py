@@ -895,11 +895,13 @@ class GameDialog(Gtk.Dialog):
         
         #linux
         set_game_widget_data(self.__linux,self.__game.linux if self.has_game else None)
-        self.__linux.binary_entry.set_text(self.__game.linux.binary if self.has_game and self.__game.linux else "")
+        self.__linux.binary_entry.set_text(self.__game.linux.binary 
+                                           if self.has_game and self.__game.linux and self.__game.linux.binary else "")
 
         #macos
         set_game_widget_data(self.__macos,self.__game.macos if self.__game else None)
-        self.__macos.binary_entry.set_text(self.__game.macos.binary if self.has_game and self.__game.macos else "")
+        self.__macos.binary_entry.set_text(self.__game.macos.binary 
+                                           if (self.has_game and self.__game.macos and self.__game.macos.binary) else "")
         
         #steam
         set_game_widget_data(self.__steam.windows,self.__game.steam.windows if self.has_game and self.__game.steam else None)
@@ -1106,7 +1108,7 @@ class GameDialog(Gtk.Dialog):
                         
             if self.get_is_valid_savegame_type(SavegameType.STEAM_LINUX):
                 data = get_steam_data(self.__steam.linux)
-                if self.__game.steam_linux:
+                if self.__game.steam.linux:
                     g = self.__game.steam.linux
                     g.savegame_root = data['sgroot']
                     g.savegame_dir = data['sgdir']
@@ -1115,7 +1117,7 @@ class GameDialog(Gtk.Dialog):
                     g.ignore_matchers = data['ignorematch']
                     g.installdir = data['installdir']
                 else:
-                    self.__game.steam_linux = SteamLinuxData(savegame_root=data['sgroot'],
+                    self.__game.steam.linux = SteamLinuxData(savegame_root=data['sgroot'],
                                                              savegame_dir=data['sgdir'],
                                                              variables=data['variables'],
                                                              installdir=data['installdir'],
@@ -1125,8 +1127,8 @@ class GameDialog(Gtk.Dialog):
                 self.__game.steam.linux = None
             
             if self.get_is_valid_savegame_type(SavegameType.STEAM_MACOS):
-                data = get_steam_data(self.__steam_macos)
-                if self.__game.steam_macos:
+                data = get_steam_data(self.__steam.macos)
+                if self.__game.steam.macos:
                     g = self.__game.steam_macos
                     g.savegame_root = data['sgroot']
                     g.savegame_dir = data['sgdir']
@@ -1135,7 +1137,7 @@ class GameDialog(Gtk.Dialog):
                     g.ignore_matchers = data['ignorematch']
                     g.installdir = data['installdir']
                 else:
-                    self.__game.steam_macos = SteamMacOSData(savegame_root=data['sgroot'],
+                    self.__game.steam.macos = SteamMacOSData(savegame_root=data['sgroot'],
                                                              savegame_dir=data['sgdir'],
                                                              variables=data['variables'],
                                                              installdir=data['installdir'],

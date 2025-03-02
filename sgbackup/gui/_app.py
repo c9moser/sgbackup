@@ -616,7 +616,7 @@ class GameView(Gtk.Box):
         
         dialog = GameDialog(self.get_root(),game)
         dialog.set_modal(False)
-        dialog.connect('response',on_dialog_response)
+        dialog.connect_after('response',on_dialog_response)
         dialog.present()
         
         

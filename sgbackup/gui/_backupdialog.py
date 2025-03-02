@@ -228,10 +228,10 @@ class BackupManyDialog(Gtk.Dialog):
                     raise TypeError("\"games\" is not an Iterable of \"Game\" instances!")
                 if g.get_backup_files():
                     self.__games.append(g)
-        #if self.__games:
-            #self.__ok_button.set_sensitive(False)
-        #else:
-            #self.__ok_button.set_sensitive(True)
+        if self.__games:
+            self.__ok_button.set_sensitive(False)
+        else:
+            self.__ok_button.set_sensitive(True)
     
     def do_response(self,response):
         self.hide()

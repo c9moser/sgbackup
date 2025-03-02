@@ -168,7 +168,15 @@ class ArchiverManager(GObject):
     
     @Signal(name="backup-game-finished",return_type=None,arg_types=(Game,),flags=SignalFlags.RUN_FIRST)
     def do_backup_game_finished(self,game:Game):
-        pass
+        if game.is_live and settings.backup_versions > 0:
+            directory = os.path.join(settings.backup_dir,
+                                     game.savegame_name,
+                                     game.savegame_type.value,
+                                     game.savegame_subdir)
+            files=list(sorted(os.listdir(directory),reverse=True))
+            if len(files) > settings.backup_versions:
+                for backup_file in files[settings.backup_versions:]:
+                    self.remove_backup(game,backup_file)
     
     @Signal(name="backup-progress",return_type=None,arg_types=(float,),flags=SignalFlags.RUN_FIRST)
     def do_backup_progress(self,fraction):
@@ -211,8 +219,6 @@ class ArchiverManager(GObject):
                 for filename in backups[settings.backup_versions:]:
                     self.remove_backup(game,filename)
                     
-            
-            
         self.emit("backup-game-finished",game)
         if not multi_backups:
             self.emit("backup-finished")
@@ -243,7 +249,7 @@ class ArchiverManager(GObject):
             raise RuntimeError("A backup is already in progress!!!")
         self.backup_in_progress = True
         game_list = list(games)
-        print(games)
+        
         game_progress = dict([(game.key,0.0) for game in game_list])
         mutex = threading.RLock()
         

@@ -364,7 +364,7 @@ class GameView(Gtk.Box):
         steam = Steam()
         if steam.find_new_steamapps():
             dialog = NewSteamAppsDialog(parent=self.get_root())
-            dialog.connect('response',self._on_new_steamapps_dialog_response)
+            dialog.connect_after('response',self._on_new_steamapps_dialog_response)
             dialog.present()
         else:
             dialog = NoNewSteamAppsDialog(parent=self.get_root())
@@ -1401,7 +1401,7 @@ class Application(Gtk.Application):
         steam = Steam()
         if steam.find_new_steamapps():
             dialog = NewSteamAppsDialog(self.appwindow)
-            dialog.connect('response',on_dialog_response)
+            dialog.connect_after('response',on_dialog_response)
             dialog.present()
         else:
             dialog = NoNewSteamAppsDialog(self.appwindow)

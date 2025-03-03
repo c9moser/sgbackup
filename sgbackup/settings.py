@@ -478,7 +478,7 @@ class Settings(GObject.GObject):
             "XDG_DOWLNLOAD_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOWNLOAD),
             "XDG_PICTURES_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES),
             "XDG_MUSIC_DIR": GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_MUSIC),
-            "XDG_DATA_DIR": GLib.get_user_data_dir(),
+            "XDG_DATA_HOME": GLib.get_user_data_dir(),
         })
         ret.update(self.variables)
         return ret

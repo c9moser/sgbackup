@@ -22,7 +22,7 @@ from gi.repository.GObject import GObject,Property,Signal,BindingFlags
 
 import os
 from ..steam import Steam,SteamLibrary,SteamApp,IgnoreSteamApp,PLATFORM_LINUX,PLATFORM_MACOS,PLATFORM_WINDOWS
-from ..game import GameManager,Game,SteamLinuxGame,SteamMacOSGame,SteamWindowsGame,SavegameType
+from ..game import GameManager,Game,SteamGameData,SteamLinuxData,SteamMacOSData,SteamWindowsData,SavegameType
 from ._gamedialog import GameDialog
 
 class SteamLibrariesDialog(Gtk.Dialog):
@@ -349,21 +349,16 @@ class NewSteamAppsDialog(Gtk.Dialog):
                     if item.appid == data.appid:
                         self.__listmodel.remove(i)
                     
-        game = Game("Enter key",data.name,"")
+        game = Game("",data.name,"")
+        game.steam = SteamGameData(appid=data.appid)
         if PLATFORM_WINDOWS:
-            game.steam_windows = SteamWindowsGame(data.appid,"","",installdir=data.installdir)
-            game.steam_linux = SteamLinuxGame(data.appid,"","")
-            game.steam_macos = SteamMacOSGame(data.appid,"","")
+            game.steam.windows = SteamWindowsData("","",installdir=data.installdir)
             game.savegame_type = SavegameType.STEAM_WINDOWS
         elif PLATFORM_LINUX:
-            game.steam_linux = SteamLinuxGame(data.appid,"","",installdir=data.installdir)
-            game.steam_windows = SteamWindowsGame(data.appid,"","")
-            game.steam_macos = SteamMacOSGame(data.appid,"","")
+            game.steam.linux = SteamLinuxData("","",installdir=data.installdir)
             game.savegame_type = SavegameType.STEAM_LINUX
         elif PLATFORM_MACOS:
-            game.steam_macos = SteamMacOSGame(data.appid,"","",installdir=data.installdir)
-            game.steam_windows = SteamWindowsGame(data.appid,"","")
-            game.steam_macos = SteamMacOSGame(data.appid,"","")
+            game.steam.macos = SteamMacOSData("","",installdir=data.installdir)
             game.savegame_type = SavegameType.STEAM_MACOS
         
         gamedialog = GameDialog(self,game)

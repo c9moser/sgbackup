@@ -278,11 +278,11 @@ class GameView(Gtk.Box):
         #factory_actions.connect('unbind',self._on_actions_column_unbind)
         column_actions = Gtk.ColumnViewColumn.new("",factory_actions)
         
-        selection = Gtk.SingleSelection()
-        selection.set_autoselect(False)
-        selection.set_can_unselect(True)
-        selection.set_model(self.__sort_model)
-        self.columnview.set_model(selection)
+        self.__selection_model = Gtk.SingleSelection()
+        self.__selection_model.set_autoselect(False)
+        self.__selection_model.set_can_unselect(True)
+        self.__selection_model.set_model(self.__sort_model)
+        self.columnview.set_model(self.__selection_model)
         
         
         self.columnview.set_vexpand(True)
@@ -781,9 +781,15 @@ class BackupViewData(GObject):
         """
         return self.__timestamp
     
-    def _on_selection_changed(self,selection):
-        pass
 
+class BackupViewSorter(Gtk.Sorter):
+    def do_compare(self,item1:BackupViewData,item2:BackupViewData):
+        if (item1.timestamp < item2.timestamp):
+            return Gtk.Ordering.LARGER
+        elif (item1.timestamp > item2.timestamp):
+            return Gtk.Ordering.SMALLER
+        else:
+            return Gtk.Ordering.EQUAL
 class BackupView(Gtk.Box):
     """
     BackupView This view displays the backup for the selected `Game`.
@@ -806,10 +812,11 @@ class BackupView(Gtk.Box):
         self.insert_action_group("backupview",self.action_group)
         
         self.__liststore = Gio.ListStore()
-        selection = Gtk.SingleSelection(model=self.__liststore,
-                                        autoselect=False,
-                                        can_unselect=True)
-        selection.connect('selection-changed',self._on_columnview_selection_changed)        
+        sort_model = Gtk.SortListModel(model=self.__liststore,sorter=BackupViewSorter())
+        self.__selection_model = Gtk.SingleSelection(model=sort_model,
+                                                     autoselect=False,
+                                                     can_unselect=True)
+        self.__selection_model.connect('selection-changed',self._on_columnview_selection_changed)
         
         sgtype_factory = Gtk.SignalListItemFactory()
         sgtype_factory.connect('setup',self._on_sgtype_column_setup)
@@ -847,7 +854,7 @@ class BackupView(Gtk.Box):
         actions_factory.connect('bind',self._on_actions_column_bind)
         actions_column = Gtk.ColumnViewColumn.new("",actions_factory)
         
-        self.__columnview = Gtk.ColumnView.new(selection)
+        self.__columnview = Gtk.ColumnView.new(self.__selection_model)
         self.__columnview.append_column(sgtype_column)
         self.__columnview.append_column(sgos_column)
         self.__columnview.append_column(live_column)
@@ -1085,26 +1092,25 @@ class BackupView(Gtk.Box):
         if hasattr(child.restore_button,'_signal_clicked_connector'):
             child.restore_button.disconnect(child.restore_button._signal_clicked_connector)
             del child.restore_button._signal_clicked_connector
-        #if hasattr(child.convert_button,'_signal_clicked_connector'):
-        #    child.convert_button.disconnect(child.convert_button._signal_clicked_connector)
-        #    del child.convert_button._signal_clicked_connector
         if hasattr(child.delete_button,'_signal_clicked_connector'):
             child.delete_button.disconnect(child.delete_button._signal_clicked_connector)
             del child.delete_button._signal_clicked_connector
         child.restore_button._signal_clicked_connector = child.restore_button.connect('clicked',self._on_restore_button_clicked,data)
-        #child.convert_button._signal_clicked_connector = child.convert_button.connect('clicked',self._on_convert_button_clicked,data)
         child.delete_button._signal_clicked_connector = child.delete_button.connect('clicked',self._on_delete_button_clicked,data)
         
         
     def _on_restore_button_clicked(self,button,data:BackupViewData):
         pass
     
-    def _on_convert_button_clicked(self,button,data:BackupViewData):
-        pass
-    
     def _on_delete_button_clicked(self,button,data:BackupViewData):
-        pass
-    
+        am = ArchiverManager.get_global()
+        am.remove_backup(data.game,data.filename)
+        for i in range(self.__liststore.get_n_items()):
+            item = self.__liststore.get_item(i)
+            if (item.filename == data.filename):
+                self.__liststore.remove(i)
+                return
+        
     def _on_gameview_columnview_activate(self,columnview,position):
         model = columnview.get_model().get_model()
         game = model.get_item(position).game
@@ -1112,7 +1118,7 @@ class BackupView(Gtk.Box):
         self._title_label.set_markup("<span size='large' weight='bold'>{}</span>".format(GLib.markup_escape_text(game.name)))
         
         self.__liststore.remove_all()
-        for bf in ArchiverManager.get_global().get_backups(game):
+        for bf in sorted(ArchiverManager.get_global().get_backups(game),reverse=True):
             try:
                 self.__liststore.append(BackupViewData(game,bf))
             except: 

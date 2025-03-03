@@ -1129,7 +1129,7 @@ class GameDialog(Gtk.Dialog):
             if self.get_is_valid_savegame_type(SavegameType.STEAM_MACOS):
                 data = get_steam_data(self.__steam.macos)
                 if self.__game.steam.macos:
-                    g = self.__game.steam_macos
+                    g = self.__game.steam.macos
                     g.savegame_root = data['sgroot']
                     g.savegame_dir = data['sgdir']
                     g.variables = data['variables']

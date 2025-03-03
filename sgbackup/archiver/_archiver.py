@@ -173,10 +173,11 @@ class ArchiverManager(GObject):
                                      game.savegame_name,
                                      game.savegame_type.value,
                                      game.savegame_subdir)
-            files=list(sorted(os.listdir(directory),reverse=True))
-            if len(files) > settings.backup_versions:
-                for backup_file in files[settings.backup_versions:]:
-                    self.remove_backup(game,backup_file)
+            if os.path.isdir(directory):
+                files=list(sorted(os.listdir(directory),reverse=True))
+                if len(files) > settings.backup_versions:
+                    for backup_file in files[settings.backup_versions:]:
+                        self.remove_backup(game,backup_file)
     
     @Signal(name="backup-progress",return_type=None,arg_types=(float,),flags=SignalFlags.RUN_FIRST)
     def do_backup_progress(self,fraction):

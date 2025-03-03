@@ -3,6 +3,10 @@
 
 SELF="$( realpath "$0" )"
 PROJECT_DIR="$( dirname "$SELF")"
+: ${PYTHON_VENV_DIR:=$(cygpath "$USERPROFILE")/python-venv}
+venv="${PYTHON_VENV_DIR}/sgbackup"
+venv_bin="${venv}/bin"
+wvenv_bin="$(cygpath -w "$venv_bin")"
 
 PACKAGES="gtk4 gobject-introspection python-pip python-gobject python-rapidfuzz"
 
@@ -14,38 +18,59 @@ done
 pacman -Sy
 pacman -S --noconfirm $_install_pkg
 
-cd $PROJECT_DIR
-pip install --break-system-packages --verbose --user .
-
-bindir=$( realpath ~/bin )
-wbindir=$( cygpath -w "$bindir" )
-if [ ! -d "$bindir" ]; then
-    mkdir -p "$bindir"
+if [ ! -f "$venv/bin/activate" ]; then
+    python -m venv --system-site-packages "$venv"
 fi
 
-pythonpath="$( python -c 'import sys; print(sys.executable)' )"
-pythonwpath="$( pythonw -c 'import sys; print(sys.executable)' )"
-cat > "${bindir}/sgbackup" << EOF
+. "$venv/bin/activate"
+
+cd $PROJECT_DIR
+pip install --verbose --user .
+
+bindir=$( realpath "$venv/bin" )
+wbindir=$( cygpath -w "$bindir" )
+
+pythonpath="$( python -c 'import sys; print(sys.executable.replace("/","\\"))' )"
+pythonwpath="$( pythonw -c 'import sys; print(sys.executable.replace("/","\\"))' )"
+cat > "${venv_bin}/sgbackup" << EOF
 #!/bin/bash
+
+. "$venv_bin/activate"
 
 python -m sgbackup "\$@"
 EOF
 
-cat > "${bindir}/sgbackup.cmd" << EOF
+cat > "${venv_bin}/sgbackup.cmd" << EOF
 @ECHO OFF
-"$pythonpath" -m sgbackup %*
+powershell -File "$wvenv_bin\\sgbackup.ps1" %*
 EOF
-unix2dos "${bindir}/sgbackup.cmd"
+unix2dos "${venv_bin}/sgbackup.cmd"
 
-cat > "${bindir}/gsgbackup" << EOF
+cat > "${venv_bin}/sgbackup.ps1" << EOF
+Set-ExecutionPolicy Unrestricted -Scope Process -Force
+
+$wvenv_bin\\activate.ps1
+
+$pythonpath -m sgbackup $args
+EOF
+unix2dos "$venv_bin/sgbackup.ps1"
+
+cat > "${venv_bin}/gsgbackup.ps1" << EOF
+$wvenv_bin\\activate.ps1
+$pythonpath -m sgbackup.gui $args
+EOF
+unix2dos "$venv_bin/gsgbackup.ps1"
+
+cat > "${venv_bin}/gsgbackup" << EOF
 #!/bin/bash
 
 python -m sgbackup.gui "\$@"
 EOF
 
-cat > "${bindir}/gsgbackup.cmd" << EOF
+cat > "${venv_bin}/gsgbackup.cmd" << EOF
 @ECHO OFF
-"$pythonpath" -m sgbackup.gui %*
+cd $Env:userprofile
+"$wvenv_bin\\gsgbackup.ps1" %*
 EOF
 unix2dos "${bindir}/gsgbackup.cmd"
 
@@ -64,8 +89,8 @@ Copy-Item -Path "$wproject_dir\\sgbackup\\icons\\sgbackup.ico" -Destination "\$p
 foreach (\$dir in \$desktop_dir,\$startmenu_dir) {
     \$shell=New-Object -ComObject WScript.Shell
     \$shortcut=\$shell.CreateShortcut("\$dir\\sgbackup.lnk")
-    \$shortcut.TargetPath='$pythonpath'
-    \$shortcut.Arguments='-m sgbackup.gui'
+    \$shortcut.TargetPath='powershell'
+    \$shortcut.Arguments='-WindowStyle hidden -File "$wvenv_bin\\gsgbackup.ps1"'
     \$shortcut.IconLocation="\$picture_dir\\sgbackup.ico"
     \$shortcut.Save()
 }

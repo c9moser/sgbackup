@@ -39,6 +39,9 @@ from ._dialogs import AboutDialog
 __gtype_name__ = __name__
 
 class GameViewData(GObject):
+    """
+    GameViewData Data class for the GameView.columnview
+    """
     def __init__(self,game:Game):
         GObject.__init__(self)
         self.__game = game
@@ -46,22 +49,49 @@ class GameViewData(GObject):
         
     @property
     def game(self)->Game:
+        """
+        game The game to display [*read/write*]
+
+        :type: 
+        """
         return self.__game
     
     @Property(type=str)
     def name(self)->str:
+        """
+        name The name of the game.
+        
+        If you need a property-binding use game.name.
+
+        :type: str
+        """
         return self.game.name
     
     @Property(type=str)
     def key(self)->str:
+        """
+        key The game's key.
+
+        :type: str
+        """
         return self.game.key
     
     @Property
     def savegame_type(self)->SavegameType:
+        """
+        savegame_type The SaveGameType
+
+        :type: SavegameType
+        """
         return self.game.savegame_type
     
     @Property(type=float)
     def fuzzy_match(self)->float:
+        """
+        fuzzy_match The value of QCompare of the game name against a search entry.
+
+        :type: float
+        """
         return self.__fuzzy_match
     
     @fuzzy_match.setter
@@ -208,7 +238,7 @@ class GameView(Gtk.Box):
         icon.set_pixel_size(16)
         new_steam_games_button=Gtk.Button()
         new_steam_games_button.set_child(icon)
-        new_steam_games_button.set_tooltip_text("Manage new Steam-Apps")
+        new_steam_games_button.set_tooltip_text("Manage new Steam-Apps.")
         new_steam_games_button.connect('clicked',self._on_new_steam_games_button_clicked)
         self.actionbar.pack_start(new_steam_games_button)
         
@@ -533,16 +563,19 @@ class GameView(Gtk.Box):
         icon = Gtk.Image.new_from_icon_name('document-save-symbolic')
         child.backup_button = Gtk.Button()
         child.backup_button.set_child(icon)
+        child.backup_button.set_tooltip_text("Backup the SaveGames for this game.")
         child.append(child.backup_button)
         
         icon = Gtk.Image.new_from_icon_name('document-edit-symbolic')
         child.edit_button = Gtk.Button()
         child.edit_button.set_child(icon)
+        child.edit_button.set_tooltip_text('Edit this game.')
         child.append(child.edit_button)
         
         icon = Gtk.Image.new_from_icon_name('list-remove-symbolic')
         child.remove_button = Gtk.Button()
         child.remove_button.set_child(icon)
+        child.remove_button.set_tooltip_markup("Remove this game.\n<span weight='ultrabold'>This also deletes the game configuration file!!!</span>")
         child.append(child.remove_button)
         
         item.set_child(child)

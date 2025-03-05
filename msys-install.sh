@@ -25,6 +25,19 @@ fi
 . "$venv/bin/activate"
 
 cd $PROJECT_DIR
+
+# translations
+make translations
+MSYS_LOCALEDIR="${MSYSTEM_PREFIX}/share/locale"
+for i in  $( cat "$PROJECT_ROOT/LINGUAS" ); do
+    mo="${PROJECT_ROOT}/sgbackup/locale/${i}/sgbackup.mo"
+    localedir="${MSYS_LOCALEDIR}/${i}/LC_MESSAGES"
+
+    [ ! -d "$localedir" ] && mkdir -p "$localedir"
+    cp -v "$mo" "$localedir"
+done
+
+# install
 pip install --verbose --user .
 
 bindir=$( realpath "$venv/bin" )

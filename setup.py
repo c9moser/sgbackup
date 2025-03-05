@@ -28,6 +28,7 @@ setup(
         'sgbackup.curses',
         'sgbackup.help',
         'sgbackup.gui',
+        'sgbackup.locale',
     ],
     package_data={
         'sgbackup':[
@@ -37,6 +38,10 @@ setup(
         ],
         'sgbackup.gui': [
             '*.ui'
+        ],
+        'sgbackup.locale': [
+            '*/*.mo',
+            '*/LC_MESSAGES/*.po',
         ],
     },
     platforms=['win32','linux']

@@ -18,6 +18,8 @@
 
 from gi.repository import Gtk,Gio,Gdk,GLib
 from gi.repository.GObject import GObject,Signal,Property,SignalFlags,BindingFlags
+from ..i18n import gettext as _, noop as N_,pgettext,npgettext,ngettext
+
 import rapidfuzz
 
 import logging; logger=logging.getLogger(__name__)
@@ -30,7 +32,14 @@ from ..settings import settings
 from ._settingsdialog import SettingsDialog
 from ._gamedialog import GameDialog
 from ..game import Game,GameManager,SAVEGAME_TYPE_ICONS,SavegameType
-from ._steam import SteamLibrariesDialog,NewSteamAppsDialog,NoNewSteamAppsDialog
+from ._steam import (
+    SteamLibrariesDialog,
+    NewSteamAppsDialog,
+    NoNewSteamAppsDialog,
+    NoIgnoredSteamAppsDialog,
+    SteamIgnoreAppsDialog,
+)
+
 from ..steam import Steam
 from ._backupdialog import BackupSingleDialog,BackupManyDialog
 from ..archiver import ArchiverManager
@@ -160,23 +169,6 @@ class GameViewNameSorter(Gtk.Sorter):
             else:
                 return Gtk.Ordering.EQUAL
             
-class GameViewColumnSorter(Gtk.ColumnViewSorter):
-    def __init__(self,*args,**kwargs):
-        Gtk.ColumnViewSorter.__init__(self,*args,**kwargs)
-        self.__key_sorter = GameViewKeySorter
-        self.__name_sorter = GameViewNameSorter
-        
-    def do_compare(self,item1,item2):
-        game1 = item1.game
-        game2 = item2.game
-        column = self.get_primary_sort_column()
-        sort_ascending = (self.get_primary_sort_order() == Gtk.SortType.ASCENDING)
-        if column == 1:
-            self.__key_sorter.sort_ascending == sort_ascending
-            return self.__key_sorter.do_compare(game1,game2)
-        else:
-            self.__name_sorter.sort_ascending = sort_ascending
-            return self.__name_sorter.do_comapre(game1,game2)            
         
 class GameViewMatchSorter(Gtk.Sorter):
     def do_compare(self,item1:GameViewData,item2:GameViewData):
@@ -229,16 +221,15 @@ class GameView(Gtk.Box):
         icon.set_pixel_size(16)
         add_game_button=Gtk.Button()
         add_game_button.set_child(icon)
-        add_game_button.set_tooltip_text("Add a new game.")
+        add_game_button.set_tooltip_text(_("Add a new game."))
         add_game_button.connect('clicked',self._on_add_game_button_clicked)
         self.actionbar.pack_start(add_game_button)
-        
-        
+                
         icon = Gtk.Image.new_from_icon_name('steam-svgrepo-com-symbolic')
         icon.set_pixel_size(16)
         new_steam_games_button=Gtk.Button()
         new_steam_games_button.set_child(icon)
-        new_steam_games_button.set_tooltip_text("Manage new Steam-Apps.")
+        new_steam_games_button.set_tooltip_text(_("Manage new Steam-Apps."))
         new_steam_games_button.connect('clicked',self._on_new_steam_games_button_clicked)
         self.actionbar.pack_start(new_steam_games_button)
         
@@ -248,7 +239,7 @@ class GameView(Gtk.Box):
         icon.set_pixel_size(16)
         backup_active_live_button = Gtk.Button()
         backup_active_live_button.set_child(icon)
-        backup_active_live_button.set_tooltip_markup("Backup all <i>active</i> and <i>live</i> Games.")       
+        backup_active_live_button.set_tooltip_markup(_("Backup all <i>active</i> and <i>live</i> Games."))
         backup_active_live_button.connect('clicked',self._on_backup_active_live_button_clicked)
         self.actionbar.pack_start(backup_active_live_button)
         
@@ -267,8 +258,10 @@ class GameView(Gtk.Box):
         self.__columnview = Gtk.ColumnView()
         columnview_sorter = self.columnview.get_sorter()
         self.__liststore = Gio.ListStore.new(GameViewData)
-        for g in GameManager.get_global().games.values():
-            self.__liststore.append(GameViewData(g))
+        
+        gamemanager = GameManager.get_global()
+        for g in gamemanager.games.values():
+            self._liststore.append(GameViewData(g))
         self.__filter_model = Gtk.FilterListModel.new(self._liststore,None)
         self.__sort_model = Gtk.SortListModel.new(self.__filter_model,columnview_sorter)
             
@@ -280,13 +273,13 @@ class GameView(Gtk.Box):
         factory_key = Gtk.SignalListItemFactory.new()
         factory_key.connect('setup',self._on_key_column_setup)
         factory_key.connect('bind',self._on_key_column_bind)
-        column_key = Gtk.ColumnViewColumn.new("Key",factory_key)
+        column_key = Gtk.ColumnViewColumn.new(_("Key"),factory_key)
         column_key.set_sorter(GameViewKeySorter())
         
         factory_name = Gtk.SignalListItemFactory.new()
         factory_name.connect('setup',self._on_name_column_setup)
         factory_name.connect('bind',self._on_name_column_bind)
-        column_name = Gtk.ColumnViewColumn.new("Name",factory_name)
+        column_name = Gtk.ColumnViewColumn.new(_("Name"),factory_name)
         column_name.set_sorter(GameViewNameSorter())
         column_name.set_expand(True)
         
@@ -294,13 +287,13 @@ class GameView(Gtk.Box):
         factory_active.connect('setup',self._on_active_column_setup)
         factory_active.connect('bind',self._on_active_column_bind)
         factory_active.connect('unbind',self._on_active_column_unbind)
-        column_active = Gtk.ColumnViewColumn.new("Active",factory_active)
+        column_active = Gtk.ColumnViewColumn.new(_("Active"),factory_active)
         
         factory_live = Gtk.SignalListItemFactory.new()
         factory_live.connect('setup',self._on_live_column_setup)
         factory_live.connect('bind',self._on_live_column_bind)
         factory_live.connect('unbind',self._on_live_column_unbind)
-        column_live = Gtk.ColumnViewColumn.new("Live",factory_live)
+        column_live = Gtk.ColumnViewColumn.new(_("Live"),factory_live)
         
         factory_actions = Gtk.SignalListItemFactory.new()
         factory_actions.connect('setup',self._on_actions_column_setup)
@@ -308,15 +301,11 @@ class GameView(Gtk.Box):
         #factory_actions.connect('unbind',self._on_actions_column_unbind)
         column_actions = Gtk.ColumnViewColumn.new("",factory_actions)
         
-        self.__selection_model = Gtk.SingleSelection()
-        self.__selection_model.set_autoselect(False)
-        self.__selection_model.set_can_unselect(True)
-        self.__selection_model.set_model(self.__sort_model)
-        self.columnview.set_model(self.__selection_model)
-        
+        self.__selection_model = Gtk.SingleSelection(autoselect=False,can_unselect=True,model=self.__sort_model)
         
         self.columnview.set_vexpand(True)
         self.columnview.set_hexpand(True)
+        self.columnview.set_single_click_activate(True)
         self.columnview.append_column(column_icon)
         self.columnview.append_column(column_key)
         self.columnview.append_column(column_name)
@@ -324,16 +313,18 @@ class GameView(Gtk.Box):
         self.columnview.append_column(column_live)
         self.columnview.append_column(column_actions)
         self.columnview.sort_by_column(column_name,Gtk.SortType.ASCENDING)
-        self.columnview.set_single_click_activate(True)
-        self.columnview.get_vadjustment().set_value(0)
+        self.columnview.set_model(self.__selection_model)
+        
+        
+        cv_vadjustment = self.columnview.get_vadjustment()
+        cv_vadjustment.set_value(cv_vadjustment.get_lower())
         scrolled.set_child(self.columnview)
         self.append(scrolled)
         
     @property
     def _liststore(self)->Gio.ListStore:
         """
-        The `Gio.ListStore` that holds the list of installed games.
-
+        The `Gio.ListStore` that holds the list of registered games.
         
         :type: Gio.ListStore
         """
@@ -461,7 +452,7 @@ class GameView(Gtk.Box):
         def transform_to_icon_name(_binding,sgtype):
             icon_name = SAVEGAME_TYPE_ICONS[sgtype] if sgtype in SAVEGAME_TYPE_ICONS else ""
             if not icon_name:
-                logger.warning("No icon-name for sgtype {}".format(sgtype.value))
+                logger.warning(_("No icon-name for sgtype {}").format(sgtype.value))
             return icon_name
             
         icon = item.get_child()
@@ -549,9 +540,9 @@ class GameView(Gtk.Box):
         if not game.is_live:
             dialog = Gtk.MessageDialog(buttons=Gtk.ButtonsType.YES_NO)
             dialog.set_transient_for(self.get_root())
-            dialog.props.text = "Do you want to create a new savegame for <i>{game}</i>?".format(game=game.name)
+            dialog.props.text = _("Do you want to create a new savegame for <i>{game}</i>?").format(game=game.name)
             dialog.props.use_markup = True
-            dialog.props.secondary_text = "The new savegame is added to the finsihed savegames for the game."
+            dialog.props.secondary_text = _("The new savegame is added to the finsihed savegames for the game.")
             dialog.props.secondary_use_markup = False
             dialog.connect('response',on_dialog_response)
             dialog.present()
@@ -563,7 +554,7 @@ class GameView(Gtk.Box):
         icon = Gtk.Image.new_from_icon_name('document-save-symbolic')
         child.backup_button = Gtk.Button()
         child.backup_button.set_child(icon)
-        child.backup_button.set_tooltip_text("Backup the SaveGames for this game.")
+        child.backup_button.set_tooltip_text(_("Backup the SaveGames for this game."))
         child.append(child.backup_button)
         
         icon = Gtk.Image.new_from_icon_name('document-edit-symbolic')
@@ -575,7 +566,7 @@ class GameView(Gtk.Box):
         icon = Gtk.Image.new_from_icon_name('list-remove-symbolic')
         child.remove_button = Gtk.Button()
         child.remove_button.set_child(icon)
-        child.remove_button.set_tooltip_markup("Remove this game.\n<span weight='ultrabold'>This also deletes the game configuration file!!!</span>")
+        child.remove_button.set_tooltip_markup(_("Remove this game.\n<span weight='ultrabold'>This also deletes the game configuration file!!!</span>"))
         child.append(child.remove_button)
         
         item.set_child(child)
@@ -669,10 +660,10 @@ class GameView(Gtk.Box):
             
         game = item.get_item().game
         dialog = Gtk.MessageDialog(buttons=Gtk.ButtonsType.YES_NO,
-                                   text="Do you really want to remove the game <span weight='bold'>{game}</span>?".format(
+                                   text=_("Do you really want to remove the game <span weight='bold'>{game}</span>?").format(
                                    game=game.name),
                                    use_markup=True,
-                                   secondary_text="Removing games cannot be undone!!!")
+                                   secondary_text=_("Removing games cannot be undone!!!"))
         dialog.set_transient_for(self.get_root())
         dialog.set_modal(False)
         dialog.connect('response',on_dialog_response,game)
@@ -692,10 +683,16 @@ class BackupViewData(GObject):
         basename = os.path.basename(filename)
         parts = basename.split('.')
         
-        self.__savegame_name = parts[0]
-        self.__timestamp = DateTime.strptime(parts[1],"%Y%m%d-%H%M%S")
-        self.__is_live = parts[3] == 'live'
-        self.__sgtype = SavegameType.from_string(parts[2])
+        try:
+            self.__savegame_name = parts[0]
+            self.__timestamp = DateTime.strptime(parts[1],"%Y%m%d-%H%M%S")
+            self.__sgtype = SavegameType.from_string(parts[2])
+            self.__is_live = parts[3] == 'live'
+        except:
+            self.__savegame_name = basename
+            self.__timestamp = "Unknown"
+            self.__sgtype = SavegameType.UNSET
+            self.__is_live = True
         
             
         WINDOWS_TYPES = [
@@ -859,28 +856,28 @@ class BackupView(Gtk.Box):
         sgos_factory = Gtk.SignalListItemFactory()
         sgos_factory.connect('setup',self._on_sgos_column_setup)
         sgos_factory.connect('bind',self._on_sgos_column_bind)
-        sgos_column = Gtk.ColumnViewColumn.new("OS",sgos_factory)
+        sgos_column = Gtk.ColumnViewColumn.new(_("OS"),sgos_factory)
         
         live_factory = Gtk.SignalListItemFactory()
         live_factory.connect('setup',self._on_live_column_setup)
         live_factory.connect('bind',self._on_live_column_bind)
-        live_column = Gtk.ColumnViewColumn.new("Live",live_factory)
+        live_column = Gtk.ColumnViewColumn.new(_("Live"),live_factory)
         
         sgname_factory = Gtk.SignalListItemFactory()
         sgname_factory.connect('setup',self._on_savegamename_column_setup)
         sgname_factory.connect('bind',self._on_savegamename_column_bind)
-        sgname_column = Gtk.ColumnViewColumn.new("Savegame name",sgname_factory)
+        sgname_column = Gtk.ColumnViewColumn.new(_("Savegame name"),sgname_factory)
         sgname_column.set_expand(True)
         
         timestamp_factory = Gtk.SignalListItemFactory()
         timestamp_factory.connect('setup',self._on_timestamp_column_setup)
         timestamp_factory.connect('bind',self._on_timestamp_column_bind)
-        timestamp_column = Gtk.ColumnViewColumn.new("Timestamp",timestamp_factory)
+        timestamp_column = Gtk.ColumnViewColumn.new(_("Timestamp"),timestamp_factory)
         
         size_factory = Gtk.SignalListItemFactory()
         size_factory.connect('setup',self._on_size_column_setup)
         size_factory.connect('bind',self._on_size_column_bind)
-        size_column = Gtk.ColumnViewColumn.new("Size",size_factory)
+        size_column = Gtk.ColumnViewColumn.new(_("Size"),size_factory)
         
         actions_factory = Gtk.SignalListItemFactory()
         actions_factory.connect('setup',self._on_actions_column_setup)
@@ -1066,7 +1063,7 @@ class BackupView(Gtk.Box):
         label = item.get_child()
         data = item.get_item()
         label.set_markup("<span size=\"large\">{}</span>".format(
-            GLib.markup_escape_text(data.timestamp.strftime("%d.%m.%Y %H:%M:%S"))))
+            GLib.markup_escape_text(data.timestamp.strftime(_("%m.%d.%Y %H:%M:%S")))))
         
     def _on_size_column_setup(self,factory,item):
         label = Gtk.Label()
@@ -1099,12 +1096,12 @@ class BackupView(Gtk.Box):
         icon = Gtk.Image.new_from_icon_name('document-revert-symbolic')
         icon.set_pixel_size(16)
         child.restore_button.set_child(icon)
-        child.restore_button.set_tooltip_text("Restore the SaveGameBackup.")
+        child.restore_button.set_tooltip_text(_("Restore the SaveGameBackup."))
         child.append(child.restore_button)
         
         child.convert_button = Gtk.MenuButton()
         child.convert_button.set_icon_name('document-properties-symbolic')
-        child.convert_button.set_tooltip_text("Convert to another SaveGameBackup.")
+        child.convert_button.set_tooltip_text(_("Convert to another SaveGameBackup."))
         child.convert_button.set_menu_model(self.__convertmenu)
         child.convert_button.set_direction(Gtk.ArrowType.UP)
         child.append(child.convert_button)
@@ -1113,7 +1110,7 @@ class BackupView(Gtk.Box):
         icon = Gtk.Image.new_from_icon_name('list-remove-symbolic')
         icon.set_pixel_size(16)
         child.delete_button.set_child(icon)
-        child.delete_button.set_tooltip_text("Delete this SaveGameBackup.")
+        child.delete_button.set_tooltip_text(_("Delete this SaveGameBackup."))
         child.append(child.delete_button)
         
         item.set_child(child)
@@ -1170,7 +1167,7 @@ class AppWindow(Gtk.ApplicationWindow):
         :param application: The `Application` this window belongs to, defaults to `None`.
         :type application: Application, optional
         """
-        kwargs['title'] = "SGBackup"
+        kwargs['title'] = _("SGBackup")
         
         if (application is not None):
             kwargs['application']=application
@@ -1232,7 +1229,7 @@ class AppWindow(Gtk.ApplicationWindow):
             if  game.is_active:
                 n_active += 1
             
-        self.statusbar.push(0,'{games} Games -- {active} Games active -- {live} Games live -- {finished} Games finished'.format(
+        self.statusbar.push(0,_('{games} Games -- {active} Games active -- {live} Games live -- {finished} Games finished').format(
             games=n_games,
             active=n_active,
             live=n_live,
@@ -1300,7 +1297,7 @@ class AppWindow(Gtk.ApplicationWindow):
             if  game.is_active:
                 n_active += 1
             
-        self.statusbar.push(0,'{games} Games -- {active} Games active -- {live} Games live -- {finished} Games finished'.format(
+        self.statusbar.push(0,_('{games} Games -- {active} Games active -- {live} Games live -- {finished} Games finished').format(
             games=n_games,
             active=n_active,
             live=n_live,
@@ -1385,6 +1382,10 @@ class Application(Gtk.Application):
         action_steam_new_apps.connect('activate',self._on_action_steam_new_apps)
         self.add_action(action_steam_new_apps)
         
+        action_steam_manage_ignore = Gio.SimpleAction.new('steam-manage-ignore',None)
+        action_steam_manage_ignore.connect('activate',self._on_action_steam_manage_ignore)
+        self.add_action(action_steam_manage_ignore)
+        
         # add accels
         self.set_accels_for_action('app.quit',["<Primary>q"])
         
@@ -1446,6 +1447,21 @@ class Application(Gtk.Application):
             dialog = NoNewSteamAppsDialog(self.appwindow)
             dialog.present()
 
+    def _on_steam_ignore_apps_dialog_response(self,dialog,response):
+        self.appwindow.refresh()
+        
+    def _on_action_steam_manage_ignore(self,action,param):
+        
+        steam = Steam()
+        if not steam.ignore_apps:
+            dialog = NoIgnoredSteamAppsDialog(self.appwindow)
+            dialog.present()
+        else:
+            dialog = SteamIgnoreAppsDialog(self.appwindow)
+            dialog.connect_after("response",self._on_steam_ignore_apps_dialog_response)
+            
+        dialog.present()
+        
     def new_settings_dialog(self)->SettingsDialog:
         """
         new_settings_dialog Create a new `SettingsDialog`.

@@ -415,3 +415,31 @@ class NoNewSteamAppsDialog(Gtk.MessageDialog):
     def do_response(self,response):
         self.hide()
         self.destroy()
+        
+class NoIgnoredSteamAppsDialog(Gtk.MessageDialog):
+    def __init__(self,parent:Gtk.Window|None=None):
+        Gtk.MessageDialog.__init__(self,buttons=Gtk.ButtonsType.OK)
+        if parent:
+            self.set_transient_for(parent)
+            
+        self.props.text = "There are no Steam-Apps that are ignored!"
+        self.props.use_markup = False
+        
+    def do_response(self,response):
+        self.hide()
+        self.destroy()
+        
+
+class SteamIgnoreAppsDialog(Gtk.Dialog):
+    def __init__(self,parent:Gtk.Window|None=None):
+        Gtk.Dialog.__init__(self)
+        if parent:
+            self.set_transient_for(parent)
+        self.set_modal(False)
+        
+        self.add_button("Close",Gtk.ResponseType.OK)
+        
+    def do_response(self,response):
+        self.hide()
+        self.destroy()
+    

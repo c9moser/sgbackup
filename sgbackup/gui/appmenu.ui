@@ -45,7 +45,7 @@
                 <section id='appmenu.help.about'>
                     <item>
                         <attribute name='label' translatable='true'>_About SGBackup</attribute>
-                        <attribute name='action' translatable='true'>app.about</attribute>
+                        <attribute name='action'>app.about</attribute>
                     </item>
                 </section>
             </submenu>

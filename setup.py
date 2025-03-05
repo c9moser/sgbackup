@@ -8,7 +8,7 @@ import bz2
 
 PACKAGE_ROOT=os.path.dirname(__file__)
 
-VERSION="0.0.1"
+VERSION="0.0.2"
 with open(os.path.join(PACKAGE_ROOT,'sgbackup','version.py'),'w') as version_file:
     version_file.write("""# This file was automatically created by setup.py
 

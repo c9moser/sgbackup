@@ -18,7 +18,7 @@
 
 from gi.repository import Gtk,Gio,Gdk,GLib
 from gi.repository.GObject import GObject,Signal,Property,SignalFlags,BindingFlags
-from ..i18n import gettext as _, noop as N_,pgettext,npgettext,ngettext
+from ..i18n import gettext as _, noop as N_,pgettext,npgettext,ngettext,TEXTDOMAIN
 
 import rapidfuzz
 
@@ -35,15 +35,19 @@ from ..game import Game,GameManager,SAVEGAME_TYPE_ICONS,SavegameType
 from ._steam import (
     SteamLibrariesDialog,
     NewSteamAppsDialog,
-    NoNewSteamAppsDialog,
-    NoIgnoredSteamAppsDialog,
+    SteamNoNewAppsDialog,
+    SteamNoIgnoredAppsDialog,
     SteamIgnoreAppsDialog,
 )
 
 from ..steam import Steam
 from ._backupdialog import BackupSingleDialog,BackupManyDialog
 from ..archiver import ArchiverManager
-from ._dialogs import AboutDialog
+from ._dialogs import (
+    AboutDialog,
+    NoGamesToBackupDialog,
+    NoGamesToBackupFoundDialog,
+)
 
 __gtype_name__ = __name__
 
@@ -388,7 +392,7 @@ class GameView(Gtk.Box):
             dialog.connect_after('response',self._on_new_steamapps_dialog_response)
             dialog.present()
         else:
-            dialog = NoNewSteamAppsDialog(parent=self.get_root())
+            dialog = SteamNoNewAppsDialog(parent=self.get_root())
             dialog.present()
 
     def _on_backup_active_live_button_clicked(self,button):
@@ -904,6 +908,8 @@ class BackupView(Gtk.Box):
         
         builder = Gtk.Builder()
         builder.add_from_file(os.path.join(os.path.dirname(__file__),'appmenu.ui'))
+        builder.set_translation_domain(TEXTDOMAIN)
+        
         self.__convertmenu = builder.get_object('backupview-convert-menu')
                 
     @property
@@ -1348,6 +1354,7 @@ class Application(Gtk.Application):
         self._logger.debug('do_startup()')
         if not self.__builder:
             self.__builder = Gtk.Builder.new()
+            self.__builder.set_translation_domain(TEXTDOMAIN)
         Gtk.Application.do_startup(self)
         
         pkg_path = Path(__file__).resolve()
@@ -1361,6 +1368,18 @@ class Application(Gtk.Application):
         action_about = Gio.SimpleAction.new('about',None)
         action_about.connect('activate',self._on_action_about)
         self.add_action(action_about)
+        
+        action_help = Gio.SimpleAction.new('help',None)
+        action_help.connect('activate',self._on_action_help)
+        self.add_action(action_help)
+        
+        action_backup_all = Gio.SimpleAction.new('backup-all',None)
+        action_backup_all.connect('activate',self._on_action_backup_all)
+        self.add_action(action_backup_all)
+        
+        action_backup_active_live = Gio.SimpleAction.new('backup-active-live',None)
+        action_backup_active_live.connect('activate',self._on_action_backup_active_live)
+        self.add_action(action_backup_active_live)
         
         action_new_game = Gio.SimpleAction.new('new-game',None)
         action_new_game.connect('activate',self._on_action_new_game)
@@ -1388,7 +1407,8 @@ class Application(Gtk.Application):
         
         # add accels
         self.set_accels_for_action('app.quit',["<Primary>q"])
-        
+        self.set_accels_for_action('app.backup-all',["<Primary><Shift>s"])
+        self.set_accels_for_action('app.backup-active-live',["<Primary>s"])
         
     @property
     def builder(self)->Gtk.Builder:
@@ -1413,7 +1433,11 @@ class Application(Gtk.Application):
     def _on_action_about(self,action,param):
         dialog = AboutDialog()
         dialog.present()
-        #dialog.connect('response',lambda dlg,response: dlg.destroy())
+    
+    def _on_action_help(self,action,param):
+        #TODO
+        uri = Gtk.UriLauncher.new("https://sgbackup.org")
+        uri.launch(self.appwindow,None,None)
     
     def _on_action_settings(self,action,param):
         dialog = self.new_settings_dialog()
@@ -1429,7 +1453,49 @@ class Application(Gtk.Application):
         dialog = GameDialog(self.appwindow)
         dialog.connect('apply',on_dialog_apply)
         dialog.present()
+
+    def _on_action_backup_active_live(self,action,param):
+        gamemanager = GameManager.get_global()
         
+        if not gamemanager.games:
+            dialog=NoGamesToBackupDialog(self.appwindow)
+            dialog.present()
+            return
+        
+        games = [g for g in gamemanager.games.values() 
+                 if (g.is_active 
+                     and g.is_live
+                     and os.path.exists(os.path.join(g.savegame_root,g.savegame_dir)))]
+        if games:
+            if len(games) == 1:
+                dialog = BackupSingleDialog(self.appwindow,games[0])
+            else:
+                dialog = BackupManyDialog(self.appwindow,games)
+            dialog.run()
+        else:
+            dialog = NoGamesToBackupFoundDialog(self.appwindow)
+            dialog.present()
+    
+    def _on_action_backup_all(self,action,param):
+        gamemanager = GameManager.get_global()
+        
+        if not gamemanager.games:
+            dialog=NoGamesToBackupDialog(self.appwindow)
+            dialog.present()
+            return
+        
+        games = [g for g in gamemanager.games.values() 
+                 if os.path.exists(os.path.join(g.savegame_root,g.savegame_dir))]
+        if games:
+            if len(games) == 1:
+                dialog = BackupSingleDialog(self.appwindow,games[0])
+            else:
+                dialog = BackupManyDialog(self.appwindow,games)
+            dialog.run()
+        else:
+            dialog = NoGamesToBackupFoundDialog(self.appwindow)
+            dialog.present()
+    
     def _on_action_steam_manage_libraries(self,action,param):
         dialog = SteamLibrariesDialog(self.appwindow)
         dialog.present()
@@ -1447,18 +1513,14 @@ class Application(Gtk.Application):
             dialog = NoNewSteamAppsDialog(self.appwindow)
             dialog.present()
 
-    def _on_steam_ignore_apps_dialog_response(self,dialog,response):
-        self.appwindow.refresh()
         
     def _on_action_steam_manage_ignore(self,action,param):
-        
         steam = Steam()
         if not steam.ignore_apps:
-            dialog = NoIgnoredSteamAppsDialog(self.appwindow)
-            dialog.present()
+            dialog = SteamNoIgnoredAppsDialog(self.appwindow)
         else:
             dialog = SteamIgnoreAppsDialog(self.appwindow)
-            dialog.connect_after("response",self._on_steam_ignore_apps_dialog_response)
+            dialog.connect_after("response",lambda d,r:self.appwindow.refresh())
             
         dialog.present()
         

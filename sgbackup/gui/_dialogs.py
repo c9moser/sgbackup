@@ -18,7 +18,7 @@
 
 from gi.repository import Gtk,GLib,Gio
 from ..version import VERSION
-
+from ..i18n import gettext as _
 class AboutDialog(Gtk.AboutDialog):
     def __init__(self):
         Gtk.AboutDialog.__init__(self)
@@ -31,3 +31,33 @@ class AboutDialog(Gtk.AboutDialog):
         self.set_authors([
             "Christian Moser <christian@mydevel.at>"
         ])
+
+class NoGamesToBackupDialog(Gtk.MessageDialog):
+    def __init__(self,parent:Gtk.Window|None=None):
+        Gtk.MessageDialog.__init__(self,
+                                   message=_("There are no games to backup!"),
+                                   use_markup=False,
+                                   buttons=Gtk.ButtonsType.OK)
+        
+        if parent:
+            self.set_transient_for(parent)
+        self.set_modal(True)
+        
+    def do_response(self,response):
+        self.hide()
+        self.destroy()
+        
+class NoGamesToBackupFoundDialog(Gtk.MessageDialog):
+    def __init__(self,parent:Gtk.Window|None=None):
+        Gtk.MessageDialog.__init__(self,
+                                   message=_("There were no games to backup found!"),
+                                   buttons=Gtk.ButtonsType.OK)
+        
+        if parent:
+            self.set_transient_for(parent)    
+        self.set_modal(True)
+        
+    def do_response(self,response):
+        self.hide()
+        self.destroy()
+        

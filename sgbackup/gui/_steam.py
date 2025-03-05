@@ -19,6 +19,7 @@
 from gi.repository import Gtk,Gio,GLib
 from gi.repository.GObject import GObject,Property,Signal,BindingFlags
 
+from ..i18n import gettext as _
 
 import os
 from ..steam import Steam,SteamLibrary,SteamApp,IgnoreSteamApp,PLATFORM_LINUX,PLATFORM_MACOS,PLATFORM_WINDOWS
@@ -28,7 +29,7 @@ from ._gamedialog import GameDialog
 class SteamLibrariesDialog(Gtk.Dialog):
     def __init__(self,parent:Gtk.Window|None=None):
         Gtk.Dialog.__init__(self)
-        self.set_title("sgbackup: Steam Libraries")
+        self.set_title("SGBackup: Steam Libraries")
         self.set_default_size(620,480)
         if parent is not None:
             self.set_transient_for(parent)
@@ -56,7 +57,7 @@ class SteamLibrariesDialog(Gtk.Dialog):
         
         self.get_content_area().append(hbox)
         
-        frame = Gtk.Frame.new("Steam libraries")
+        frame = Gtk.Frame.new(_("Steam libraries"))
         scrolled = Gtk.ScrolledWindow()
         
         self.__listmodel = Gio.ListStore.new(SteamLibrary)
@@ -78,8 +79,8 @@ class SteamLibrariesDialog(Gtk.Dialog):
         frame.set_vexpand(True)
         self.get_content_area().append(frame)
         
-        self.add_button("Apply",Gtk.ResponseType.APPLY)
-        self.add_button("Cancel",Gtk.ResponseType.CANCEL)
+        self.add_button(_("Apply"),Gtk.ResponseType.APPLY)
+        self.add_button(_("Cancel"),Gtk.ResponseType.CANCEL)
         
     def _on_add_library_button_clicked(self,button):
         try:
@@ -97,7 +98,7 @@ class SteamLibrariesDialog(Gtk.Dialog):
     
     def _on_choose_library_button_clicked(self,button):
         dialog = Gtk.FileDialog.new()
-        dialog.set_title("sgbackup: Select Steam library path")
+        dialog.set_title(_("SGBackup: Select Steam library path"))
         dialog.set_modal(True)
         if (self.__lib_editable.get_text() and os.path.isdir(self.__lib_editable.get_text())):
             dialog.set_initial_folder(Gio.File.new_for_path(self.__lib_editable.get_text()))
@@ -126,7 +127,7 @@ class SteamLibrariesDialog(Gtk.Dialog):
         dialog = Gtk.FileDialog.new()
         dialog.set_initial_folder(Gio.File.new_for_path(label.get_text()))
         dialog.set_modal(True)
-        dialog.set_title("sgbackup: Change Steam library path")
+        dialog.set_title(_("SGBackup: Change Steam library path"))
         dialog.select_folder(self,None,self._on_list_chooser_dialog_select_folder,label)
         
     def _on_list_chooser_dialog_select_folder(self,dialog,result,label,*data):
@@ -212,7 +213,7 @@ class NewSteamAppsDialog(Gtk.Dialog):
         if parent:
             self.set_transient_for(parent)
             
-        self.set_title('sgbackup: New Steam apps')
+        self.set_title(_('SGBackup: New Steam apps'))
         self.set_default_size(800,600)
         self.__steam = Steam()
         
@@ -282,28 +283,28 @@ class NewSteamAppsDialog(Gtk.Dialog):
         icon.set_pixel_size(16)
         grid.add_app_button = Gtk.Button()
         grid.add_app_button.set_child(icon)
-        grid.add_app_button.set_tooltip_markup('Add SteamApp as new Game.')
+        grid.add_app_button.set_tooltip_markup(_('Add SteamApp as new Game.'))
         button_grid.attach(grid.add_app_button,0,0,1,1)
         
         icon = Gtk.Image.new_from_icon_name('edit-delete-symbolic')
         icon.set_pixel_size(16)
         grid.ignore_app_button = Gtk.Button()
         grid.ignore_app_button.set_child(icon)
-        grid.ignore_app_button.set_tooltip_text('Add SteamApp to ignore list.')
+        grid.ignore_app_button.set_tooltip_text(_('Add SteamApp to ignore list.'))
         button_grid.attach(grid.ignore_app_button,1,0,1,1)
     
         icon = Gtk.Image.new_from_icon_name('edit-find-symbolic')
         icon.set_pixel_size(16)
         grid.lookup_button = Gtk.Button()
         grid.lookup_button.set_child(icon)
-        grid.lookup_button.set_tooltip_text("Lookup SteamApp for already registered game.")        
+        grid.lookup_button.set_tooltip_text(_("Lookup SteamApp for already registered game."))
         button_grid.attach(grid.lookup_button,0,1,1,1)
         
         icon = Gtk.Image.new_from_icon_name('folder-download-symbolic')
         icon.set_pixel_size(16)
         grid.search_online_button = Gtk.Button()
         grid.search_online_button.set_child(icon)
-        grid.search_online_button.set_tooltip_text("Lookup SteamApp online.")
+        grid.search_online_button.set_tooltip_text(_("Lookup SteamApp online."))
         button_grid.attach(grid.search_online_button,1,1,1,1)
         
         grid.attach(button_grid,3,0,1,3)
@@ -362,7 +363,7 @@ class NewSteamAppsDialog(Gtk.Dialog):
             game.savegame_type = SavegameType.STEAM_MACOS
         
         gamedialog = GameDialog(self,game)
-        gamedialog.set_title("sgbackup: Add Steam Game")
+        gamedialog.set_title(_("SGBackup: Add Steam Game"))
         gamedialog.set_modal(False)
         gamedialog.connect_after('response',on_dialog_response)
         gamedialog.present()
@@ -382,11 +383,11 @@ class NewSteamAppsDialog(Gtk.Dialog):
         dialog = Gtk.MessageDialog(buttons=Gtk.ButtonsType.YES_NO)
         dialog.set_transient_for(self)
         dialog.set_modal(False)
-        dialog.props.text = "Do you want to put <span weight=\"bold\">\"{steamapp}\"</span> on the ignore list?".format(
+        dialog.props.text = _("Do you want to put <span weight=\"bold\">\"{steamapp}\"</span> on the ignore list?").format(
             steamapp=GLib.markup_escape_text(data.name))
         dialog.props.use_markup = True
         
-        dialog.props.secondary_text = "Please enter the reason for ignoring this app."
+        dialog.props.secondary_text = _("Please enter the reason for ignoring this app.")
         dialog.reason_entry = Gtk.Entry()
         dialog.reason_entry.set_hexpand(True)
         dialog.get_content_area().append(dialog.reason_entry)
@@ -403,43 +404,206 @@ class NewSteamAppsDialog(Gtk.Dialog):
         self.hide()
         self.destroy()
 
-class NoNewSteamAppsDialog(Gtk.MessageDialog):
+class SteamNoNewAppsDialog(Gtk.MessageDialog):
     def __init__(self,parent:Gtk.Window|None=None):
         Gtk.MessageDialog.__init__(self,buttons=Gtk.ButtonsType.OK)
         if parent:
             self.set_transient_for(parent)
 
-        self.props.text = "There were no new Steam-Apps found!"
+        self.props.text = _("There were no new Steam-Apps found!")
         self.props.use_markup = False
 
     def do_response(self,response):
         self.hide()
         self.destroy()
         
-class NoIgnoredSteamAppsDialog(Gtk.MessageDialog):
+class SteamNoIgnoredAppsDialog(Gtk.MessageDialog):
     def __init__(self,parent:Gtk.Window|None=None):
         Gtk.MessageDialog.__init__(self,buttons=Gtk.ButtonsType.OK)
         if parent:
             self.set_transient_for(parent)
             
-        self.props.text = "There are no Steam-Apps that are ignored!"
+        self.props.text = _("There are no Steam-Apps that are ignored!")
         self.props.use_markup = False
         
     def do_response(self,response):
         self.hide()
         self.destroy()
         
+class SteamIgnoreAppsSorter(Gtk.Sorter):
+    def do_compare(self,item1:IgnoreSteamApp,item2:IgnoreSteamApp):
+        s1 = item1.name.lower()
+        s2 = item2.name.lower()
+        
+        if s1 > s2:
+            return Gtk.Ordering.LARGER
+        elif s1 < s2:
+            return Gtk.Ordering.SMALLER
+        else:
+            return Gtk.Ordering.EQUAL
 
 class SteamIgnoreAppsDialog(Gtk.Dialog):
     def __init__(self,parent:Gtk.Window|None=None):
         Gtk.Dialog.__init__(self)
+        self.set_default_size(640,480)
+        self.set_title(_("SGBackup: manage ignored SteamApps"))
         if parent:
             self.set_transient_for(parent)
         self.set_modal(False)
+
+        steam = Steam()
         
-        self.add_button("Close",Gtk.ResponseType.OK)
+        self.__liststore = Gio.ListStore.new(IgnoreSteamApp)
+        for sia in steam.ignore_apps.values():
+            self.__liststore.append(sia)
+            
+        self.__sortmodel = Gtk.SortListModel(model=self.__liststore,sorter=SteamIgnoreAppsSorter())
+        self.__selection = Gtk.SingleSelection(model=self.__sortmodel,
+                                               can_unselect=True,
+                                               autoselect=True)
         
+        factory = Gtk.SignalListItemFactory()
+        factory.connect('setup',self._on_listview_setup)
+        factory.connect('bind',self._on_listview_bind)
+        
+        self.__listview = Gtk.ListView(model=self.__selection,
+                                       factory=factory,
+                                       single_click_activate=True,
+                                       enable_rubberband=True)
+        self.__listview.set_vexpand(True)
+        
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_child(self.__listview)
+        scrolled.set_vexpand(True)
+        self.get_content_area().append(scrolled)
+        
+        self.add_button(_("Close"),Gtk.ResponseType.OK)
+        
+    def _on_listview_setup(self,factory,item):
+        child = Gtk.Grid(column_spacing=4,row_spacing=5)
+        child.name_label = Gtk.Label()
+        child.name_label.set_xalign(0.0)
+        child.name_label.set_hexpand(True)
+        child.attach(child.name_label,1,0,2,1)
+        
+        label = Gtk.Label.new(_("Reason:"))
+        label.set_xalign(0.0)
+        child.reason_label = Gtk.Label()
+        child.reason_label.set_xalign(0.0)
+        child.reason_label.set_hexpand(True)
+        child.attach(label,0,1,1,1)
+        child.attach(child.reason_label,1,1,1,1)
+        
+        action_grid = Gtk.Grid()
+        
+        icon = Gtk.Image.new_from_icon_name("document-new-symbolic")
+        icon.set_pixel_size(16)
+        child.new_game_button = Gtk.Button()
+        child.new_game_button.set_child(icon)
+        child.new_game_button.set_tooltip_text("Add ignored SteamApp as a new game.")
+        action_grid.attach(child.new_game_button,0,0,1,1)
+        
+        icon = Gtk.Image.new_from_icon_name("list-remove-symbolic")
+        icon.set_pixel_size(16)
+        child.remove_button = Gtk.Button()
+        child.remove_button.set_child(icon)
+        child.remove_button.set_tooltip_text("Remove ignored SteamApp from the list.")
+        action_grid.attach(child.remove_button,0,1,1,1)
+        
+        child.attach(action_grid,2,0,1,2)
+        
+        item.set_child(child)
+    
+    def _on_listview_bind(self,factory,item):
+        child = item.get_child()
+        data = item.get_item()
+        
+        child.name_label.set_markup("<span size='x-large' weight='bold'>{}</span>".format(GLib.markup_escape_text(data.name)))
+        child.reason_label.set_text(data.reason)
+        
+        if hasattr(child.new_game_button,'_sginal_clicked_connector'):
+            child.new_game_button.disconnect(child.new_game_button._signal_clicked_connector)
+        child.new_game_button._signal_clicked_connector = child.new_game_button.connect('clicked',self._on_new_game_button_clicked,data)
+        
+        if hasattr(child.remove_button,'_signal_clicked_connector'):
+            child.remove_button.disconnect(child.remove_button._signal_clicked_connector)
+        child.remove_button._signal_clicked_connector = child.remove_button.connect('clicked',self._on_remove_button_clicked,data)
+    
+    def __remove_item(self,item:IgnoreSteamApp):
+        
+        for i in range(self.__liststore.get_n_items()):
+            ignoreapp = self.__liststore.get_item(i)
+            if item.appid == ignoreapp.appid:
+                self.__liststore.remove(i)
+                break
+        
+    def _on_remove_button_clicked(self,button,item:IgnoreSteamApp):
+        self.__remove_item(item)
+        steam = Steam()
+        steam.remove_ignore_app(item)
+    
+    def _on_new_game_button_clicked(self,button,item:IgnoreSteamApp):
+        game = None
+        steam = Steam()
+        steam.remove_ignore_app(item)
+        steam = Steam()
+        steamapps = steam.find_new_steamapps()
+        for steamapp in steamapps:
+            if steamapp.appid == item.appid:
+                game = Game("",steamapp.name,"")
+                if PLATFORM_WINDOWS:
+                    windows = SteamWindowsData("","",installdir=steamapp.installdir)
+                    game.savegame_type = SavegameType.STEAM_WINDOWS
+                else:
+                    windows = None
+                    
+                if PLATFORM_LINUX:
+                    linux = SteamLinuxData("","",installdir=steamapp.installdir)
+                    game.savegame_type = SavegameType.STEAM_LINUX
+                else:
+                    linux = None
+                    
+                if PLATFORM_MACOS:
+                    macos = SteamMacOSData("","",installdir=steamapp.installdir)
+                    game.savegame_type = SavegameType.STEAM_MACOS
+                else:
+                    macos = None
+                
+                steamdata = SteamGameData(steamapp.appid,
+                                          windows=windows,
+                                          linux=linux,
+                                          macos=macos)
+                game.steam = steamdata
+                break
+            
+        if game is None:
+            gamemanager = GameManager.get_global()
+            for g in gamemanager.games.values():
+                if g.steam and g.steam.appid == item.appid:
+                    game = g
+                    break
+        
+        if game is None:
+            game = Game("",item.name,"")
+            if PLATFORM_WINDOWS:
+                game.savegame_type = SavegameType.STEAM_WINDOWS
+            elif PLATFORM_LINUX:
+                game.savegame_type = SavegameType.STEAM_LINUX
+            elif PLATFORM_MACOS:
+                game.savegame_type = SavegameType.STEAM_MACOS
+            game.steam = SteamGameData(steamapp.appid)
+            
+        dialog = GameDialog(self.get_transient_for(),game=game)
+        dialog.present()
+
+    def _on_game_dialog_response(self,dialog,response,item=IgnoreSteamApp):
+        if response == Gtk.ResponseType.APPLY:
+            self.__remove_item(item)
+        else:
+            steam = Steam()
+            steam.add_ignore_app(item)
+            
     def do_response(self,response):
         self.hide()
         self.destroy()
-    
+        

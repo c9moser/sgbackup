@@ -2,14 +2,22 @@
 <interface>
     <menu id='appmenu'>
         <section>
-            <submenu>
-                <attribute name='label' translatable='true'>_Game</attribute>
-                
-                <item>
-                    <attribute name='label' translatable='true'>_Add Game</attribute>
-                    <attribute name='action'>app.new-game</attribute>
-                </item>
-            </submenu>
+            <item>
+                <attribute name='label' translatable='true'>_Add Game</attribute>
+                <attribute name='action'>app.new-game</attribute>
+            </item>
+        </section>
+        <section>
+            <item>
+                <attribute name='label' translatable='true'>_Backup active &amp; live games</attribute>
+                <attribute name='action'>app.backup-active-live</attribute>
+            </item>
+            <item>
+                <attribute name='label' translatable='true'>Backup _all games</attribute>
+                <attribute name='action'>app.backup-all</attribute>
+            </item>
+        </section>
+        <section>            
             <submenu>
                 <attribute name='label' translatable='true'>_Steam</attribute>
                 <section>
@@ -20,6 +28,10 @@
                     <item>
                         <attribute name='label' translatable='true'>Manage Steam Libraries</attribute>
                         <attribute name='action'>app.steam-manage-libraries</attribute>
+                    </item>
+                    <item>
+                        <attribute name='label' translatable='true'>Manage Ignored Apps</attribute>
+                        <attribute name='action'>app.steam-manage-ignore</attribute>
                     </item>
                 </section>
             </submenu>

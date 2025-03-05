@@ -23,14 +23,17 @@ if [ ! -f "$venv/bin/activate" ]; then
 fi
 
 . "$venv/bin/activate"
+if [ $? -ne 0 ]; then
+    exit "Unable to load venv"
+fi
 
 cd $PROJECT_DIR
 
 # translations
 make translations
 MSYS_LOCALEDIR="${MSYSTEM_PREFIX}/share/locale"
-for i in  $( cat "$PROJECT_ROOT/LINGUAS" ); do
-    mo="${PROJECT_ROOT}/sgbackup/locale/${i}/sgbackup.mo"
+for i in  $( cat "$PROJECT_DIR/PO/LINGUAS" ); do
+    mo="${PROJECT_DIR}/sgbackup/locale/${i}/LC_MESSAGES/sgbackup.mo"
     localedir="${MSYS_LOCALEDIR}/${i}/LC_MESSAGES"
 
     [ ! -d "$localedir" ] && mkdir -p "$localedir"

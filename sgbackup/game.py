@@ -385,6 +385,11 @@ class GameData(GObject):
                     raise TypeError("\"ignore_match\" needs to be \"None\" or a list of \"GameFileMatcher\" instances!")
             self.__ignorematchers = list(im)
             
+    @Property(type=bool,default=False)
+    def is_valid(self)->bool:
+        return (bool(self.__savegame_root) and bool(self.__savegame_dir) and (self.__savegame_type != SavegameType.UNSET))
+    
+    
     def has_variable(self,name:str)->bool:
         """
         has_variable Check if variable exists.
@@ -1036,6 +1041,7 @@ class SteamMacOSData(SteamPlatformData):
                                    installdir=installdir,
                                    librarydir=librarydir)
 
+
 class SteamGameData(GObject):
     def __init__(self,appid:int,
                  windows:SteamWindowsData|None=None,
@@ -1095,24 +1101,24 @@ class SteamGameData(GObject):
     def linux_game(self)->SteamLinuxGame|None:
         if self.linux:
             return SteamLinuxGame(appid=self.appid,
-                                  savegame_root=self.windows.savegame_root,
-                                  savegame_dir=self.windows.savegame_dir,
-                                  variables=self.windows.variables,
-                                  installdir=self.windows.installdir,
-                                  file_match=self.windows.file_matchers,
-                                  ignore_match=self.windows.ignore_matchers)
+                                  savegame_root=self.linux.savegame_root,
+                                  savegame_dir=self.linux.savegame_dir,
+                                  variables=self.linux.variables,
+                                  installdir=self.linux.installdir,
+                                  file_match=self.linux.file_matchers,
+                                  ignore_match=self.linux.ignore_matchers)
         return None
     
     @property
     def macos_game(self)->SteamLinuxGame|None:
         if self.macos:
             return SteamMacOSGame(appid=self.appid,
-                                  savegame_root=self.windows.savegame_root,
-                                  savegame_dir=self.windows.savegame_dir,
-                                  variables=self.windows.variables,
-                                  installdir=self.windows.installdir,
-                                  file_match=self.windows.file_matchers,
-                                  ignore_match=self.windows.ignore_matchers)
+                                  savegame_root=self.macos.savegame_root,
+                                  savegame_dir=self.macos.savegame_dir,
+                                  variables=self.macos.variables,
+                                  installdir=self.macos.installdir,
+                                  file_match=self.macos.file_matchers,
+                                  ignore_match=self.macos.ignore_matchers)
         return None
     
     def serialize(self)->dict:
@@ -1127,7 +1133,99 @@ class SteamGameData(GObject):
             data['macos'] = self.macos.serialize()
             
         return data
+
+
+class EpicPlatformData(GameData):
+    def __init__(self,
+                 savegame_type:SavegameType,
+                 savegame_root:str,
+                 savegame_dir:str,
+                 variables:dict[str:str],
+                 file_match:list[GameFileMatcher],
+                 ignore_match:list[GameFileMatcher],
+                 installdir:str|None):
+        if savegame_type not in (SavegameType.EPIC_WINDOWS,SavegameType.EPIC_LINUX):
+            raise ValueError("Savegame type needs to be EPIC_WINDOWS or EPIC_LINUX!")
         
+        GameData.__init__(self,
+                          savegame_type=savegame_type,
+                          savegame_root=savegame_root,
+                          savegame_dir=savegame_dir,
+                          variables=variables,
+                          file_match=file_match,
+                          ignore_match=ignore_match)
+        
+        self.__installdir=installdir
+        
+    @Property
+    def installdir(self)->str:
+        return self.__installdir if self.__installdir else ""
+    
+    @installdir.setter
+    def installdir(self,directory:str|None):
+        self.__installdir = directory
+        
+    def serialize(self):
+        data = super().serialize()
+        if self.__installdir:
+            data['installdir'] = self.__installdir
+        return data
+        
+class EpicWindowsData(EpicPlatformData):
+    def __init__(self,
+                 savegame_root:str,
+                 savegame_dir:str,
+                 variables:dict[str:str],
+                 file_match:list[GameFileMatcher],
+                 ignore_match:list[GameFileMatcher],
+                 installdir:str|None):
+        GameData.__init__(self,
+                          savegame_type=SavegameType.EPIC_WINDOWS,
+                          savegame_root=savegame_root,
+                          savegame_dir=savegame_dir,
+                          variables=variables,
+                          file_match=file_match,
+                          ignore_match=ignore_match,
+                          installdir=installdir)
+
+
+class EpicGameData(GObject):
+    def __init__(self,appname:str,windows:EpicWindowsData|None):
+        GObject.__init__(self)
+        self.__appname = appname
+        self.windows = windows
+        
+        
+    @Property(type=str)
+    def appname(self)->str:
+        return self.__appname
+    
+    @appname.setter
+    def appname(self,appname:str):
+        self.__appname = appname
+        
+    @Property
+    def windows(self)->EpicWindowsData|None:
+        return self.__windows
+    
+    @windows.setter
+    def windows(self,data:EpicWindowsData|None):
+        self.__windows = data
+        
+    @Property(type=bool,default=False)
+    def is_valid(self)->bool:
+        if (self.windows and self.windows.is_valid):
+            return True
+        
+    def serialize(self):
+        ret = {
+            "appname": self.appname
+        }
+        if self.windows and self.windows.is_valid:
+            ret["windows"] = self.windows.serialize()
+            
+        return ret
+    
 class Game(GObject):
     __gtype_name__ = "Game"
     
@@ -1212,7 +1310,36 @@ class Game(GObject):
                                  linux=linux,
                                  macos=macos)
         # new_steamdata()
-        
+
+        def new_epic_data(conf:dict):
+            def new_epic_platform_data(data,cls):
+                if not 'savegame_root' in data or not 'savegame_dir' in data:
+                    return None
+                
+                file_match,ignore_match = get_file_match(data)
+                return cls(
+                    savegame_root=data['savegame_root'],
+                    savegame_dir=data['savegame_dir'],
+                    variables=dict(((v['name'],v['value']) for v in data['variables'])) if ('variables' in data and config['variables']) else None,
+                    file_match=file_match,
+                    ignore_match=ignore_match,
+                    installdir=data['installdir'] if ('installdir' in data and data['installdir']) else None,
+                    librarydir=data['librarydir'] if ('librarydir' in data and data['librarydir']) else None                   
+                )
+            
+            if not "epic" in conf or not "appname" in conf["epic"]:
+                return None
+            
+            if ("windows" in conf['epic']):
+                windows = new_epic_platform_data(conf['windows'],EpicWindowsData)
+            else:
+                windows = None
+                
+            return EpicGameData(conf['epic']['appname'],
+                                windows=windows)
+            
+        # new_epic_data()
+            
         if not 'key' in config or not 'name' in config:
             return None
         
@@ -1267,6 +1394,7 @@ class Game(GObject):
             game.macos = MacOSGame(sgroot,sgdir,vars,binary,file_match,ignore_match)
         
         game.steam = new_steamdata(config)
+        game.epic = new_epic_data(config)
             
         return game
     
@@ -1300,13 +1428,7 @@ class Game(GObject):
         self.__steam = None
         self.__epic = None
         self.__gog = None
-        self.__steam_windows = None
-        self.__steam_linux = None
-        self.__steam_macos = None
-        self.__gog_windows = None
-        self.__gog_linux = None
-        self.__epic_windows = None
-        self.__epic_linux = None
+        self.__epic = None
         
     @Property(type=str)
     def dbid(self)->str:
@@ -1405,19 +1527,23 @@ class Game(GObject):
         elif (sgtype == SavegameType.MACOS):
             return self.macos
         elif (sgtype == SavegameType.STEAM_WINDOWS):
-            return self.steam.windows_game
+            if self.steam:
+                return self.steam.windows_game
         elif (sgtype == SavegameType.STEAM_LINUX):
-            return self.steam.linux_game
+            if self.steam:
+                return self.steam.linux_game
         elif (sgtype == SavegameType.STEAM_MACOS):
-            return self.steam.macos_game
-        elif (sgtype == SavegameType.GOG_WINDOWS):
-            return self.__gog_windows
-        elif (sgtype == SavegameType.GOG_LINUX):
-            return self.__gog_linux
+            if self.steam:
+                return self.steam.macos_game
+        #elif (sgtype == SavegameType.GOG_WINDOWS):
+        #    return self.__gog_windows
+        #elif (sgtype == SavegameType.GOG_LINUX):
+        #    return self.__gog_linux
         elif (sgtype == SavegameType.EPIC_WINDOWS):
-            return self.__epic_windows
+            if self.epic:
+                return self.__epic.windows
         elif (sgtype == SavegameType.EPIC_LINUX):
-            return self.__epic_linux
+            return None
         return None
         
     @Property
@@ -1504,6 +1630,14 @@ class Game(GObject):
         t = Template(self.game_data.savegame_dir)
         return t.safe_substitute(self.get_variables())
     
+    @Property
+    def epic(self)->EpicGameData|None:
+        return self.__epic
+    
+    @epic.setter
+    def epic(self,epic:EpicGameData|None):
+        self.__epic = epic
+        
     def add_variable(self,name:str,value:str):
         self.__variables[str(name)] = str(value)
         
@@ -1537,23 +1671,20 @@ class Game(GObject):
         if self.dbid:
             ret['dbid'] = self.dbid
         
-        if (self.windows):
+        if (self.windows and self.windows.is_valid):
             ret['windows'] = self.windows.serialize()
-        if (self.linux):
+        if (self.linux and self.linux.is_valid):
             ret['linux'] = self.linux.serialize()
-        if (self.macos):
+        if (self.macos and self.macos.is_valid):
             ret['macos'] = self.macos.serialize()
         if (self.steam):
             ret['steam'] = self.steam.serialize()
-            
+        if (self.epic and self.epic.is_valid):
+            ret['epic'] = self.epic.serialize()
         #if self.gog_windows:
         #    ret['gog_windows'] = self.gog_windows.serialize()
         #if self.gog_linux:
         #    ret['gog_linux'] = self.gog_linux.serialize()
-        #if self.epic_windows:
-        #    ret['epic_windows'] = self.epic_windows.serialize()
-        #if self.epic_linux:
-        #    ret['epic_linux'] = self.epic_linux.serialize()
         
         return ret
     

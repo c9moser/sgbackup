@@ -85,8 +85,7 @@ EOF
 
 cat > "${venv_bin}/gsgbackup.cmd" << EOF
 @ECHO OFF
-cd $Env:userprofile
-"$wvenv_bin\\gsgbackup.ps1" %*
+powershell -File "$wvenv_bin\\gsgbackup.ps1" %*
 EOF
 unix2dos "${bindir}/gsgbackup.cmd"
 

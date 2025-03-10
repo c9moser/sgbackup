@@ -21,6 +21,8 @@ from .. import _import_gtk
 from gi.repository import Gio,GLib,Gtk,Pango
 from gi.repository.GObject import Property,Signal,GObject,BindingFlags,SignalFlags
 
+from ..i18n import gettext as _, gettext_noop as N_
+
 from ..game import (
     Game,
     GameData,
@@ -30,13 +32,12 @@ from ..game import (
     WindowsGame,
     LinuxGame,
     MacOSGame,
-    SteamLinuxGame,
-    SteamWindowsGame,
-    SteamMacOSGame,
     SteamGameData,
     SteamLinuxData,
     SteamMacOSData,
     SteamWindowsData,
+    EpicGameData,
+    EpicWindowsData,
     GameManager,
 )
     
@@ -244,14 +245,16 @@ class GameVariableDialog(Gtk.Dialog):
             self.__variable = None
         
         grid = Gtk.Grid()
-        label = Gtk.Label.new("Name:")
+        label = Gtk.Label.new(_("Name:"))
+        label.set_xalign(0.0)
         self.__name_entry = Gtk.Entry()
         self.__name_entry.set_hexpand(True)
         self.__name_entry.connect("changed",self._on_name_entry_changed)
         grid.attach(label,0,0,1,1)
         grid.attach(self.__name_entry,1,0,1,1)
         
-        label = Gtk.Label.new("Value")
+        label = Gtk.Label.new(_("Value:"))
+        label.set_xalign(0.0)
         self.__value_entry = Gtk.Entry()
         self.__value_entry.set_hexpand(True)
         
@@ -326,9 +329,9 @@ class GameDialog(Gtk.Dialog):
         self.set_default_size(800,600)
         
         self.__filematch_dropdown_model = Gio.ListStore.new(GameFileTypeData)
-        self.__filematch_dropdown_model.append(GameFileTypeData(GameFileType.FILENAME,"Filename"))
-        self.__filematch_dropdown_model.append(GameFileTypeData(GameFileType.GLOB,"Glob"))
-        self.__filematch_dropdown_model.append(GameFileTypeData(GameFileType.REGEX,"Regular expression"))
+        self.__filematch_dropdown_model.append(GameFileTypeData(GameFileType.FILENAME,_("Filename")))
+        self.__filematch_dropdown_model.append(GameFileTypeData(GameFileType.GLOB,_("Glob")))
+        self.__filematch_dropdown_model.append(GameFileTypeData(GameFileType.REGEX,_("Regular expression")))
             
         paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         paned.set_position(200)
@@ -360,6 +363,7 @@ class GameDialog(Gtk.Dialog):
         self.__linux = self.__create_linux_page()
         self.__macos = self.__create_macos_page()
         self.__steam = self.__create_steam_page()
+        self.__epic = self.__create_epic_page()
         
         
         for stack_page in self.__stack.get_pages():
@@ -396,18 +400,18 @@ class GameDialog(Gtk.Dialog):
         sgtype_data = (
             (SavegameType.UNSET,"Not set","process-stop-symbolic"),
             
-            (SavegameType.WINDOWS,"Windows native","windows-svgrepo-com-symbolic"),
-            (SavegameType.STEAM_WINDOWS,"Steam Windows","steam-svgrepo-com-symbolic"),
-            #(SavegameType.EPIC_WINDOWS,"Epic Windows","object-select-symbolic"),
+            (SavegameType.WINDOWS,N_("Windows"),"windows-svgrepo-com-symbolic"),
+            (SavegameType.STEAM_WINDOWS,N_("Steam Windows"),"steam-svgrepo-com-symbolic"),
+            (SavegameType.EPIC_WINDOWS,N_("Epic Windows"),"epic-games-svgrepo-com-symbolic"),
             #(SavegameType.GOG_WINDOWS,"GoG Windows","object-select-symbolic"),
             
-            (SavegameType.LINUX,"Linux native","linux-svgrepo-com-symbolic"),
-            (SavegameType.STEAM_LINUX,"Steam Linux","steam-svgrepo-com-symbolic"),
-            #(SavegameType.EPIC_LINUX,"Epic Linux","object-select-symbolic"),
+            (SavegameType.LINUX,N_("Linux native"),"linux-svgrepo-com-symbolic"),
+            (SavegameType.STEAM_LINUX,_("Steam Linux"),"steam-svgrepo-com-symbolic"),
+            #(SavegameType.EPIC_LINUX,_("Epic Linux"),"epic-games-svgrepo-com-symbolic"),
             #(SavegameType.GOG_LINUX,"GoG Linux","object-select-symbolic"),
             
-            (SavegameType.MACOS,"MacOS native","apple-svgrepo-com-symbolic"),
-            (SavegameType.STEAM_MACOS,"Steam MacOS","steam-svgrepo-com-symbolic"),
+            (SavegameType.MACOS,_("MacOS"),"apple-svgrepo-com-symbolic"),
+            (SavegameType.STEAM_MACOS,_("Steam MacOS"),"steam-svgrepo-com-symbolic"),
         )
         sgtype_model = Gio.ListStore.new(SavegameTypeData)
         for data in sgtype_data:
@@ -415,14 +419,14 @@ class GameDialog(Gtk.Dialog):
             
         grid = Gtk.Grid.new()
         
-        label = Gtk.Label.new("Is active?")
+        label = self.__create_label(_("Is active?"))
         self.__active_switch = Gtk.Switch()
         entry_hbox = Gtk.Box.new(Gtk.Orientation.HORIZONTAL,5)
         entry_hbox.append(self.__active_switch)
         entry_hbox.append(label)
         vbox.append(entry_hbox)
         
-        label = Gtk.Label.new("Is live?")
+        label = self.__create_label(_("Is live?"))
         self.__live_switch = Gtk.Switch()
         entry_hbox = Gtk.Box.new(Gtk.Orientation.HORIZONTAL,5)
         
@@ -430,13 +434,13 @@ class GameDialog(Gtk.Dialog):
         entry_hbox.append(label)
         vbox.append(entry_hbox)
         
-        label = Gtk.Label.new("ID:")
+        label = self.__create_label(_("ID:"))
         self.__id_label = Gtk.Label()
         self.__id_label.set_hexpand(True)
         grid.attach(label,0,0,1,1)
         grid.attach(self.__id_label,1,0,1,1)
         
-        label = Gtk.Label.new("Key:")
+        label = self.__create_label(_("Key:"))
         self.__key_entry = Gtk.Entry()
         self.__key_entry.set_hexpand(True)
         self.__key_entry.connect('changed',lambda w: self._on_savegame_type_changed())
@@ -451,18 +455,18 @@ class GameDialog(Gtk.Dialog):
         self.__savegame_type_dropdown.set_selected(0)
         self.__savegame_type_dropdown.set_hexpand(True)
         self.__savegame_type_dropdown.connect('notify::selected-item',lambda w,d: self._on_savegame_type_changed())
-        label = Gtk.Label.new("Savegame Type:")
+        label = self.__create_label(_("Savegame Type:"))
         grid.attach(label,0,2,1,1)
         grid.attach(self.__savegame_type_dropdown,1,2,1,1)
         
-        label = Gtk.Label.new("Game name:")
+        label = self.__create_label(_("Game name:"))
         self.__name_entry = Gtk.Entry()
         self.__name_entry.set_hexpand(True)
         self.__name_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,3,1,1)
         grid.attach(self.__name_entry,1,3,1,1)
         
-        label = Gtk.Label.new("Savegame name:")
+        label = self.__create_label(_("Savegame name:"))
         self.__sgname_entry = Gtk.Entry()
         self.__sgname_entry.set_hexpand(True)
         self.__sgname_entry.connect('changed',lambda w: self._on_savegame_type_changed())
@@ -475,7 +479,7 @@ class GameDialog(Gtk.Dialog):
         vbox.append(self.__game_variables)
         
         page.set_child(vbox)
-        self.__stack.add_titled(page,"main","Game")
+        self.__stack.add_titled(page,"main",_("Game"))
         stack_page = self.__stack.get_page(page)
         stack_page.set_icon_name('org.sgbackup.sgbackup-symbolic')
         
@@ -487,44 +491,44 @@ class GameDialog(Gtk.Dialog):
         
         grid = Gtk.Grid()
         
-        label = Gtk.Label.new("Root directory:")
+        label = self.__create_label(_("Root directory:"))
         page.sgroot_entry = Gtk.Entry()
         page.sgroot_entry.set_hexpand(True)
         page.sgroot_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,0,1,1)
         grid.attach(page.sgroot_entry,1,0,1,1)
         
-        label = Gtk.Label.new("Backup directory:")
+        label = self.__create_label(_("Backup directory:"))
         page.sgdir_entry = Gtk.Entry()
         page.sgdir_entry.set_hexpand(True)
         page.sgdir_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,1,1,1)
         grid.attach(page.sgdir_entry,1,1,1,1)
         
-        label = Gtk.Label.new("Installation directory:")
+        label = self.__create_label(("Installation directory:"))
         page.installdir_entry = Gtk.Entry()
         page.installdir_entry.set_hexpand(True)
         grid.attach(label,0,2,1,1)
         grid.attach(page.installdir_entry,1,2,1,1)
         vbox.append(grid)
         
-        page.filematch = self.__create_filematch_widget('Match Files')
+        page.filematch = self.__create_filematch_widget(_('Match Files'))
         vbox.append(page.filematch)
         
-        page.ignorematch = self.__create_filematch_widget('Ignore Files')
+        page.ignorematch = self.__create_filematch_widget(_('Ignore Files'))
         vbox.append(page.ignorematch)
         
-        page.lookup_regkeys = self.__create_registry_key_widget("Lookup Registry keys")
+        page.lookup_regkeys = self.__create_registry_key_widget(_("Lookup Registry keys"))
         vbox.append(page.lookup_regkeys)
         
-        page.installdir_regkeys = self.__create_registry_key_widget("Installations directory Registry keys")
+        page.installdir_regkeys = self.__create_registry_key_widget(_("Installations directory Registry keys"))
         vbox.append(page.installdir_regkeys)
         
         page.variables = self.__create_variables_widget()
         vbox.append(page.variables)
         
         page.set_child(vbox)
-        self.__stack.add_titled(page,"windows","Windows")
+        self.__stack.add_titled(page,"windows",_("Windows"))
         stack_page = self.__stack.get_page(page)
         stack_page.set_icon_name("windows-svgrepo-com-symbolic")
         
@@ -537,21 +541,21 @@ class GameDialog(Gtk.Dialog):
         self.__set_widget_margin(vbox,5)
         
         grid = Gtk.Grid()
-        label = Gtk.Label.new("Root directory:")
+        label = self.__create_label(_("Root directory:"))
         page.sgroot_entry = Gtk.Entry()
         page.sgroot_entry.set_hexpand(True)
         page.sgroot_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,0,1,1)
         grid.attach(page.sgroot_entry,1,0,1,1)
         
-        label = Gtk.Label.new("Backup directory:")
+        label = self.__create_label(_("Backup directory:"))
         page.sgdir_entry = Gtk.Entry()
         page.sgdir_entry.set_hexpand(True)
         page.sgdir_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,1,1,1)
         grid.attach(page.sgdir_entry,1,1,1,1)
         
-        label = Gtk.Label.new("Executable")
+        label = self.__create_label(_("Executable:"))
         page.binary_entry = Gtk.Entry()
         page.binary_entry.set_hexpand(True)
         grid.attach(label,0,2,1,1)
@@ -568,7 +572,7 @@ class GameDialog(Gtk.Dialog):
         vbox.append(page.variables)
         
         page.set_child(vbox)
-        self.__stack.add_titled(page,"linux","Linux")
+        self.__stack.add_titled(page,"linux",_("Linux"))
         stack_page = self.__stack.get_page(page)
         stack_page.set_icon_name("linux-svgrepo-com-symbolic")
         
@@ -580,21 +584,21 @@ class GameDialog(Gtk.Dialog):
         self.__set_widget_margin(vbox,5)
         
         grid = Gtk.Grid()
-        label = Gtk.Label.new("Root directory:")
+        label = self.__create_label(_("Root directory:"))
         page.sgroot_entry = Gtk.Entry()
         page.sgroot_entry.set_hexpand(True)
         page.sgroot_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,0,1,1)
         grid.attach(page.sgroot_entry,1,0,1,1)
         
-        label = Gtk.Label.new("Backup directory:")
+        label = self.__create_label(_("Backup directory:"))
         page.sgdir_entry = Gtk.Entry()
         page.sgdir_entry.set_hexpand(True)
         page.sgdir_entry.connect('changed',lambda w: self._on_savegame_type_changed())
         grid.attach(label,0,1,1,1)
         grid.attach(page.sgdir_entry,1,1,1,1)
         
-        label = Gtk.Label.new("Executable")
+        label = self.__create_label(_("Executable"))
         page.binary_entry = Gtk.Entry()
         page.binary_entry.set_hexpand(True)
         grid.attach(label,0,2,1,1)
@@ -611,7 +615,7 @@ class GameDialog(Gtk.Dialog):
         vbox.append(page.variables)
         
         page.set_child(vbox)
-        self.__stack.add_titled(page,"macos","MacOS")
+        self.__stack.add_titled(page,"macos",_("MacOS"))
         stack_page = self.__stack.get_page(page)
         stack_page.set_icon_name("apple-svgrepo-com-symbolic")
         
@@ -631,21 +635,21 @@ class GameDialog(Gtk.Dialog):
             nbgrid = Gtk.Grid()
             self.__set_widget_margin(nbgrid,5)
             
-            label = Gtk.Label.new("Root directory:")
+            label = self.__create_label(_("Root directory:"))
             nbpage.sgroot_entry = Gtk.Entry()
             nbpage.sgroot_entry.set_hexpand(True)
             nbpage.sgroot_entry.connect('changed',lambda w: self._on_savegame_type_changed())
             nbgrid.attach(label,0,0,1,1)
             nbgrid.attach(nbpage.sgroot_entry,1,0,1,1)
             
-            label = Gtk.Label.new("Backup directory:")
+            label = self.__create_label(_("Backup directory:"))
             nbpage.sgdir_entry = Gtk.Entry()
             nbpage.sgdir_entry.set_hexpand(True)
             nbpage.sgdir_entry.connect('changed',lambda w: self._on_savegame_type_changed())
             nbgrid.attach(label,0,1,1,1)
             nbgrid.attach(nbpage.sgdir_entry,1,1,1,1)
             
-            label = Gtk.Label.new("Installation directory:")
+            label = self.__create_label(_("Installation directory:"))
             nbpage.installdir_entry = Gtk.Entry()
             nbpage.installdir_entry.set_hexpand(True)
             nbgrid.attach(label,0,3,1,1)
@@ -681,19 +685,93 @@ class GameDialog(Gtk.Dialog):
         page.notebook = Gtk.Notebook()
         page.notebook.set_hexpand(True)
         page.notebook.set_vexpand(True)
-        page.windows,nb_label = create_notebook_page('Windows','windows-svgrepo-com-symbolic')
+        page.windows,nb_label = create_notebook_page(_('Windows'),'windows-svgrepo-com-symbolic')
         page.notebook.append_page(page.windows,nb_label)
         
-        page.linux,nb_label = create_notebook_page("Linux",'linux-svgrepo-com-symbolic')
+        page.linux,nb_label = create_notebook_page(_("Linux"),'linux-svgrepo-com-symbolic')
         page.notebook.append_page(page.linux,nb_label)
         
-        page.macos,nb_label = create_notebook_page("Mac OS",'apple-svgrepo-com-symbolic')
+        page.macos,nb_label = create_notebook_page(_("Mac OS"),'apple-svgrepo-com-symbolic')
         page.notebook.append_page(page.macos,nb_label)
         
         page.append(page.notebook)
         self.__stack.add_titled(page,'steam','Steam')
         stack_page = self.__stack.get_page(page)
         stack_page.set_icon_name("steam-svgrepo-com-symbolic")
+        
+        return page
+    
+    def __create_epic_page(self):
+        def create_notebook_page(title,icon_name):
+            label_widget = Gtk.Box.new(Gtk.Orientation.HORIZONTAL,2)
+            label_icon = Gtk.Image.new_from_icon_name(icon_name)
+            label_icon.set_pixel_size(12)
+            label=Gtk.Label.new(title)
+            label_widget.append(label_icon)
+            label_widget.append(label)
+            
+            nbpage = Gtk.ScrolledWindow()
+            nbvbox = Gtk.Box.new(Gtk.Orientation.VERTICAL,5)
+            nbgrid = Gtk.Grid()
+            self.__set_widget_margin(nbgrid,5)
+            
+            label = self.__create_label(_("Root directory:"))
+            nbpage.sgroot_entry = Gtk.Entry()
+            nbpage.sgroot_entry.set_hexpand(True)
+            nbpage.sgroot_entry.connect('changed',lambda w: self._on_savegame_type_changed())
+            nbgrid.attach(label,0,0,1,1)
+            nbgrid.attach(nbpage.sgroot_entry,1,0,1,1)
+            
+            label = self.__create_label(_("Backup directory:"))
+            nbpage.sgdir_entry = Gtk.Entry()
+            nbpage.sgdir_entry.set_hexpand(True)
+            nbpage.sgdir_entry.connect('changed',lambda w: self._on_savegame_type_changed())
+            nbgrid.attach(label,0,1,1,1)
+            nbgrid.attach(nbpage.sgdir_entry,1,1,1,1)
+            
+            label = self.__create_label(_("Installation directory:"))
+            nbpage.installdir_entry = Gtk.Entry()
+            nbpage.installdir_entry.set_hexpand(True)
+            nbgrid.attach(label,0,3,1,1)
+            nbgrid.attach(nbpage.installdir_entry,1,3,1,1)
+
+            nbvbox.append(nbgrid)
+        
+            nbpage.filematch = self.__create_filematch_widget('Match Files')
+            nbvbox.append(nbpage.filematch)
+        
+            nbpage.ignorematch = self.__create_filematch_widget('Ignore Files')
+            nbvbox.append(nbpage.ignorematch)
+        
+            nbpage.variables = self.__create_variables_widget()
+            nbvbox.append(nbpage.variables)    
+            
+            nbpage.set_child(nbvbox)
+            return nbpage,label_widget
+        # create_notebook_page()
+        
+        page = Gtk.Box.new(Gtk.Orientation.VERTICAL,2)
+        grid = Gtk.Grid()
+        
+        label = self.__create_label(_("AppName:"))
+        page.appname_entry = Gtk.Entry()
+        page.appname_entry.set_hexpand(True)
+        grid.attach(label,0,0,1,1)
+        grid.attach(page.appname_entry,1,0,1,1)
+        page.append(grid)
+        
+        page.notebook = Gtk.Notebook()
+        page.notebook.set_hexpand(True)
+        page.notebook.set_vexpand(True)
+        
+        page.windows,nb_label = create_notebook_page(_("Windows"),'windows-svgrepo-com-symbolic')
+        page.notebook.append_page(page.windows,nb_label)
+        
+        page.append(page.notebook)
+        
+        self.__stack.add_titled(page,'epic','Epic Games')
+        stack_page = self.__stack.get_page(page)
+        stack_page.set_icon_name("epic-games-svgrepo-com-symbolic")
         
         return page
     
@@ -758,6 +836,11 @@ class GameDialog(Gtk.Dialog):
         widget.set_child(vbox)
         return widget
 
+    def __create_label(self,text:str):
+        label = Gtk.Label.new(text)
+        label.set_xalign(0.0)
+        return label
+    
     def __create_filematch_dropdown(self,item,widget):
         factory = Gtk.SignalListItemFactory()
         factory.connect('setup',self._on_filematch_type_dropdown_setup)
@@ -928,6 +1011,17 @@ class GameDialog(Gtk.Dialog):
                                                      and self.__game.steam.macos
                                                      and self.__game.steam.macos.installdir
                                                      else "")
+        
+        # Epic Games
+        set_game_widget_data(self.__epic.windows,self.__game.epic.windows if self.has_game and self.__game.epic else None)
+        
+        self.__epic.appname_entry.set_text(self.__game.epic.appname if self.has_game and self.__game.epic else "")
+        self.__epic.windows.installdir_entry.set_text(self.__game.epic.windows.installdir
+                                                      if self.has_game
+                                                      and self.__game.epic
+                                                      and self.__game.epic.windows
+                                                      and self.__game.epic.windows.installdir
+                                                      else "")
     # reset()
     
     def save(self):
@@ -970,6 +1064,9 @@ class GameDialog(Gtk.Dialog):
             })
             return conf
             
+        def get_epic_data(widget):
+            conf = get_game_data(widget)
+            conf.update({'installdir':widget.installdir_entry.get_text()})
         if not self.get_is_valid():
             return
         
@@ -1145,7 +1242,32 @@ class GameDialog(Gtk.Dialog):
                                                              ignore_match=data['ignorematch'])
             elif self.__game.steam.macos:
                 self.__game.steam.macos = None
-        # bEND: steam
+        # END: steam
+        
+        # BEGIN: epic
+        if self.get_is_valid_savegame_type(SavegameType.EPIC_WINDOWS):
+            data = get_epic_data(self.__epic.windows)
+            
+            if self.__game.epic:
+                self.__game.epic.appname = self.__epic.appname_entry.get_text()
+            else:
+                self.__game.epic = EpicGameData(appname=self.__epic.appname_entry.get_text())
+                
+            if self.__game.epic.windows:
+                self.__game.epic.windows.savegame_root = data['sgroot']
+                self.__game.epic.windows.savegame_dir = data['sgdir']
+                self.__game.epic.windows.variables = data['variables']
+                self.__game.epic.windows.file_matchers = data['filematch']
+                self.__game.epic.windows.ignore_matchers = data['ignorematch']
+                self.__game.epic.windows.installdir = data['installdir']
+            else:
+                self.__game.epic.windows = EpicWindowsData(savegame_root=data['sgroot'],
+                                                           savegame_dir=data['sgdir'],
+                                                           variables=data['variables'],
+                                                           file_match=data['filematch'],
+                                                           ignore_match=data['ignorematch'],
+                                                           installdir=data['installdir'])
+        # END: epic
           
         self.__game.save()
         GameManager.get_global().add_game(self.__game)
@@ -1189,8 +1311,8 @@ class GameDialog(Gtk.Dialog):
             return check_is_valid(self.__steam.linux)
         elif sgtype == SavegameType.STEAM_MACOS:
             return check_is_valid(self.__steam.macos)
-        #elif sgtype == SavegameType.EPIC_WINDOWS:
-        #    return check_is_valid(self.__epic_windows)
+        elif sgtype == SavegameType.EPIC_WINDOWS:
+            return check_is_valid(self.__epic.windows)
         #elif sgtype == SavegameType.EPIC_LINUX:
         #    return check_is_valid(self.__epic_linux)
         #elif sgtype == SavegameType.GOG_WINDOWS:

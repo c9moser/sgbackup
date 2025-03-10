@@ -405,7 +405,6 @@ class Settings(GObject.GObject):
                     skey = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE,i)
                     svalue = winreg.QueryValueEx(skey,'InstallPath')[0]
                     if svalue:
-                        self.set_string('steam','installpath',svalue)
                         return svalue
                 except:
                     continue
@@ -418,6 +417,36 @@ class Settings(GObject.GObject):
     def steam_installpath(self,path:str):
         self.set_string('steam','installpath',path)
 
+    @GObject.Property
+    def epic_datadir(self)->str|None:
+        datadir = self.get_string('epic',"dataDir",None)
+        if datadir is None and PLATFORM_WINDOWS:
+            for i in ("SOFTWARE\\WOW6432Node\\Epic Games\\EpicGamesLauncher","SOFTWARE\\Epic Games\\EpicGamesLauncher"):
+                try:
+                    skey = None
+                    skey = winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE,i)
+                    svalue = winreg.QueryValueEx(skey,'AppDataPath')[0]
+                    if svalue:
+                        datadir = svalue
+                        break
+                except:
+                    continue
+                finally:
+                    if skey:
+                        skey.Close()
+        return datadir
+    
+    @epic_datadir.setter
+    def epic_datadir(self,datadir:str|None):
+        if not datadir:
+            if self.has_key('epic',"dataDir"):
+                self.remove_key('epic','dataDir')
+            return
+        
+        if not os.path.isabs(datadir):
+            raise ValueError("\"epic_datadir\" is not an absolute path!")
+        self.set_string('epic','dataDir',datadir)
+        
     @GObject.Property
     def cli_pager(self)->str:
         pager = self.get_string('cli','pager',None)

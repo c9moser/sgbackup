@@ -15,17 +15,3 @@
 #    You should have received a copy of the GNU General Public License        #
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.   #
 ###############################################################################
-
-from os.path import dirname,join
-import gettext as _gettext
-
-TEXTDOMAIN="sgbackup"
-
-_gettext.bindtextdomain(TEXTDOMAIN,join(dirname(__file__),'locale'))
-
-gettext = lambda s: _gettext.dgettext(TEXTDOMAIN,s)
-pgettext = lambda context,s: _gettext.dpgettext(TEXTDOMAIN,context,s)
-ngettext = lambda singular,plural,n: _gettext.dngettext(TEXTDOMAIN,singular,plural,n)
-npgettext = lambda context,singular,plural,n: _gettext.dnpgettext(TEXTDOMAIN,context,singular,plural,n)
-def gettext_noop(msgid:str): return msgid
-def noop(msgid:str): return msgid

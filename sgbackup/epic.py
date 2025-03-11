@@ -159,7 +159,7 @@ class Epic(GObject):
             with open(filename,'r',encoding="utf-8") as ifile:
                 data = json.loads(ifile.read())
         except Exception as ex:
-            self._logger.error(_("Unable ot load Epic manifest \"{manifest}\"! ({error})").format(
+            self._logger.error(_("Unable to load Epic manifest \"{manifest}\"! ({error})").format(
                 manifest=filename,
                 error=str(ex)
             ))

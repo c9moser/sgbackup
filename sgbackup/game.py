@@ -152,7 +152,7 @@ VALID_SAVEGAME_TYPES = [
     SavegameType.STEAM_MACOS,
     SavegameType.STEAM_WINDOWS,
     #SavegameType.EPIC_LINUX,
-    #SavegameType.EPIC_WINDOWS,
+    SavegameType.EPIC_WINDOWS,
     #SavegameType.GOG_LINUX,
     #SavegameType.GOG_WINDOWS,
 ]
@@ -160,8 +160,8 @@ VALID_SAVEGAME_TYPES = [
 SAVEGAME_TYPE_ICONS = {
     SavegameType.UNSET : None,
     SavegameType.WINDOWS: 'windows-svgrepo-com-symbolic',
-    SavegameType.LINUX: 'linux-svgrepo-com-symbolic.svg',
-    SavegameType.MACOS: 'apple-svgrepo-com-symbolic.svg',
+    SavegameType.LINUX: 'linux-svgrepo-com-symbolic',
+    SavegameType.MACOS: 'apple-svgrepo-com-symbolic',
     SavegameType.STEAM_LINUX: 'steam-svgrepo-com-symbolic',
     SavegameType.STEAM_MACOS: 'steam-svgrepo-com-symbolic',
     SavegameType.STEAM_WINDOWS: 'steam-svgrepo-com-symbolic',
@@ -170,6 +170,23 @@ SAVEGAME_TYPE_ICONS = {
     SavegameType.GOG_LINUX: 'gog-com-svgrepo-com-symbolic',
     SavegameType.GOG_WINDOWS: 'gog-com-svgrepo-com-symbolic',
 }    
+
+class GameProvider(StrEnum):
+    WINDOWS = "windows"
+    LINUX = "linux"
+    MACOS = "macos"
+    STEAM = "steam"
+    EPIC_GAMES = "epic-games"
+    GOG = "gog"
+    
+GAME_PROVIDER_ICONS = {
+    GameProvider.WINDOWS: 'windows-svgrepo-com-symbolic',
+    GameProvider.LINUX: 'liux-svgrepo-com-symbolic',
+    GameProvider.MACOS: 'apple-svgrepo-com-symbolic',
+    GameProvider.STEAM: 'steam-svgrepo-com-symbolic',
+    GameProvider.EPIC_GAMES: 'epic-games-svgrepo-com-symbolic',
+    GameProvider.GOG: 'gog-com-svgrepo-com-symbolic',
+}
 
 class GameFileType(StrEnum):
     """
@@ -1784,9 +1801,7 @@ class GameManager(GObject):
         
         self.__games = {}
         self.__steam_games = {}
-        self.__steam_linux_games = {}
-        self.__steam_windows_games = {}
-        self.__steam_macos_games = {}
+        self.__epic_games = {}
         
         self.load()
 
@@ -1797,18 +1812,6 @@ class GameManager(GObject):
     @Property
     def steam_games(self)->dict[int:Game]:
         return self.__steam_games
-
-    @Property(type=object)
-    def steam_windows_games(self)->dict[int:Game]:
-        return self.__steam_windows_games
-    
-    @Property(type=object)
-    def steam_linux_games(self)->dict[int:Game]:
-        return self.__steam_linux_games
-    
-    @Property(type=object)
-    def steam_macos_games(self)->dict[int:Game]:
-        return self.__steam_macos_games
 
     def load(self):
         if self.__games:
@@ -1838,13 +1841,30 @@ class GameManager(GObject):
         
     def add_game(self,game:Game):
         self.__games[game.key] = game
-        if (game.steam_macos):
-            self.__steam_games[game.steam_macos.appid] = game
-            self.__steam_macos_games[game.steam_macos.appid] = game
-        if (game.steam_linux):
-            self.__steam_games[game.steam_linux.appid] = game
-            self.__steam_linux_games[game.steam_linux.appid] = game
-        if (game.steam_windows):
-            self.__steam_games[game.steam_windows.appid] = game
-            self.__steam_windows_games[game.steam_windows.appid] = game
+        if game.steam:
+            self.__steam_games[game.steam.appid] = game
+        if game.epic:
+            self.__epic_games[game.epic.appname] = game
             
+    def remove_game(self,game:Game|str):
+        if isinstance(game,str):
+            if key not in self.__games:
+                return
+            key = game
+            game = self.__games[key]
+        elif isinstance(game,Game):
+            if game.key not in self.__games:
+                return
+            key = game.key
+            
+            
+        for appid,steam_game in list(self.__steam_games.items()):
+            if steam_game.key == game.key:
+                del self.__steam_games[appid]
+                
+        for appname,epic_game in list(self.__epic_games.items()):
+            if epic_game.key == game.key:
+                del self.__epic_games[appname]
+                
+        del self.__games[key]
+        

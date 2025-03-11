@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-05 10:15+0100\n"
-"PO-Revision-Date: 2025-03-05 10:19+0100\n"
+"POT-Creation-Date: 2025-03-11 02:01+0100\n"
+"PO-Revision-Date: 2025-03-11 15:31+0100\n"
 "Last-Translator: Christian Moser <christian@cmoser.eu>\n"
 "Language-Team: \n"
 "Language: de\n"
@@ -18,54 +18,59 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: Poedit 3.5\n"
 
-#: sgbackup/gui/_app.py:224
+#: sgbackup/epic.py:162
+#, python-brace-format
+msgid "Unable to load Epic manifest \"{manifest}\"! ({error})"
+msgstr "Kann Epic Manifest \"{manifest}\" nicht laden! ({error})"
+
+#: sgbackup/gui/_app.py:228
 msgid "Add a new game."
 msgstr "Neues Spiel hinzufügen."
 
-#: sgbackup/gui/_app.py:232
+#: sgbackup/gui/_app.py:236
 msgid "Manage new Steam-Apps."
 msgstr "Neue Steam-Apps verwalten."
 
-#: sgbackup/gui/_app.py:242
+#: sgbackup/gui/_app.py:246
 msgid "Backup all <i>active</i> and <i>live</i> Games."
 msgstr "Alle <i>aktiven</i> und <i>live</i> Spiele sichern."
 
-#: sgbackup/gui/_app.py:276
+#: sgbackup/gui/_app.py:280
 msgid "Key"
 msgstr "Schlüssel"
 
-#: sgbackup/gui/_app.py:282
+#: sgbackup/gui/_app.py:286
 msgid "Name"
 msgstr "Name"
 
-#: sgbackup/gui/_app.py:290
+#: sgbackup/gui/_app.py:294
 msgid "Active"
 msgstr "Aktiv"
 
-#: sgbackup/gui/_app.py:296 sgbackup/gui/_app.py:864
+#: sgbackup/gui/_app.py:300 sgbackup/gui/_app.py:868
 msgid "Live"
 msgstr "Live"
 
-#: sgbackup/gui/_app.py:455
+#: sgbackup/gui/_app.py:459
 msgid "No icon-name for sgtype {}"
 msgstr "Kein Icon-Name für sgtype {}"
 
-#: sgbackup/gui/_app.py:543
+#: sgbackup/gui/_app.py:547
 #, python-brace-format
 msgid "Do you want to create a new savegame for <i>{game}</i>?"
 msgstr "Willst du ein neues SaveGame für <i>{game}</i> erstellen?"
 
-#: sgbackup/gui/_app.py:545
+#: sgbackup/gui/_app.py:549
 msgid "The new savegame is added to the finsihed savegames for the game."
 msgstr ""
 "Das Neue SaveGame wird zu den beendeten Speicherständen für dieses Spiel "
 "hinzugefügt."
 
-#: sgbackup/gui/_app.py:557
+#: sgbackup/gui/_app.py:561
 msgid "Backup the SaveGames for this game."
 msgstr "Sichere das SaveGame für dieses Spiel."
 
-#: sgbackup/gui/_app.py:569
+#: sgbackup/gui/_app.py:573
 msgid ""
 "Remove this game.\n"
 "<span weight='ultrabold'>This also deletes the game configuration file!!!</"
@@ -75,125 +80,354 @@ msgstr ""
 "<span weight='ultrabold'>Dies wird auch die Konfigurationsdatei des Spiels "
 "löschen!!!</span>"
 
-#: sgbackup/gui/_app.py:663
+#: sgbackup/gui/_app.py:667
 #, python-brace-format
 msgid ""
 "Do you really want to remove the game <span weight='bold'>{game}</span>?"
 msgstr "Wills du wirklich das Spiel <span weight='bold'>{game}</span> löschen?"
 
-#: sgbackup/gui/_app.py:666
+#: sgbackup/gui/_app.py:670
 msgid "Removing games cannot be undone!!!"
 msgstr "Das Löschen von Spielen kann nicht Rückgängig gemacht werden!!!"
 
-#: sgbackup/gui/_app.py:859
+#: sgbackup/gui/_app.py:863
 msgid "OS"
 msgstr "OS"
 
-#: sgbackup/gui/_app.py:869
+#: sgbackup/gui/_app.py:873
 msgid "Savegame name"
 msgstr "Speicherstandname"
 
-#: sgbackup/gui/_app.py:875
+#: sgbackup/gui/_app.py:879
 msgid "Timestamp"
 msgstr "Zeitstempel"
 
-#: sgbackup/gui/_app.py:880
+#: sgbackup/gui/_app.py:884
 msgid "Size"
 msgstr "Größe"
 
-#: sgbackup/gui/_app.py:1066
+#: sgbackup/gui/_app.py:1072
 msgid "%m.%d.%Y %H:%M:%S"
 msgstr "%d.%m.%Y %H:%M:%S"
 
-#: sgbackup/gui/_app.py:1099
+#: sgbackup/gui/_app.py:1105
 msgid "Restore the SaveGameBackup."
 msgstr "Stelle das Speicherstandbackup wieder her."
 
-#: sgbackup/gui/_app.py:1104
+#: sgbackup/gui/_app.py:1110
 msgid "Convert to another SaveGameBackup."
-msgstr "Konvertiere zu anderen Speicherstandbackup"
+msgstr "Konvertiere zu anderen Speicherstandbackup."
 
-#: sgbackup/gui/_app.py:1113
+#: sgbackup/gui/_app.py:1119
 msgid "Delete this SaveGameBackup."
 msgstr "Lösche dieses Speicherstandbackup."
 
-#: sgbackup/gui/_app.py:1170
+#: sgbackup/gui/_app.py:1176
 msgid "SGBackup"
 msgstr "SGBackup"
 
-#: sgbackup/gui/_app.py:1232 sgbackup/gui/_app.py:1300
+#: sgbackup/gui/_app.py:1238 sgbackup/gui/_app.py:1307
 #, python-brace-format
 msgid ""
 "{games} Games -- {active} Games active -- {live} Games live -- {finished} "
 "Games finished"
 msgstr ""
-"{games} Spile -- {active} Spiele aktiv -- {live} Spiele live -- {finished} "
+"{games} Spiele -- {active} Spiele aktiv -- {live} Spiele live -- {finished} "
 "Spiele beendet"
 
-#: sgbackup/gui/appmenu.ui:6
-msgid "_Game"
-msgstr "_Spiel"
+#: sgbackup/gui/_dialogs.py:38
+msgid "There are no games to backup!"
+msgstr "Es gibt keine Spiele zu sichern!"
 
-#: sgbackup/gui/appmenu.ui:9
+#: sgbackup/gui/_dialogs.py:53
+msgid "There were no games to backup found!"
+msgstr "Es wurden keine Spiele zum Sichern gefunden!"
+
+#: sgbackup/gui/_gamedialog.py:248
+msgid "Name:"
+msgstr "Name:"
+
+#: sgbackup/gui/_gamedialog.py:256
+msgid "Value:"
+msgstr "Wert:"
+
+#: sgbackup/gui/_gamedialog.py:332
+msgid "Filename"
+msgstr "Dateiname"
+
+#: sgbackup/gui/_gamedialog.py:333
+msgid "Glob"
+msgstr "Glob"
+
+#: sgbackup/gui/_gamedialog.py:334
+msgid "Regular expression"
+msgstr "Regulärer Ausdruck"
+
+#: sgbackup/gui/_gamedialog.py:403 sgbackup/gui/_gamedialog.py:531
+#: sgbackup/gui/_gamedialog.py:688 sgbackup/gui/_gamedialog.py:767
+msgid "Windows"
+msgstr "Windows"
+
+#: sgbackup/gui/_gamedialog.py:404
+msgid "Steam Windows"
+msgstr "Steam Windows"
+
+#: sgbackup/gui/_gamedialog.py:405
+msgid "Epic Windows"
+msgstr "Epic Windows"
+
+#. (SavegameType.GOG_WINDOWS,"GoG Windows","object-select-symbolic"),
+#: sgbackup/gui/_gamedialog.py:408
+msgid "Linux native"
+msgstr "Linux"
+
+#: sgbackup/gui/_gamedialog.py:409
+msgid "Steam Linux"
+msgstr "Steam Linux"
+
+#. (SavegameType.EPIC_LINUX,_("Epic Linux"),"epic-games-svgrepo-com-symbolic"),
+#. (SavegameType.GOG_LINUX,"GoG Linux","object-select-symbolic"),
+#: sgbackup/gui/_gamedialog.py:413 sgbackup/gui/_gamedialog.py:618
+msgid "MacOS"
+msgstr "Mac OS"
+
+#: sgbackup/gui/_gamedialog.py:414
+msgid "Steam MacOS"
+msgstr "Steam Mac OS"
+
+#: sgbackup/gui/_gamedialog.py:422
+msgid "Is active?"
+msgstr "Ist Aktiv?"
+
+#: sgbackup/gui/_gamedialog.py:429
+msgid "Is live?"
+msgstr "Ist live?"
+
+#: sgbackup/gui/_gamedialog.py:437
+msgid "ID:"
+msgstr "ID:"
+
+#: sgbackup/gui/_gamedialog.py:443
+msgid "Key:"
+msgstr "Schlüssel:"
+
+#: sgbackup/gui/_gamedialog.py:458
+msgid "Savegame Type:"
+msgstr "Speicherstandtyp:"
+
+#: sgbackup/gui/_gamedialog.py:462
+msgid "Game name:"
+msgstr "Spielname:"
+
+#: sgbackup/gui/_gamedialog.py:469
+msgid "Savegame name:"
+msgstr "Speicherstandname:"
+
+#: sgbackup/gui/_gamedialog.py:482
+msgid "Game"
+msgstr "Spiel"
+
+#: sgbackup/gui/_gamedialog.py:494 sgbackup/gui/_gamedialog.py:544
+#: sgbackup/gui/_gamedialog.py:587 sgbackup/gui/_gamedialog.py:638
+#: sgbackup/gui/_gamedialog.py:718
+msgid "Root directory:"
+msgstr "Wurzelverzeichnis:"
+
+#: sgbackup/gui/_gamedialog.py:501 sgbackup/gui/_gamedialog.py:551
+#: sgbackup/gui/_gamedialog.py:594 sgbackup/gui/_gamedialog.py:645
+#: sgbackup/gui/_gamedialog.py:725
+msgid "Backup directory:"
+msgstr "Speicherverzeichnis:"
+
+#: sgbackup/gui/_gamedialog.py:515
+msgid "Match Files"
+msgstr "Dateiübereinstimmung"
+
+#: sgbackup/gui/_gamedialog.py:518
+msgid "Ignore Files"
+msgstr "Ignoriere Dateien"
+
+#: sgbackup/gui/_gamedialog.py:521
+msgid "Lookup Registry keys"
+msgstr "Registrierungsschlüssel nachschlagen"
+
+#: sgbackup/gui/_gamedialog.py:524
+msgid "Installations directory Registry keys"
+msgstr "Registrierungsschlüssel für Installationsverzeichnis"
+
+#: sgbackup/gui/_gamedialog.py:558
+msgid "Executable:"
+msgstr "Ausführbare Datei:"
+
+#: sgbackup/gui/_gamedialog.py:575 sgbackup/gui/_gamedialog.py:691
+msgid "Linux"
+msgstr "Linux"
+
+#: sgbackup/gui/_gamedialog.py:601
+msgid "Executable"
+msgstr "Ausführbare Datei"
+
+#: sgbackup/gui/_gamedialog.py:652 sgbackup/gui/_gamedialog.py:732
+msgid "Installation directory:"
+msgstr "Installationsverzeichnis:"
+
+#: sgbackup/gui/_gamedialog.py:694
+msgid "Mac OS"
+msgstr "Mac OS"
+
+#: sgbackup/gui/_gamedialog.py:756
+msgid "AppName:"
+msgstr "AppName:"
+
+#: sgbackup/gui/_steam.py:60
+msgid "Steam libraries"
+msgstr "Steam Bibliotheken"
+
+#: sgbackup/gui/_steam.py:82
+msgid "Apply"
+msgstr "Anwenden"
+
+#: sgbackup/gui/_steam.py:83
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: sgbackup/gui/_steam.py:101
+msgid "SGBackup: Select Steam library path"
+msgstr "SGBackup: Wähle Steam Bibliothekspfad"
+
+#: sgbackup/gui/_steam.py:130
+msgid "SGBackup: Change Steam library path"
+msgstr "SGBackup: Ändere Steam Bibliothekspfad"
+
+#: sgbackup/gui/_steam.py:216
+msgid "SGBackup: New Steam apps"
+msgstr "Neue Steam-Apps"
+
+#: sgbackup/gui/_steam.py:286
+msgid "Add SteamApp as new Game."
+msgstr "Füge Steam-App als neues Spiel hinzu."
+
+#: sgbackup/gui/_steam.py:293
+msgid "Add SteamApp to ignore list."
+msgstr "Füge Steam-App zur Ignorieren-Liste hinzu."
+
+#: sgbackup/gui/_steam.py:300
+msgid "Lookup SteamApp for already registered game."
+msgstr "Schlage Steam-App unter den bereits registrierten Spielen nach."
+
+#: sgbackup/gui/_steam.py:307
+msgid "Lookup SteamApp online."
+msgstr "Suche Steam-App online."
+
+#: sgbackup/gui/_steam.py:366
+msgid "SGBackup: Add Steam Game"
+msgstr "SGBackup: Füge Steam-Spiel hinzu"
+
+#: sgbackup/gui/_steam.py:386
+#, python-brace-format
+msgid ""
+"Do you want to put <span weight=\"bold\">\"{steamapp}\"</span> on the ignore "
+"list?"
+msgstr ""
+"Wills du wirklich das Spiel <span weight='bold'>{steamapp}</span> auf die "
+"Ignorieren-Liste setzen?"
+
+#: sgbackup/gui/_steam.py:390
+msgid "Please enter the reason for ignoring this app."
+msgstr "Bitte gib eine Begründing für das Ignorieren dieser App ein."
+
+#: sgbackup/gui/_steam.py:413
+msgid "There were no new Steam-Apps found!"
+msgstr "Es wurden keine Steam-Apps gefunden!"
+
+#: sgbackup/gui/_steam.py:426
+msgid "There are no Steam-Apps that are ignored!"
+msgstr "Es gibt keine Steam-Apps die ignoriert werden!"
+
+#: sgbackup/gui/_steam.py:449
+msgid "SGBackup: manage ignored SteamApps"
+msgstr "SGBackup: Verwalte ignorierte Steam-Apps"
+
+#: sgbackup/gui/_steam.py:480
+msgid "Close"
+msgstr "Schießen"
+
+#: sgbackup/gui/_steam.py:489
+msgid "Reason:"
+msgstr "Begründung:"
+
+#: sgbackup/gui/appmenu.ui:6
 msgid "_Add Game"
 msgstr "Spiel _hinzufügen"
 
-#: sgbackup/gui/appmenu.ui:14
+#: sgbackup/gui/appmenu.ui:12
+msgid "_Backup active & live games"
+msgstr "Aktive- & Live-Spiele sichern"
+
+#: sgbackup/gui/appmenu.ui:16
+msgid "Backup _all games"
+msgstr "_Alle Spiele sichern"
+
+#: sgbackup/gui/appmenu.ui:22
 msgid "_Steam"
 msgstr "_Steam"
 
-#: sgbackup/gui/appmenu.ui:17
+#: sgbackup/gui/appmenu.ui:25
 msgid "New Steam Apps"
 msgstr "Neue Steam-App"
 
-#: sgbackup/gui/appmenu.ui:21
+#: sgbackup/gui/appmenu.ui:29
 msgid "Manage Steam Libraries"
 msgstr "Steam Bibliotheken verwalten"
 
-#: sgbackup/gui/appmenu.ui:27
+#: sgbackup/gui/appmenu.ui:33
+msgid "Manage Ignored Apps"
+msgstr "Ignorierte Steam-Apps verwalten"
+
+#: sgbackup/gui/appmenu.ui:39
 msgid "_Epic"
 msgstr "_Epic"
 
-#: sgbackup/gui/appmenu.ui:30
+#: sgbackup/gui/appmenu.ui:42
 msgid "_GoG"
 msgstr "_GoG"
 
-#: sgbackup/gui/appmenu.ui:35
+#: sgbackup/gui/appmenu.ui:47
 msgid "_Settings"
 msgstr "_Einstellungen"
 
-#: sgbackup/gui/appmenu.ui:42
+#: sgbackup/gui/appmenu.ui:54
 msgid "_Help"
 msgstr "_Hilfe"
 
-#: sgbackup/gui/appmenu.ui:47
+#: sgbackup/gui/appmenu.ui:59
 msgid "_About SGBackup"
 msgstr "_Über SGBackup"
 
-#: sgbackup/gui/appmenu.ui:56
+#: sgbackup/gui/appmenu.ui:68
 msgid "_Quit"
 msgstr "_Beenden"
 
-#: sgbackup/gui/appmenu.ui:65
+#: sgbackup/gui/appmenu.ui:77
 msgid "Convert to _Windows"
 msgstr "Nach _Windows konvertieren"
 
-#: sgbackup/gui/appmenu.ui:69
+#: sgbackup/gui/appmenu.ui:81
 msgid "Convert to _Linux"
 msgstr "Nach _Linux konvertieren"
 
-#: sgbackup/gui/appmenu.ui:73
+#: sgbackup/gui/appmenu.ui:85
 msgid "Convert to _Mac OS"
 msgstr "Nach _MacOS konvertieren"
 
-#: sgbackup/gui/appmenu.ui:77
+#: sgbackup/gui/appmenu.ui:89
 msgid "Convert to _Steam Windows"
 msgstr "Nach _Steam-Windows konvertieren"
 
-#: sgbackup/gui/appmenu.ui:81
+#: sgbackup/gui/appmenu.ui:93
 msgid "Convert to Steam Linux"
 msgstr "Nach _Steam-Linux konvertieren"
 
-#: sgbackup/gui/appmenu.ui:85
+#: sgbackup/gui/appmenu.ui:97
 msgid "Convert to Steam Mac OS"
 msgstr "Nach _Steam-MacOS konvertieren"

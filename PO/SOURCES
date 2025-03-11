@@ -7,7 +7,9 @@ sgbackup/commands/help.py
 sgbackup/commands/__init__.py
 sgbackup/curses/__init__.py
 sgbackup/curses/__main__.py
+sgbackup/epic.py
 sgbackup/game.py
+sgbackup/gog.py
 sgbackup/gui/_app.py
 sgbackup/gui/_backupdialog.py
 sgbackup/gui/_dialogs.py

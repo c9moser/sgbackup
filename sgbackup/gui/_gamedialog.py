@@ -1,6 +1,6 @@
 ###############################################################################
 # sgbackup - The SaveGame Backup tool                                         #
-#    Copyright (C) 2024,2025  Christian Moser                                      #
+#    Copyright (C) 2024,2025  Christian Moser                                 #
 #                                                                             #
 #    This program is free software: you can redistribute it and/or modify     #
 #    it under the terms of the GNU General Public License as published by     #
@@ -20,7 +20,7 @@ from .. import _import_gtk
 
 from gi.repository import Gio,GLib,Gtk,Pango
 from gi.repository.GObject import Property,Signal,GObject,BindingFlags,SignalFlags
-
+import rapidfuzz
 from ..i18n import gettext as _, gettext_noop as N_
 
 from ..game import (
@@ -39,6 +39,8 @@ from ..game import (
     EpicGameData,
     EpicWindowsData,
     GameManager,
+    GameProvider,
+    GAME_PROVIDER_ICONS,
 )
     
 
@@ -1080,6 +1082,9 @@ class GameDialog(Gtk.Dialog):
         savegame_name = self.__sgname_entry.get_text()
         savegame_type = self.__savegame_type_dropdown.get_selected_item().savegame_type
         if self.has_game:
+            if self.__game.key != key:
+                GameManager.get_global().remove_game(self.__game)
+                
             self.__game.key = key
             self.__game.name = name
             self.__game.savegame_type = savegame_type
@@ -1494,3 +1499,274 @@ class GameDialog(Gtk.Dialog):
     @Signal(name='apply',flags=SignalFlags.RUN_FIRST,return_type=None,arg_types=())
     def do_apply(self):
         pass
+
+### GameSearchDialog ##########################################################
+
+class GameSearchDialogData(GObject):
+    def __init__(self,game:Game,fuzzy_match:float=0.0):
+        GObject.__init__(self)
+        self.__game = game
+        self.__fuzzy_match = fuzzy_match
+        
+    @Property
+    def game(self)->Game:
+        return self.__game
+    
+    @Property(type=float)
+    def fuzzy_match(self)->float:
+        return self.__fuzzy_match
+    
+    @fuzzy_match.setter
+    def fuzzy_match(self,match:float):
+        self.__fuzzy_match = match
+        
+
+class GameSearchDialogDataSorter(Gtk.Sorter):
+    def do_compare(self,item1:GameSearchDialogData,item2:GameSearchDialogData):
+        if (item1.fuzzy_match > item2.fuzzy_match):
+            return Gtk.Ordering.SMALLER
+        elif (item1.fuzzy_match < item2.fuzzy_match):
+            return Gtk.Ordering.LARGER
+        
+        name1 = item1.game.name.lower()
+        name2 = item2.game.name.lower()
+        
+        if (name1 > name2):
+            return Gtk.Ordering.LARGER
+        elif (name1 < name2):
+            return Gtk.Ordering.SMALLER
+        return Gtk.Ordering.EQUAL
+
+class GameSearchDialogDataNameSorter(Gtk.Sorter):
+    def do_compare(self,item1:GameSearchDialogData,item2:GameSearchDialogData):
+        name1 = item1.game.name.lower()
+        name2 = item2.game.name.lower()
+        
+        if (name1 > name2):
+            return Gtk.Ordering.LARGER
+        elif (name1 < name2):
+            return Gtk.Ordering.SMALLER
+        return Gtk.Ordering.EQUAL
+    
+
+class GameSearchDialogDataFilter(Gtk.Filter):
+    def do_match(self,item:GameSearchDialogData):
+        return (item.fuzzy_match > 0.0)
+    
+
+class GameSearchDialog(Gtk.Dialog):
+    def __init__(self,
+                 parent:Gtk.Window|None=None,
+                 search_name:str|None=None,
+                 title:str|None=None):
+        Gtk.Dialog.__init__(self)
+        self.set_title("SGBackup: {title}".format(
+            title=title if title else _("Search for games")
+        ))
+        
+        if parent:
+            self.set_transient_for(parent)
+            
+        self.search_name = search_name
+        
+        self.__actionbar = Gtk.ActionBar()
+        new_game_button = Gtk.Button()
+        icon = Gtk.Image.new_from_icon_name('list-add-symbolic')
+        icon.set_pixel_size(16)
+        new_game_button.set_child(icon)
+        new_game_button.connect('clicked',self._on_new_game_button_clicked)
+        self.__actionbar.pack_start(new_game_button)
+        
+        self.__action_hbox = Gtk.Box.new(Gtk.Orientation.HORIZONTAL,2)
+        label = Gtk.Label.new(_("Enable Search?"))
+        self.__search_switch = Gtk.Switch()
+        self.__search_switch.set_active(bool(self.search_name))
+        self.__search_switch.set_sensitive(bool(self.search_name))
+        
+        self.__action_hbox.append(label)
+        self.__action_hbox.append(self.__search_switch)
+        self.__actionbar.pack_end(self.__action_hbox)
+        
+        self.get_content_area().append(self.__actionbar)
+        
+        scrolled = Gtk.ScrolledWindow()
+        self.__liststore = Gio.ListStore()
+        for i in self.__get_search_games(search_name):
+            self.__liststore.append(GameSearchDialogData(**i))
+        self.__sort_model = Gtk.SortListModel(model=self.__liststore,sorter=GameSearchDialogDataSorter())
+        self.__filter_model = Gtk.FilterListModel(model=self.__sort_model,
+                                                  filter=GameSearchDialogDataFilter() if search_name else None)
+        selection = Gtk.SingleSelection(model=self.__filter_model,autoselect=False,can_unselect=True)
+        
+        factory = Gtk.SignalListItemFactory()
+        factory.connect('setup',self._on_listview_setup)
+        factory.connect('bind',self._on_listview_bind)
+        
+        self.__listview = Gtk.ListView(model=selection,factory=factory)
+        scrolled.set_child(self.__listview)
+        
+        self.get_content_area().append(scrolled)
+        
+        self.add_button("Close",Gtk.ResponseType.OK)
+        
+    def __get_search_games(self,search_name:str|None)->list:
+        games=[]
+        game_names=[]
+        
+        gm = GameManager.get_global()
+        for g in gm.games.values():
+            games.append({'game':g,'fuzzy_match':0.0})
+            game_names.append(g.name)
+            
+        if search_name:
+            result = rapidfuzz.process.extract(
+                query=search_name,
+                choices=game_names,
+                limit=20,
+                scorer=rapidfuzz.fuzz.WRatio)
+            
+            for choice,score,index in result:
+                games[index]['fuzzy_match']=score
+                
+        return games
+        
+    def _on_listview_setup(self,factory,item):
+        child = Gtk.Grid()
+        child.set_column_spacing(4)
+        child.set_row_spacing(2)
+        
+        child.name_label=Gtk.Label()
+        child.name_label.set_xalign(0.0)
+        child.name_label.set_hexpand(True)
+        child.attach(child.name_label,1,0,1,1)
+        
+        label = Gtk.Label.new(_("Key:"))
+        label.set_xalign(0.0)
+        child.key_label = Gtk.Label()
+        child.key_label.set_xalign(0.0)
+        child.key_label.set_hexpand(True)
+        child.attach(label,0,1,1,1)
+        child.attach(child.key_label,1,1,1,1)
+        
+        label = Gtk.Label.new(_("Platform:"))
+        label.set_xalign(0.0)
+        child.platform_hbox = Gtk.Box.new(Gtk.Orientation.HORIZONTAL,4)
+        child.platform_hbox.set_hexpand(True)
+        child.platform_hbox._is_bound = False
+        child.attach(label,0,2,1,1)
+        child.attach(child.platform_hbox,1,2,1,1)
+        
+        action_grid = Gtk.Grid()
+        icon = Gtk.Image.new_from_icon_name('document-edit-symbolic')
+        icon.set_pixel_size(16)
+        child.edit_button = Gtk.Button()
+        child.edit_button.set_child(icon)
+        action_grid.attach(child.edit_button,0,1,1,1)
+        child.attach(action_grid,2,0,1,3)
+        
+        item.set_child(child)
+        
+    def _on_listview_bind(self,factory,item):
+        def add_platform_icon(child,provider:GameProvider):
+            icon = Gtk.Image.new_from_icon_name(GAME_PROVIDER_ICONS[provider])
+            icon.set_pixel_size(16)
+            child.platform_hbox.append(icon)
+            
+        child = item.get_child()
+        data = item.get_item()
+        
+        child.name_label.set_markup("<span weight='bold' size='large'>{}</span>".format(
+            GLib.markup_escape_text(data.game.name)))
+        child.key_label.set_text(data.game.key)
+        
+        if not child.platform_hbox._is_bound:
+            child.platform_hbox._is_bound = True
+            if data.game.windows:
+                add_platform_icon(child,GameProvider.WINDOWS)
+            if data.game.linux:
+                add_platform_icon(child,GameProvider.LINUX)
+            if data.game.macos:
+                add_platform_icon(child,GameProvider.MACOS)
+            if data.game.steam:
+                add_platform_icon(child,GameProvider.STEAM)
+            if data.game.epic:
+                add_platform_icon(child,GameProvider.EPIC_GAMES)
+            #if data.game.gog:
+            #    add_platform_icon(child,GameProvider.GOG)
+        
+        if hasattr(child.edit_button,'_signal_clicked_connector'):
+            child.edit_button.disconnect(child.edit_button._signal_clicked_connector)
+        child.edit_button._signal_clicked_connector = child.edit_button.connect('clicked',
+                                                                                self._on_edit_button_clicked,
+                                                                                data.game)
+            
+            
+    def do_prepare_game(self,game:Game|None):
+        if game is None:
+            return Game("",self.serch_name,"")
+        else:
+            return game
+        
+    def _on_new_game_button_clicked(self,button):
+        def on_response(dialog,response,parent):
+            if response == Gtk.ResponseType.APPLY:
+                parent.refresh()
+                
+        game = self.do_prepare_game(None)
+        parent = self.get_Transient_for()
+        dialog = GameDialog(parent=parent,game=game)
+        if hasattr(parent,"refresh"):
+            dialog.connect('response',on_response)
+        dialog.present()
+        self.response(Gtk.ResponseType.OK)
+    
+    def _on_edit_button_clicked(self,button:Gtk.Button,game:Game):
+        def on_response(dialog,response,parent):
+            if response == Gtk.ResponseType.APPLY:
+                parent.refresh()
+            
+        try:
+            game = self.do_prepare_game()
+        except Exception as ex:
+            dialog = Gtk.MessageDialog(
+                message=_("Unable to edit game <i>{}</i>!".format(GLib.markup_escape_text(game.name))),
+                use_markup=True,
+                secondary_message=str(ex),
+                secondary_use_markup=False,
+                transient_for=self.get_transient_for(),
+                parent=self.get_transient_for(),
+                buttons=Gtk.Buttons.OK
+            )
+            dialog.connect('response',lambda dialog,response: dialog.destroy())
+            dialog.present()
+            return
+            
+        parent = self.get_transient_for()
+        dialog = GameDialog(parent=parent,game=game)
+        if hasattr(parent,"refresh"):
+            dialog.connect('response',on_response,parent)
+        dialog.present()
+        self.response(Gtk.ResponseType.OK)
+    
+    def _on_search_switch_state_set(self,switch:Gtk.Switch,state:bool):
+        if state:
+            self.__sort_model.set_sorter(GameSearchDialogDataSorter())
+            self.__filter_model.set_filter(GameSearchDialogDataFilter())
+        else:
+            self.__sort_model.set_sorter(GameSearchDialogDataNameSorter())
+            self.__filter_model.set_filter(None)
+        
+    @Property(type=str)
+    def search_name(self)->str:
+        return self.__search_name if self.__search_name else ""
+    
+    @search_name.setter
+    def search_name(self,name:str):
+        if not name:
+            self.__search_name = None
+        else:
+            self.__search_name = name
+            
+    def do_response(self,response):
+        self.hide()
+        self.destroy()

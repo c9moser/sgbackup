@@ -1,6 +1,6 @@
 ###############################################################################
 # sgbackup - The SaveGame Backup tool                                         #
-#    Copyright (C) 2024,2025  Christian Moser                                      #
+#    Copyright (C) 2024,2025  Christian Moser                                 #
 #                                                                             #
 #    This program is free software: you can redistribute it and/or modify     #
 #    it under the terms of the GNU General Public License as published by     #
@@ -17,8 +17,13 @@
 ###############################################################################
 
 from gi.repository import Gtk,GLib,Gio
+from gi.repository.GObject import GObject,Property
+
 from ..version import VERSION
 from ..i18n import gettext as _
+
+
+
 class AboutDialog(Gtk.AboutDialog):
     def __init__(self):
         Gtk.AboutDialog.__init__(self)
@@ -61,3 +66,4 @@ class NoGamesToBackupFoundDialog(Gtk.MessageDialog):
         self.hide()
         self.destroy()
         
+

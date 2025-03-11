@@ -31,7 +31,14 @@ from pathlib import Path
 from ..settings import settings
 from ._settingsdialog import SettingsDialog
 from ._gamedialog import GameDialog
-from ..game import Game,GameManager,SAVEGAME_TYPE_ICONS,SavegameType
+from ..game import (
+    Game,
+    GameManager,
+    SAVEGAME_TYPE_ICONS,
+    SavegameType,
+    GAME_PROVIDER_ICONS,
+    GameProvider
+)
 from ._steam import (
     SteamLibrariesDialog,
     NewSteamAppsDialog,
@@ -223,19 +230,27 @@ class GameView(Gtk.Box):
         
         icon = Gtk.Image.new_from_icon_name('list-add-symbolic')
         icon.set_pixel_size(16)
-        add_game_button=Gtk.Button()
+        add_game_button = Gtk.Button()
         add_game_button.set_child(icon)
         add_game_button.set_tooltip_text(_("Add a new game."))
         add_game_button.connect('clicked',self._on_add_game_button_clicked)
         self.actionbar.pack_start(add_game_button)
                 
-        icon = Gtk.Image.new_from_icon_name('steam-svgrepo-com-symbolic')
+        icon = Gtk.Image.new_from_icon_name(GAME_PROVIDER_ICONS[GameProvider.STEAM])
         icon.set_pixel_size(16)
-        new_steam_games_button=Gtk.Button()
+        new_steam_games_button = Gtk.Button()
         new_steam_games_button.set_child(icon)
         new_steam_games_button.set_tooltip_text(_("Manage new Steam-Apps."))
         new_steam_games_button.connect('clicked',self._on_new_steam_games_button_clicked)
         self.actionbar.pack_start(new_steam_games_button)
+        
+        icon = Gtk.Image.new_from_icon_name(GAME_PROVIDER_ICONS[GameProvider.EPIC_GAMES])
+        icon.set_pixel_size(16)
+        new_epic_games_button = Gtk.Button()
+        new_epic_games_button.set_child(icon)
+        new_epic_games_button.set_tooltip_text(_("Manage new Epic-Games apps"))
+        new_epic_games_button.connect('clicked',self._on_new_epic_games_button_clicked)
+        self.actionbar.pack_start(new_epic_games_button)
         
         self.actionbar.pack_start(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
         
@@ -395,6 +410,10 @@ class GameView(Gtk.Box):
             dialog = SteamNoNewAppsDialog(parent=self.get_root())
             dialog.present()
 
+    def _on_new_epic_games_button_clicked(self,button):
+        # TODO
+        pass
+    
     def _on_backup_active_live_button_clicked(self,button):
         backup_games = []
         for i in range(self._liststore.get_n_items()):
@@ -1279,11 +1298,12 @@ class AppWindow(Gtk.ApplicationWindow):
     def statusbar(self):
         return self.__statusbar
     
-    def refresh(self):
+    def refresh(self,reload_game_manager:bool=False):
         """
         refresh Refresh the views of this window.
         """
-        GameManager.get_global().load()
+        if reload_game_manager:
+            GameManager.get_global().load()
         self.gameview.refresh()
         #self.backupview.refresh()
         
@@ -1510,7 +1530,7 @@ class Application(Gtk.Application):
             dialog.connect_after('response',on_dialog_response)
             dialog.present()
         else:
-            dialog = NoNewSteamAppsDialog(self.appwindow)
+            dialog = SteamNoNewAppsDialog(self.appwindow)
             dialog.present()
 
         

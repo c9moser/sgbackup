@@ -22,9 +22,28 @@ from gi.repository.GObject import GObject,Property,Signal,BindingFlags
 from ..i18n import gettext as _
 
 import os
-from ..steam import Steam,SteamLibrary,SteamApp,IgnoreSteamApp,PLATFORM_LINUX,PLATFORM_MACOS,PLATFORM_WINDOWS
-from ..game import GameManager,Game,SteamGameData,SteamLinuxData,SteamMacOSData,SteamWindowsData,SavegameType
-from ._gamedialog import GameDialog
+from ..steam import (
+    Steam,
+    SteamLibrary,
+    SteamApp,
+    IgnoreSteamApp,
+    PLATFORM_LINUX,
+    PLATFORM_MACOS,
+    PLATFORM_WINDOWS
+)
+
+from ..game import (
+    GameManager,
+    Game,
+    SteamGameData,
+    SteamLinuxData,
+    SteamMacOSData,
+    SteamWindowsData,
+    SavegameType,
+)
+
+
+from ._gamedialog import GameDialog,GameSearchDialog
 
 class SteamLibrariesDialog(Gtk.Dialog):
     def __init__(self,parent:Gtk.Window|None=None):
@@ -207,6 +226,61 @@ class NewSteamAppSorter(Gtk.Sorter):
         else:
             return Gtk.Ordering.EQUAL
 
+
+class SteamGameLookupDialog(GameSearchDialog):
+    def __init__(self,parent,steam_app:SteamApp):
+        GameSearchDialog.__init__(self,parent,steam_app.name,_("Search Steam Apps"))
+        self.__steam_app = steam_app
+    @Property
+    def steam_app(self)->SteamApp:
+        return self.__steam_app
+    
+    def do_prepare_game(self, game):
+        game = super().do_prepare_game(game)
+        if game.steam:
+            if not game.steam.appid != self.steam_app.appid:
+                raise ValueError("Steam appid error")
+            
+            if PLATFORM_WINDOWS:
+                if not game.steam.windows:
+                    game.steam.windows = SteamWindowsData("","",installdir=self.steam_app.installdir)
+                else:
+                    game.steam.windows.installdir=self.steam_app.installdir
+            if PLATFORM_LINUX:
+                if not game.steam.linux:
+                    game.steam.linux = SteamLinuxData("","",installdir=self.steam_app.installdir)
+                else:
+                    game.steam.linux.installdir=self.steam_app.installdir
+                    
+            if PLATFORM_MACOS:
+                if not game.steam.macos:
+                    game.steam.macos = SteamWindowsData("","",installdir=self.steam_app.installdir)
+                else:
+                    game.steam.macos.installdir=self.steam_app.installdir
+        else:
+            if PLATFORM_WINDOWS:
+                windows = SteamWindowsData("","",installdir=self.steam_app.installdir)
+            else:
+                windows = None
+                
+            if PLATFORM_LINUX:
+                linux = SteamLinuxData("","",installdir=self.steam_app.installdir)
+            else:
+                linux = None
+                
+            if PLATFORM_MACOS:
+                macos = SteamMacOSData("","",installdir=self.steam_app.installdir)
+            else:
+                macos = None
+                
+            game.steam = SteamGameData(appid=self.steam_app.appid,
+                                       windows=windows,
+                                       linux=linux,
+                                       macos=macos)
+            
+            return game
+        
+
 class NewSteamAppsDialog(Gtk.Dialog):
     def __init__(self,parent:Gtk.Window|None=None):
         Gtk.Dialog.__init__(self)
@@ -334,8 +408,7 @@ class NewSteamAppsDialog(Gtk.Dialog):
         
         if hasattr(child.lookup_button,'_signal_clicked_connector'):
             child.lookup_button.disconnect(child.lookup_button._signal_clicked_connector)
-        #child.lookup_button._signal_clicked_connector = child.lookup_button.connect('clicked',self._on_lookup_steamapp_button_clicked,data)
-        child.lookup_button.set_sensitive(False)
+        child.lookup_button._signal_clicked_connector = child.lookup_button.connect('clicked',self._on_lookup_steamapp_button_clicked,data)
         
         if hasattr(child.search_online_button,'_signal_clicked_connector'):
             child.search_online_button.disconnect(child.search_online_button._signal_clicked_connector)
@@ -393,6 +466,10 @@ class NewSteamAppsDialog(Gtk.Dialog):
         dialog.get_content_area().append(dialog.reason_entry)
         
         dialog.connect('response',on_dialog_response,data)
+        dialog.present()
+        
+    def _on_lookup_steamapp_button_clicked(self,dialog,data:SteamApp):
+        dialog = SteamGameLookupDialog(parent=self,steam_app=data)
         dialog.present()
     
     def refresh(self):
@@ -530,7 +607,6 @@ class SteamIgnoreAppsDialog(Gtk.Dialog):
         child.remove_button._signal_clicked_connector = child.remove_button.connect('clicked',self._on_remove_button_clicked,data)
     
     def __remove_item(self,item:IgnoreSteamApp):
-        
         for i in range(self.__liststore.get_n_items()):
             ignoreapp = self.__liststore.get_item(i)
             if item.appid == ignoreapp.appid:

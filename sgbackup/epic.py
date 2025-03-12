@@ -24,24 +24,24 @@ from .settings import settings
 import json
 
 import logging
-from i18n import gettext as _
+from .i18n import gettext as _
+from .game import GameManager
 
 logger = logging.getLogger(__name__)
 
-PLATFORM_WINDOWS = sys.platform.lower().startswith('win')
 
 class EpicGameInfo(GObject):
     def __init__(self,
                  name:str,
                  installdir:str,
-                 appname:str,
-                 main_appname:str):
+                 catalog_item_id:str,
+                 main_catalog_item_id:str):
         GObject.__init__(self)
         
         self.__name = name
         self.__installdir = installdir
-        self.__appname = appname
-        self.__main_appname = main_appname
+        self.__catalog_item_id = catalog_item_id
+        self.__main_catalog_item_id = main_catalog_item_id
         
         
     @Property(type=str)
@@ -53,27 +53,27 @@ class EpicGameInfo(GObject):
         return self.__installdir
     
     @Property(type=str)
-    def appname(self)->str:
-        return self.__appname
+    def catalog_item_id(self)->str:
+        return self.__catalog_item_id
     
     @Property(type=str)
-    def main_appname(self)->str:
-        return self.__main_appname
+    def main_catalog_item_id(self)->str:
+        return self.__main_catalog_item_id
     
     @Property(type=bool,default=False)
     def is_main(self)->bool:
-        return (self.appname == self.main_appname)
+        return (self.catalog_item_id == self.main_catalog_item_id)
 
 class EpicIgnoredApp(GObject):
-    def __init__(self,appname:str,name:str,reason:str):
+    def __init__(self,catalog_item_id:str,name:str,reason:str):
         GObject.__init__(self)
-        self.__appname = appname
+        self.__catalog_item_id = catalog_item_id
         self.__name = name
         self.__reason = reason
         
     @Property(type=str)
-    def appname(self)->str:
-        return self.__appname
+    def catalog_item_id(self)->str:
+        return self.__catalog_item_id
     
     @Property(type=str)
     def name(self)->str:
@@ -85,7 +85,7 @@ class EpicIgnoredApp(GObject):
     
     def serialize(self):
         return {
-            'appname':self.appname,
+            'catalog_item_id':self.catalog_item_id,
             'name':self.name,
             'reason':self.reason,
         }
@@ -107,11 +107,11 @@ class Epic(GObject):
     def __parse_ignore_file(self)->dict[str:EpicIgnoredApp]:
         ret = {}
         if os.path.isfile(self.ignore_file):
-            with open(self.ignore_file,'r',encoding="urf-8") as ifile:
+            with open(self.ignore_file,'r',encoding="utf-8") as ifile:
                 data = json.loads(ifile.read())
             
             for i in data:
-                ret[i['appname']] = EpicIgnoredApp(i['appname'],i['name'],i['reason'])
+                ret[i['catalog_item_id']] = EpicIgnoredApp(i['catalog_item_id'],i['name'],i['reason'])
                 
         return ret
     
@@ -126,24 +126,24 @@ class Epic(GObject):
         if not isinstance(app,EpicIgnoredApp):
             raise TypeError('app is not an EpicIgnoredApp instance!')
         
-        self.__ignored_apps[app.appname] = app
+        self.__ignored_apps[app.catalog_item_id] = app
         self.__write_ignore_file()
         
     def remove_ignored_apps(self,app:str|EpicIgnoredApp):
         if isinstance(app,str):
-            appname = app
+            item_id = app
         elif isinstance(app,EpicIgnoredApp):
-            appname = app.appname
+            item_id = app.catalog_item_id
         else:
             raise TypeError("app is not a string and not an EpicIgnoredApp instance!")
         
-        if appname in self.__ignored_apps:
-            del self.__ignored_apps[appname]
+        if item_id in self.__ignored_apps:
+            del self.__ignored_apps[item_id]
             self.__write_ignore_file()
             
     @Property
     def ignored_apps(self)->dict[str:EpicIgnoredApp]:
-        return self.__ignored_apps
+        return dict(self.__ignored_apps)
     
     @Property(type=str)
     def datadir(self):
@@ -169,8 +169,8 @@ class Epic(GObject):
             return EpicGameInfo(
                 name=data['DisplayName'],
                 installdir=data['InstallLocation'],
-                appname=data['AppName'],
-                main_appname=data['MainGameAppName']
+                catalog_item_id=data['CatalogItemId'],
+                main_catalog_item_id=data['MainGameCatalogItemId']
             )
         return None
     
@@ -181,13 +181,15 @@ class Epic(GObject):
             manifest_file = os.path.join(manifest_dir,item)
             info = self.parse_manifest(manifest_file)
             if info is not None:
-                ret += info
+                ret.append(info)
                 
         return ret
     
-    def get_apps(self)->list[EpicGameInfo]:
-        return [i for i in self.parse_all_manifests() if i.appname == i.main_appname]
+    def find_apps(self)->list[EpicGameInfo]:
+        return [i for i in self.parse_all_manifests() if i.is_main]
     
-    def get_new_apps(self)->list[EpicGameInfo]:
-        return []
+    def find_new_apps(self)->list[EpicGameInfo]:
+        gm = GameManager.get_global()
+        return [i for i in self.find_apps() 
+                if not gm.has_epic_game(i.catalog_item_id) and not i.catalog_item_id in self.__ignored_apps]
     

@@ -17,15 +17,29 @@
 ###############################################################################
 
 import sys
-if sys.platform.lower() == 'win32':
-    PLATFORM_WINDOWS=True
-else:
-    PLATFORM_WINDOWS=False
-    
-if sys.platform.lower() in ['linux','freebsd','netbsd','openbsd','dragonfly','macos','cygwin']:
-    PLATFORM_UNIX = True
-else:
-    PLATFORM_UNIX = False
+def _platform_is_linux():
+    if sys.platform == 'linux':
+        return True
+    for i in ('freebsd','netbsd','openbsd','dragonfly'):
+        if sys.platform.startswith(i):
+            return True
+    return False
+
+def _platform_is_unix():
+    if sys.platform in ('linux','darwin','aix'):
+        return True
+    for i in ('freebsd','netbsd','openbsd','dragonfly'):
+        if sys.platform.startswith(i):
+            return True
+    return False
+
+PLATFORM_WINDOWS = (sys.platform == 'win32')
+PLATFORM_LINUX = _platform_is_linux()
+PLATFORM_MACOS = (sys.platform == 'darwin')
+PLATFORM_UNIX = _platform_is_unix()
+
+del _platform_is_unix
+del _platform_is_linux
     
 def sanitize_windows_path(path:str)->str:
     return path.replace('/','\\')

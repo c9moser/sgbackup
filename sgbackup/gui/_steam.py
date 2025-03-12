@@ -238,7 +238,7 @@ class SteamGameLookupDialog(GameSearchDialog):
     def do_prepare_game(self, game):
         game = super().do_prepare_game(game)
         if game.steam:
-            if not game.steam.appid != self.steam_app.appid:
+            if not game.steam.appid != self.steam_app.appid and game.steam_appid >= 0:
                 raise ValueError("Steam appid error")
             
             if PLATFORM_WINDOWS:
@@ -494,6 +494,9 @@ class SteamNoNewAppsDialog(Gtk.MessageDialog):
         self.hide()
         self.destroy()
         
+        
+### SteamIgnoreApps ###########################################################
+
 class SteamNoIgnoredAppsDialog(Gtk.MessageDialog):
     def __init__(self,parent:Gtk.Window|None=None):
         Gtk.MessageDialog.__init__(self,buttons=Gtk.ButtonsType.OK)
@@ -506,7 +509,8 @@ class SteamNoIgnoredAppsDialog(Gtk.MessageDialog):
     def do_response(self,response):
         self.hide()
         self.destroy()
-        
+
+
 class SteamIgnoreAppsSorter(Gtk.Sorter):
     def do_compare(self,item1:IgnoreSteamApp,item2:IgnoreSteamApp):
         s1 = item1.name.lower()

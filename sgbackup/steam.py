@@ -350,7 +350,7 @@ class Steam(GObject):
         new_apps = []
         for lib in self.libraries:
             for app in lib.steam_apps:
-                if not app.appid in GameManager.get_global().steam_games and not app.appid in self.ignore_apps:
+                if not GameManager.get_global().has_steam_game(app.appid) and not app.appid in self.ignore_apps:
                     new_apps.append(app)
         return sorted(new_apps)
     

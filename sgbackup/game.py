@@ -1207,19 +1207,21 @@ class EpicWindowsData(EpicPlatformData):
 
 
 class EpicGameData(GObject):
-    def __init__(self,appname:str,windows:EpicWindowsData|None):
+    def __init__(self,
+                 catalog_item_id:str|None=None,
+                 windows:EpicWindowsData|None=None):
         GObject.__init__(self)
-        self.__appname = appname
+        self.__catalog_item_id = catalog_item_id
         self.windows = windows
         
         
     @Property(type=str)
-    def appname(self)->str:
-        return self.__appname
+    def catalog_item_id(self)->str:
+        return self.__catalog_item_id if self.__catalog_item_id else ""
     
-    @appname.setter
-    def appname(self,appname:str):
-        self.__appname = appname
+    @catalog_item_id.setter
+    def catalog_item_id(self,catalog_item_id:str):
+        self.__catalog_item_id = catalog_item_id
         
     @Property
     def windows(self)->EpicWindowsData|None:
@@ -1236,7 +1238,7 @@ class EpicGameData(GObject):
         
     def serialize(self):
         ret = {
-            "appname": self.appname
+            "catalog_item_id": self.catalog_item_id
         }
         if self.windows and self.windows.is_valid:
             ret["windows"] = self.windows.serialize()
@@ -1299,7 +1301,7 @@ class Game(GObject):
                     librarydir=data['librarydir'] if ('librarydir' in data and data['librarydir']) else None                   
                 )
             
-            if ('steam' not in conf or not 'appid' in conf['steam']):
+            if ('steam' not in conf):
                 return None
             
             steam=conf['steam']
@@ -1322,7 +1324,7 @@ class Game(GObject):
             if windows is None and linux is None and macos is None:
                 return None
             
-            return SteamGameData(steam['appid'],
+            return SteamGameData(steam['appid'] if 'appid' in steam else -1,
                                  windows=windows,
                                  linux=linux,
                                  macos=macos)
@@ -1344,7 +1346,7 @@ class Game(GObject):
                     librarydir=data['librarydir'] if ('librarydir' in data and data['librarydir']) else None                   
                 )
             
-            if not "epic" in conf or not "appname" in conf["epic"]:
+            if not "epic" in conf:
                 return None
             
             if ("windows" in conf['epic']):
@@ -1352,7 +1354,7 @@ class Game(GObject):
             else:
                 windows = None
                 
-            return EpicGameData(conf['epic']['appname'],
+            return EpicGameData(conf['epic']['catalog_item_id'] if 'catalog_item_id' in conf['epic'] else "",
                                 windows=windows)
             
         # new_epic_data()
@@ -1811,8 +1813,17 @@ class GameManager(GObject):
     
     @Property
     def steam_games(self)->dict[int:Game]:
-        return self.__steam_games
+        return dict(self.__steam_games)
 
+    def has_steam_game(self,appid:int)->bool:
+        return (appid in self.__steam_games)
+    @Property
+    def epic_games(self)->dict[str:Game]:
+        return dict(self.__epic_games)
+    
+    def has_epic_game(self,catalog_item_id:str)->bool:
+        return (catalog_item_id in self.__epic_games)
+    
     def load(self):
         if self.__games:
             self.__games = {}
@@ -1844,7 +1855,7 @@ class GameManager(GObject):
         if game.steam:
             self.__steam_games[game.steam.appid] = game
         if game.epic:
-            self.__epic_games[game.epic.appname] = game
+            self.__epic_games[game.epic.catalog_item_id] = game
             
     def remove_game(self,game:Game|str):
         if isinstance(game,str):

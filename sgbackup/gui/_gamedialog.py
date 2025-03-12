@@ -755,9 +755,9 @@ class GameDialog(Gtk.Dialog):
         page = Gtk.Box.new(Gtk.Orientation.VERTICAL,2)
         grid = Gtk.Grid()
         
-        label = self.__create_label(_("AppName:"))
-        page.appname_entry = Gtk.Entry()
-        page.appname_entry.set_hexpand(True)
+        label = self.__create_label(_("CatalogIemID:"))
+        page.catalogitemid_entry = Gtk.Entry()
+        page.catalogitemid_entry.set_hexpand(True)
         grid.attach(label,0,0,1,1)
         grid.attach(page.appname_entry,1,0,1,1)
         page.append(grid)
@@ -1015,9 +1015,11 @@ class GameDialog(Gtk.Dialog):
                                                      else "")
         
         # Epic Games
-        set_game_widget_data(self.__epic.windows,self.__game.epic.windows if self.has_game and self.__game.epic else None)
+        set_game_widget_data(self.__epic.windows,self.__game.epic.windows 
+                             if self.has_game and self.__game.epic else None)
         
-        self.__epic.appname_entry.set_text(self.__game.epic.appname if self.has_game and self.__game.epic else "")
+        self.__epic.catalogitemid_entry.set_text(self.__game.epic.catalog_item_id 
+                                                 if self.has_game and self.__game.epic else "")
         self.__epic.windows.installdir_entry.set_text(self.__game.epic.windows.installdir
                                                       if self.has_game
                                                       and self.__game.epic
@@ -1254,9 +1256,9 @@ class GameDialog(Gtk.Dialog):
             data = get_epic_data(self.__epic.windows)
             
             if self.__game.epic:
-                self.__game.epic.appname = self.__epic.appname_entry.get_text()
+                self.__game.epic.catalog_item_id = self.__epic.catalogitemid_entry.get_text()
             else:
-                self.__game.epic = EpicGameData(appname=self.__epic.appname_entry.get_text())
+                self.__game.epic = EpicGameData(appname=self.__epic.catalogitemid_entry.get_text())
                 
             if self.__game.epic.windows:
                 self.__game.epic.windows.savegame_root = data['sgroot']

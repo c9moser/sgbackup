@@ -46,8 +46,9 @@ from ._steam import (
     SteamNoIgnoredAppsDialog,
     SteamIgnoreAppsDialog,
 )
-
 from ..steam import Steam
+from ..epic import Epic
+from ._epic import EpicNewAppsDialog
 from ._backupdialog import BackupSingleDialog,BackupManyDialog
 from ..archiver import ArchiverManager
 from ._dialogs import (
@@ -392,7 +393,7 @@ class GameView(Gtk.Box):
     def do_game_live_changed(self,game:Game):
         pass
     
-    def _on_new_steamapps_dialog_response(self,dialog,response):
+    def _on_new_apps_dialog_response(self,dialog,response):
         self.refresh()
         
     def _on_add_game_button_clicked(self,button):
@@ -404,15 +405,28 @@ class GameView(Gtk.Box):
         steam = Steam()
         if steam.find_new_steamapps():
             dialog = NewSteamAppsDialog(parent=self.get_root())
-            dialog.connect_after('response',self._on_new_steamapps_dialog_response)
+            dialog.connect_after('response',self._on_new_apps_dialog_response)
             dialog.present()
         else:
             dialog = SteamNoNewAppsDialog(parent=self.get_root())
             dialog.present()
 
     def _on_new_epic_games_button_clicked(self,button):
-        # TODO
-        pass
+        epic = Epic()
+        if not epic.find_new_apps():
+            dialog = Gtk.MessageDialog(
+                transient_for=self.get_root(),
+                message="No new Epic-Games applications found!",
+                buttons=Gtk.ButtonsType.OK,
+                modal=False
+            )
+            dialog.connect('response',lambda d,r: d.destroy())
+            dialog.present()
+            return
+        
+        dialog = EpicNewAppsDialog(self.get_root())
+        dialog.connect_after('response',self._on_new_apps_dialog_response)
+        dialog.present()
     
     def _on_backup_active_live_button_clicked(self,button):
         backup_games = []

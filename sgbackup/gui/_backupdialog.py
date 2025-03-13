@@ -81,8 +81,14 @@ class BackupSingleDialog(Gtk.Dialog):
         return False
             
     def _on_am_backup_game_progress(self,am,game,fraction,message):
+        def sanitize_fraction(fraction):
+            if fraction < 0.0:
+                return 0.0
+            if fraction > 1.0:
+                return 1.0
+            return fraction
         if self.__game.key == game.key:
-            GLib.idle_add(self._on_propgress,fraction,message)
+            GLib.idle_add(self._on_propgress,sanitize_fraction(fraction),message)
             
     def _on_am_backup_game_finished(self,am,game):
         if self.__game.key == game.key:

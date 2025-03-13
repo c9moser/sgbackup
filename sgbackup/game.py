@@ -37,17 +37,17 @@ from string import Template
 logger = logging.getLogger(__name__)
 
 from .settings import settings
+from .utility import (
+    PLATFORM_WINDOWS,
+    PLATFORM_UNIX,
+    PLATFORM_LINUX,
+    PLATFORM_MACOS,
+    sanitize_windows_path,
+)
 
-if sys.platform.lower() == "win32":
-    PLATFORM_WIN32 = True
+if PLATFORM_WINDOWS:
     import winreg
-else:
-    PLATFORM_WIN32 = False
     
-if sys.platform.lower() in ['linux','freebsd','netbsd','openbsd','dragonfly']:
-    PLATFORM_LINUX = True
-else:
-    PLATFORM_LINUX = False
 
 
 class SavegameType(StrEnum):
@@ -611,15 +611,15 @@ class WindowsGame(GameData):
         
         GameData.__init__(self,
                           SavegameType.WINDOWS,
-                          savegame_root,
-                          savegame_dir,
+                          sanitize_windows_path(savegame_root),
+                          sanitize_windows_path(savegame_dir),
                           variables,
                           file_match,
                           ignore_match)
         if not installdir:
             self.__installdir = None
         else:
-            self.__installdir = installdir
+            self.__installdir = sanitize_windows_path(installdir)
         
         if not game_registry_keys:
             self.__game_registry_keys = []
@@ -656,7 +656,7 @@ class WindowsGame(GameData):
     
     @installdir.setter
     def installdir(self,installdir:str|None):
-        self.__installdir = installdir
+        self.__installdir = sanitize_windows_path(installdir)
     
     @Property
     def game_registry_keys(self)->list:
@@ -682,7 +682,7 @@ class WindowsGame(GameData):
                 
     @Property
     def is_installed(self)->bool|None:
-        if not PLATFORM_WIN32 or not self.game_registry_keys:
+        if not PLATFORM_WINDOWS or not self.game_registry_keys:
             return None
         for regkey in self.__game_registry_keys:
             hkey = self.__get_hkey(regkey)
@@ -700,7 +700,7 @@ class WindowsGame(GameData):
     
     @Property
     def registry_installdir(self)->str|None:
-        if not PLATFORM_WIN32 or not (self.installdir_registry_keys):
+        if not PLATFORM_WINDOWS or not (self.installdir_registry_keys):
             return None
         for regkey in self.__game_registry_keys:
             hkey = self.__get_hkey(regkey)
@@ -809,145 +809,6 @@ class MacOSGame(GameData):
         if self.binary:
             ret['binary'] = self.binary
         return ret
-    
-    
-class SteamGame(GameData):
-    def __init__(self,
-                 sgtype:SavegameType,
-                 appid:int,
-                 savegame_root:str,
-                 savegame_dir:str,
-                 variables:dict|None=None,
-                 installdir:str|None=None,
-                 file_match:list|None=None,
-                 ignore_match:list|None=None):
-        if sgtype not in (SavegameType.STEAM_WINDOWS,
-                          SavegameType.STEAM_LINUX,
-                          SavegameType.STEAM_MACOS):
-            raise TypeError("SaveGameType")
-        
-        GameData.__init__(self,
-                          sgtype,
-                          savegame_root,
-                          savegame_dir,
-                          variables,
-                          file_match,
-                          ignore_match)
-        self.appid = int(appid)
-        self.installdir = installdir
-        self.librarydir=None
-        
-    def get_variables(self):
-        vars = super().get_variables()
-        vars["INSTALLDIR"] = self.installdir if self.installdir else ""
-        vars["STEAM_APPID"] = str(self.appid)
-        vars["STEAM_LIBDIR"] = self.librarydir if self.librarydir else ""
-        vars["STEAM_LIBRARY_DIR"] = self.librarydir if self.librarydir else ""
-        vars["STEAM_COMPATDATA"] = self.compatdata if self.compatdata else ""
-        
-        return vars
-        
-    @Property(type=int)
-    def appid(self):
-        return self.__appid
-    @appid.setter
-    def appid(self,appid):
-        self.__appid = appid
-        
-    @Property
-    def installdir(self):
-        return self.__installdir
-    @installdir.setter
-    def installdir(self,installdir:str|None):
-        self.__installdir = installdir
-
-    @Property
-    def librarydir(self)->str|None:
-        if not self.__librarydir and self.installdir:
-            return str(pathlib.Path(self.installdir).resolve().parent.parent.parent)
-        return self.__librarydir
-    
-    @librarydir.setter
-    def librarydir(self,directory):
-        if not directory:
-            self.__librarydir = None
-        elif not os.path.isdir(directory):
-            raise ValueError("Steam librarydir is not a valid directory!")
-        self.__librarydir = directory
-    
-    @Property
-    def compatdata(self)->str|None:
-        libdir = self.librarydir
-        if libdir:
-            return str(pathlib.Path(libdir).resolve() / 'steamapps' / 'compatdata')
-        return None
-    
-    def serialize(self):
-        ret = super().serialize()
-        ret['appid'] = self.appid
-        
-        if self.installdir:
-            ret['installdir'] = str(self.installdir) if self.installdir else ""
-            ret['librarydir'] = str(self.librarydir) if self.librarydir else ""
-
-        return ret
-    
-class SteamWindowsGame(SteamGame):
-    def __init__(self,
-                 appid:int,
-                 savegame_root:str,
-                 savegame_dir:str,
-                 variables:dict|None=None,
-                 installdir:str|None=None,
-                 file_match:list|None=None,
-                 ignore_match:list|None=None):
-        SteamGame.__init__(self,
-                           SavegameType.STEAM_WINDOWS,
-                           appid,
-                           savegame_root,
-                           savegame_dir,
-                           variables,
-                           installdir,
-                           file_match,
-                           ignore_match)
-        
-class SteamLinuxGame(SteamGame):
-    def __init__(self,
-                 appid:int,
-                 savegame_root:str,
-                 savegame_dir:str,
-                 variables:dict|None=None,
-                 installdir:str|None=None,
-                 file_match:list|None=None,
-                 ignore_match:list|None=None):
-        SteamGame.__init__(self,
-                           SavegameType.STEAM_LINUX,
-                           appid,
-                           savegame_root,
-                           savegame_dir,
-                           variables,
-                           installdir,
-                           file_match,
-                           ignore_match)
-
-class SteamMacOSGame(SteamGame):
-    def __init__(self,
-                 appid:int,
-                 savegame_root:str,
-                 savegame_dir:str,
-                 variables:dict|None=None,
-                 installdir:str|None=None,
-                 file_match:list|None=None,
-                 ignore_match:list|None=None):
-        SteamGame.__init__(self,
-                           SavegameType.STEAM_MACOS,
-                           appid,
-                           savegame_root,
-                           savegame_dir,
-                           variables,
-                           installdir,
-                           file_match,
-                           ignore_match)
 
 class SteamPlatformData(GameData):
     def __init__(self,
@@ -1000,6 +861,14 @@ class SteamPlatformData(GameData):
             data['librarydir'] = self.__librarydir
         
         return data
+    
+    def get_variables(self):
+        variables = super().get_variables()
+        variables.update({
+            'INSTALLDIR': self.installdir if self.installdir else ""
+        })
+        return variables
+            
     
 class SteamWindowsData(SteamPlatformData):
     def __init__(self,
@@ -1102,41 +971,16 @@ class SteamGameData(GObject):
     def macos(self,data:SteamMacOSData|None):
         self.__macos_data = data
         
-    @property
-    def windows_game(self)->SteamWindowsGame|None:
-        if self.windows:
-            return SteamWindowsGame(appid=self.appid,
-                                    savegame_root=self.windows.savegame_root,
-                                    savegame_dir=self.windows.savegame_dir,
-                                    variables=self.windows.variables,
-                                    installdir=self.windows.installdir,
-                                    file_match=self.windows.file_matchers,
-                                    ignore_match=self.windows.ignore_matchers)
-        return None
-    
-    @property
-    def linux_game(self)->SteamLinuxGame|None:
-        if self.linux:
-            return SteamLinuxGame(appid=self.appid,
-                                  savegame_root=self.linux.savegame_root,
-                                  savegame_dir=self.linux.savegame_dir,
-                                  variables=self.linux.variables,
-                                  installdir=self.linux.installdir,
-                                  file_match=self.linux.file_matchers,
-                                  ignore_match=self.linux.ignore_matchers)
-        return None
-    
-    @property
-    def macos_game(self)->SteamLinuxGame|None:
-        if self.macos:
-            return SteamMacOSGame(appid=self.appid,
-                                  savegame_root=self.macos.savegame_root,
-                                  savegame_dir=self.macos.savegame_dir,
-                                  variables=self.macos.variables,
-                                  installdir=self.macos.installdir,
-                                  file_match=self.macos.file_matchers,
-                                  ignore_match=self.macos.ignore_matchers)
-        return None
+    def get_variables(self,sgtype:SavegameType):
+        variables = {"STEAM_APPID":self.appid}
+        if sgtype == SavegameType.STEAM_WINDOWS and self.windows:
+            variables.update(self.windows.get_variables())
+        elif sgtype == SavegameType.STEAM_LINUX and self.linux:
+            variables.update(self.linux.get_variables())
+        elif sgtype == SavegameType.STEAM_MACOS:
+            variables.update(self.macos.get_variables())
+            
+        return variables
     
     def serialize(self)->dict:
         data = {
@@ -1187,6 +1031,11 @@ class EpicPlatformData(GameData):
         if self.__installdir:
             data['installdir'] = self.__installdir
         return data
+        
+    def get_variables(self):
+        variables = {"INSTALLDIR":self.installdir}
+        variables.update(super().get_variables())
+        return variables
         
 class EpicWindowsData(EpicPlatformData):
     def __init__(self,
@@ -1244,6 +1093,15 @@ class EpicGameData(GObject):
             ret["windows"] = self.windows.serialize()
             
         return ret
+    
+    def get_variables(self,sgtype:SavegameType):
+        variables = {
+            "EPIC_CatalogItemId":self.catalog_item_id,
+        }
+        if sgtype == SavegameType.EPIC_WINDOWS and self.windows:
+            variables.update(self.windows.get_variables())
+            
+        return variables
     
 class Game(GObject):
     __gtype_name__ = "Game"
@@ -1546,20 +1404,20 @@ class Game(GObject):
             return self.macos
         elif (sgtype == SavegameType.STEAM_WINDOWS):
             if self.steam:
-                return self.steam.windows_game
+                return self.steam.windows
         elif (sgtype == SavegameType.STEAM_LINUX):
             if self.steam:
-                return self.steam.linux_game
+                return self.steam.linux
         elif (sgtype == SavegameType.STEAM_MACOS):
             if self.steam:
-                return self.steam.macos_game
+                return self.steam.macos
         #elif (sgtype == SavegameType.GOG_WINDOWS):
         #    return self.__gog_windows
         #elif (sgtype == SavegameType.GOG_LINUX):
         #    return self.__gog_linux
         elif (sgtype == SavegameType.EPIC_WINDOWS):
             if self.epic:
-                return self.__epic.windows
+                return self.epic.windows
         elif (sgtype == SavegameType.EPIC_LINUX):
             return None
         return None
@@ -1616,37 +1474,33 @@ class Game(GObject):
         self.__steam = steam_data
         
     @Property
-    def steam_windows(self)->SteamWindowsGame|None:
-        if self.steam:
-            return self.steam.windows_game
-        return None
-    
-    @Property
-    def steam_linux(self)->SteamLinuxGame|None:
-        if self.steam:
-            return self.steam.linux_game
-        return None
-    
-            
-    @Property
-    def steam_macos(self)->SteamMacOSGame|None:
-        if self.steam:
-            return self.steam.macos_game
-        return None
-    
-    @Property
     def savegame_root(self)->str|None:
         if not self.game_data:
             return None
+        
         t = Template(self.game_data.savegame_root)
-        return t.safe_substitute(self.get_variables())
+        ret = t.safe_substitute(self.get_variables())
+        
+        if self.savegame_type in (SavegameType.WINDOWS,
+                                  SavegameType.STEAM_WINDOWS,
+                                  SavegameType.EPIC_WINDOWS,
+                                  SavegameType.GOG_WINDOWS):
+            ret = sanitize_windows_path(ret)
+        return ret
     
     @Property
     def savegame_dir(self)->str|None:
         if not self.game_data:
             return None
         t = Template(self.game_data.savegame_dir)
-        return t.safe_substitute(self.get_variables())
+        ret = t.safe_substitute(self.get_variables())
+
+        if self.savegame_type in (SavegameType.WINDOWS,
+                                  SavegameType.STEAM_WINDOWS,
+                                  SavegameType.EPIC_WINDOWS,
+                                  SavegameType.GOG_WINDOWS):
+            ret = sanitize_windows_path(ret)
+        return ret
     
     @Property
     def epic(self)->EpicGameData|None:
@@ -1666,9 +1520,15 @@ class Game(GObject):
     def get_variables(self):
         vars = settings.get_variables()
         vars.update(self.__variables)
-        game_data = self.game_data
-        if game_data is not None:
-            vars.update(game_data.get_variables())
+        if self.savegame_type in (SavegameType.WINDOWS,SavegameType.LINUX,SavegameType.MACOS):
+            if self.game_data:
+                vars.update(self.game_data.get_variables())
+        elif self.savegame_type in (SavegameType.STEAM_WINDOWS,SavegameType.STEAM_LINUX,SavegameType.STEAM_MACOS):
+            if self.steam:
+                vars.update(self.steam.get_variables(self.savegame_type))
+        elif self.savegame_type in (SavegameType.EPIC_WINDOWS,):
+            if self.epic:
+                vars.update(self.epic.get_variables(self.savegame_type))
         return vars
     
     def get_variable(self,name):
@@ -1762,7 +1622,7 @@ class Game(GObject):
                                 
             return ret
         
-        if not bool(self):
+        if not self.savegame_root or not self.savegame_dir:
             return None
         
         sgroot = pathlib.Path(self.savegame_root).resolve()

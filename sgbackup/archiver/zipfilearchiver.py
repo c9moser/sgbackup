@@ -31,6 +31,7 @@ class ZipfileArchiver(Archiver):
         _calc_fraction = lambda n,cnt: ((1.0 / n) * cnt)
         
         self._backup_progress(game,0.0,"Starting {game} ...".format(game=game.name))
+        
         files = game.get_backup_files()
         div = len(files) + 2
         cnt=1

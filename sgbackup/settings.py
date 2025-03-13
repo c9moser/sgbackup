@@ -24,7 +24,14 @@ from gi.repository import GLib,GObject
 import zipfile
 from threading import RLock
 
-from .utility import sanitize_path
+from .utility import (
+    sanitize_path,
+    sanitize_windows_path,
+    PLATFORM_WINDOWS,
+    PLATFORM_MACOS,
+    PLATFORM_LINUX,
+    PLATFORM_UNIX
+)
 
 
 ZIPFILE_COMPRESSION_STR = {
@@ -47,12 +54,6 @@ for _zc,_zs in ZIPFILE_COMPRESSION_STR.items():
 del _zc
 del _zs
 
-if sys.platform.lower() == 'win32':
-    PLATFORM_WINDOWS = True
-    import winreg
-else:
-    PLATFORM_WINDOWS = False
-    
     
 class Settings(GObject.GObject):
     __gtype_name__ = "Settings"

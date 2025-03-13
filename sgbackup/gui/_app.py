@@ -1217,7 +1217,7 @@ class AppWindow(Gtk.ApplicationWindow):
                 
         Gtk.ApplicationWindow.__init__(self,**kwargs)
         self.set_default_size(800,700)
-        self.set_icon_name('org.sgbackup.sgbackup-symbolic')
+        self.set_icon_name('sgbackup-symbolic')
         
         self.__builder = builder
         self.builder.add_from_file(os.path.join(os.path.dirname(__file__),'appmenu.ui'))
@@ -1457,6 +1457,7 @@ class Application(Gtk.Application):
         """
         do_activate This method is called, when the application is activated.
         """
+        self.set_default()
         self._logger.debug('do_activate()')
         if not (self.__appwindow):
             self.__appwindow = AppWindow(application=self)

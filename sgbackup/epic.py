@@ -175,8 +175,13 @@ class Epic(GObject):
         return None
     
     def parse_all_manifests(self)->list[EpicGameInfo]:
-        manifest_dir=os.path.join(settings.epic_datadir,'Manifests')
         ret = []
+        if not settings.epic_datadir:
+            print("NO EPIC DATADIR")
+            return ret
+        
+        manifest_dir=os.path.join(settings.epic_datadir,'Manifests')
+        
         for item in [ i for i in os.listdir(manifest_dir) if i.endswith('.item') ]:
             manifest_file = os.path.join(manifest_dir,item)
             info = self.parse_manifest(manifest_file)

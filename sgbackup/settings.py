@@ -55,6 +55,8 @@ del _zc
 del _zs
 
     
+if PLATFORM_WINDOWS:
+    import winreg
 class Settings(GObject.GObject):
     __gtype_name__ = "Settings"
     

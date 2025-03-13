@@ -33,9 +33,9 @@ def _platform_is_unix():
             return True
     return False
 
-PLATFORM_WINDOWS = (sys.platform == 'win32')
+PLATFORM_WINDOWS = bool(sys.platform == 'win32')
 PLATFORM_LINUX = _platform_is_linux()
-PLATFORM_MACOS = (sys.platform == 'darwin')
+PLATFORM_MACOS = bool(sys.platform == 'darwin')
 PLATFORM_UNIX = _platform_is_unix()
 
 del _platform_is_unix

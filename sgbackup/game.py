@@ -1192,11 +1192,11 @@ class EpicWindowsData(EpicPlatformData):
     def __init__(self,
                  savegame_root:str,
                  savegame_dir:str,
-                 variables:dict[str:str],
-                 file_match:list[GameFileMatcher],
-                 ignore_match:list[GameFileMatcher],
-                 installdir:str|None):
-        GameData.__init__(self,
+                 variables:dict[str:str]|None=None,
+                 file_match:list[GameFileMatcher]|None=None,
+                 ignore_match:list[GameFileMatcher]|None=None,
+                 installdir:str|None=None):
+        EpicPlatformData.__init__(self,
                           savegame_type=SavegameType.EPIC_WINDOWS,
                           savegame_root=savegame_root,
                           savegame_dir=savegame_dir,
@@ -1295,8 +1295,8 @@ class Game(GObject):
                     savegame_root=data['savegame_root'],
                     savegame_dir=data['savegame_dir'],
                     variables=dict(((v['name'],v['value']) for v in data['variables'])) if ('variables' in data and config['variables']) else None,
-                    file_match=file_match,
-                    ignore_match=ignore_match,
+                    file_match=file_match if 'file_match' in data else None,
+                    ignore_match=ignore_match if 'ignore_match' in data else None,
                     installdir=data['installdir'] if ('installdir' in data and data['installdir']) else None,
                     librarydir=data['librarydir'] if ('librarydir' in data and data['librarydir']) else None                   
                 )
@@ -1340,10 +1340,9 @@ class Game(GObject):
                     savegame_root=data['savegame_root'],
                     savegame_dir=data['savegame_dir'],
                     variables=dict(((v['name'],v['value']) for v in data['variables'])) if ('variables' in data and config['variables']) else None,
-                    file_match=file_match,
-                    ignore_match=ignore_match,
-                    installdir=data['installdir'] if ('installdir' in data and data['installdir']) else None,
-                    librarydir=data['librarydir'] if ('librarydir' in data and data['librarydir']) else None                   
+                    file_match=file_match if 'file_match' in data else None ,
+                    ignore_match=ignore_match if 'ignore_match' in data else None,
+                    installdir=data['installdir'] if ('installdir' in data and data['installdir']) else None
                 )
             
             if not "epic" in conf:

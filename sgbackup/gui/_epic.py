@@ -22,9 +22,49 @@ from gi.repository.GObject import GObject,Property,Signal,SignalFlags
 from ..i18n import gettext as _,gettext_noop as N_
 from ..game import GameManager,Game,EpicGameData,EpicWindowsData
 from ..epic import Epic,EpicGameInfo,EpicIgnoredApp
+from ._gamedialog import GameSearchDialog
 from ..utility import PLATFORM_WINDOWS
 
 from ._gamedialog import GameDialog
+
+class EpicLookupGamesDialog(GameSearchDialog):
+    def __init__(self,parent:Gtk.Window|None=None,info:EpicGameInfo|None=None):
+        GameSearchDialog.__init__(self,parent,info.name if info else None)
+        self.__gameinfo = info
+        
+    @Property
+    def gameinfo(self)->EpicGameInfo|None:
+        return self.__gameinfo
+    
+    @gameinfo.setter
+    def gameinfo(self,info:EpicGameInfo|None):
+        if info:
+            self.search_name = info.name
+        else:
+            self.search_name = None
+        self.__gameinfo = info
+        
+    def do_prepare_game(self,game:Game):
+        game = super().do_prepare_game(game)
+        if self.gameinfo:
+            if game.epic:
+                game.epic.catalog_item_id = self.gameinfo.catalog_item_id
+            else:
+                game.epic = EpicGameData(self.gameinfo.catalog_item_id)
+            if PLATFORM_WINDOWS:
+                if not game.epic.windows:
+                    game.epic.windows = EpicWindowsData("","",installdir=self.gameinfo.installdir)
+                else:
+                    game.epic.windows.installdir = self.gameinfo.installdir
+        else:
+            if not game.epic:
+                game.epic = EpicGameData()
+            if PLATFORM_WINDOWS and not game.epic.windows:
+                game.epic.windows = EpicWindowsData("","")
+                
+        return game
+
+### EpicNewGamesDialog ########################################################
 
 class EpicNewAppsDialogSorter(Gtk.Sorter):
     def do_compare(self,item1:EpicGameInfo,item2:EpicGameInfo):
@@ -152,7 +192,6 @@ class EpicNewAppsDialog(Gtk.Dialog):
         child.lookup_button._signal_clicked_connector = child.lookup_button.connect('clicked',
                                                                                     self._on_listview_lookup_button_clicked,
                                                                                     data)
-        child.lookup_button.set_sensitive(False)
         
         if hasattr(child.online_button,'_signal_clicked_connector'):
             child.online_button.disconnect(child.online_button._signal_clicked_connector)
@@ -215,10 +254,9 @@ class EpicNewAppsDialog(Gtk.Dialog):
         dialog.connect('response',self._on_ignore_dialog_response,info)
         dialog.present()
         
-        
-    
     def _on_listview_lookup_button_clicked(self,button:Gtk.Button,info:EpicGameInfo):
-        pass
+        dialog = EpicLookupGamesDialog(parent=self,info=info)
+        dialog.present()
     
     def _on_listview_online_button_clicked(self,button:Gtk.Button,info:EpicGameInfo):
         pass
@@ -226,4 +264,11 @@ class EpicNewAppsDialog(Gtk.Dialog):
     def do_response(self,response):
         self.hide()
         self.destroy()
-    
+
+    def refresh(self):
+        epic = Epic()
+        self.__liststore.remove_all()
+        
+        for gameinfo in epic.find_new_apps():
+            self.__liststore.append(gameinfo)
+

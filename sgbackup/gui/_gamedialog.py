@@ -759,7 +759,7 @@ class GameDialog(Gtk.Dialog):
         page.catalogitemid_entry = Gtk.Entry()
         page.catalogitemid_entry.set_hexpand(True)
         grid.attach(label,0,0,1,1)
-        grid.attach(page.appname_entry,1,0,1,1)
+        grid.attach(page.catalogitemid_entry,1,0,1,1)
         page.append(grid)
         
         page.notebook = Gtk.Notebook()
@@ -1071,6 +1071,7 @@ class GameDialog(Gtk.Dialog):
         def get_epic_data(widget):
             conf = get_game_data(widget)
             conf.update({'installdir':widget.installdir_entry.get_text()})
+            return conf
         if not self.get_is_valid():
             return
         
@@ -1569,6 +1570,7 @@ class GameSearchDialog(Gtk.Dialog):
         if parent:
             self.set_transient_for(parent)
             
+        self.set_default_size(640,500)
         self.search_name = search_name
         
         self.__actionbar = Gtk.ActionBar()
@@ -1605,7 +1607,9 @@ class GameSearchDialog(Gtk.Dialog):
         factory.connect('bind',self._on_listview_bind)
         
         self.__listview = Gtk.ListView(model=selection,factory=factory)
+        self.__listview.set_vexpand(True)
         scrolled.set_child(self.__listview)
+        scrolled.set_vexpand(True)
         
         self.get_content_area().append(scrolled)
         
@@ -1728,16 +1732,16 @@ class GameSearchDialog(Gtk.Dialog):
                 parent.refresh()
             
         try:
-            game = self.do_prepare_game()
+            game = self.do_prepare_game(game)
         except Exception as ex:
             dialog = Gtk.MessageDialog(
-                message=_("Unable to edit game <i>{}</i>!".format(GLib.markup_escape_text(game.name))),
+                text=_("Unable to edit game <i>{}</i>!".format(GLib.markup_escape_text(game.name))),
                 use_markup=True,
-                secondary_message=str(ex),
+                secondary_text=str(ex),
                 secondary_use_markup=False,
                 transient_for=self.get_transient_for(),
                 parent=self.get_transient_for(),
-                buttons=Gtk.Buttons.OK
+                buttons=Gtk.ButtonsType.OK
             )
             dialog.connect('response',lambda dialog,response: dialog.destroy())
             dialog.present()

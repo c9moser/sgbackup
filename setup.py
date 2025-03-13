@@ -40,7 +40,7 @@ setup(
             '*.ui'
         ],
         'sgbackup.locale': [
-            '*/*.mo',
+            '*/LC_MESSAGES/*.mo',
             '*/LC_MESSAGES/*.po',
         ],
     },

@@ -48,7 +48,9 @@ from ._steam import (
 )
 from ..steam import Steam
 from ..epic import Epic
-from ._epic import EpicNewAppsDialog
+from ._epic import (
+    EpicNewAppsDialog,
+)
 from ._backupdialog import BackupSingleDialog,BackupManyDialog
 from ..archiver import ArchiverManager
 from ._dialogs import (
@@ -1439,6 +1441,14 @@ class Application(Gtk.Application):
         action_steam_manage_ignore.connect('activate',self._on_action_steam_manage_ignore)
         self.add_action(action_steam_manage_ignore)
         
+        action_epic_new_apps = Gio.SimpleAction.new('epic-new-apps',None)
+        action_epic_new_apps.connect('activate',self._on_action_epic_new_apps)
+        self.add_action(action_epic_new_apps)
+        
+        action_epic_manage_ignore = Gio.SimpleAction.new('epic-manage-ignore',None)
+        action_epic_manage_ignore.connect('activate',self._on_action_epic_manage_ignore)
+        self.add_action(action_epic_manage_ignore)
+        
         # add accels
         self.set_accels_for_action('app.quit',["<Primary>q"])
         self.set_accels_for_action('app.backup-all',["<Primary><Shift>s"])
@@ -1558,6 +1568,21 @@ class Application(Gtk.Application):
             dialog.connect_after("response",lambda d,r:self.appwindow.refresh())
             
         dialog.present()
+        
+    def _on_action_epic_new_apps(self,action,param):
+        epic = Epic()
+        if not epic.find_new_apps():
+            ### TODO #####################################
+            return
+        else:
+            dialog = EpicNewAppsDialog(self.appwindow)
+            dialog.connect_after("response",lambda d,r: self.appwindow.refresh())
+            
+        dialog.present()
+        
+    def _on_action_epic_manage_ignore(self,action,param):
+        ### TODO ##########################################
+        pass
         
     def new_settings_dialog(self)->SettingsDialog:
         """

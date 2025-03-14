@@ -680,6 +680,8 @@ class GameDialog(Gtk.Dialog):
         label = Gtk.Label.new("App ID:")
         page.appid_entry = Gtk.Entry()
         page.appid_entry.set_hexpand(True)
+        page.appid_entry.set_input_hints(Gtk.InputHints.NO_EMOJI | Gtk.InputHints.NO_SPELLCHECK)
+        page.appid_entry.set_input_purpose(Gtk.InputPurpose.NUMBER)
         grid.attach(label,0,0,1,1)
         grid.attach(page.appid_entry,1,0,1,1)
         page.append(grid)
@@ -1185,10 +1187,11 @@ class GameDialog(Gtk.Dialog):
             or self.get_is_valid_savegame_type(SavegameType.STEAM_LINUX)
             or self.get_is_valid_savegame_type(SavegameType.STEAM_MACOS)):
             
+            appid_text = self.__steam.appid_entry.get_text()
             if self.__game.steam:
-                self.__game.steam.appid = int(self.__steam.appid_entry.get_text())
+                self.__game.steam.appid = int(appid_text) if appid_text else -1
             else:
-                self.__game.steam = SteamGameData(int(self.__steam.appid_entry.get_text()))
+                self.__game.steam = SteamGameData(int(appid_text) if appid_text else -1)
                 
             
             if self.get_is_valid_savegame_type(SavegameType.STEAM_WINDOWS):
@@ -1259,7 +1262,7 @@ class GameDialog(Gtk.Dialog):
             if self.__game.epic:
                 self.__game.epic.catalog_item_id = self.__epic.catalogitemid_entry.get_text()
             else:
-                self.__game.epic = EpicGameData(appname=self.__epic.catalogitemid_entry.get_text())
+                self.__game.epic = EpicGameData(catalog_item_id=self.__epic.catalogitemid_entry.get_text())
                 
             if self.__game.epic.windows:
                 self.__game.epic.windows.savegame_root = data['sgroot']

@@ -1711,9 +1711,10 @@ class GameManager(GObject):
         
     def add_game(self,game:Game):
         self.__games[game.key] = game
-        if game.steam:
+        if game.steam and game.steam.appid >= 0:
             self.__steam_games[game.steam.appid] = game
-        if game.epic:
+            
+        if game.epic and game.epic.catalog_item_id:
             self.__epic_games[game.epic.catalog_item_id] = game
             
     def remove_game(self,game:Game|str):
@@ -1728,13 +1729,12 @@ class GameManager(GObject):
             key = game.key
             
             
-        for appid,steam_game in list(self.__steam_games.items()):
-            if steam_game.key == game.key:
-                del self.__steam_games[appid]
+        if game.steam and game.steam.appid >= 0 and game.steam.appid in self.__steam_games:
+            del self.__steam_games[game.steam.appid]
                 
-        for appname,epic_game in list(self.__epic_games.items()):
-            if epic_game.key == game.key:
-                del self.__epic_games[appname]
+        if game.epic and game.epic and game.epic.catalog_item_id and game.epic.catalog_item_id in self.__epic_games:
+            del self.__epic_games[game.epic.catalog_item_id]
+            
                 
         del self.__games[key]
         

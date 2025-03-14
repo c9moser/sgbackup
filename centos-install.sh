@@ -17,6 +17,7 @@ python -m venv --system-site-packages "${PYTHON_VENV_DIR}/sgbackup"
 . "${PYTHON_VENV_DIR}/sgbackup/bin/activate"
 pip install --upgrade pip
 pip install -r "${PROJECT_ROOT}/requirements.txt"
+make -C "${PROJECT_ROOT}" translations
 pip install "${PROJECT_ROOT}"
 
 if [ ! -d ~/.local/bin ]; then

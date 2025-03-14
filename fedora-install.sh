@@ -17,6 +17,7 @@ python -m venv --system-site-packages "${PYTHON_VENV_DIR}/sgbackup"
 . "${PYTHON_VENV_DIR}/sgbackup/bin/activate"
 pip install --upgrade pip
 pip install -r "${PROJECT_ROOT}/requirements.txt"
+make -C "${PROJECT_ROOT}" translations
 pip install "${PROJECT_ROOT}"
 
 if [ ! -d ~/.local/bin ]; then
@@ -38,7 +39,7 @@ deactivate
 exit \$exit_code
 EOF
 chmod +x "${PYTHON_VENV_DIR}/sgbackup/bin/sgbackup"
-ln -sv "${PYTHON_VENV_DIR}/sgbackup/bin/sgbackup" ~/.local/bin/sgbackup
+ln -snfv "${PYTHON_VENV_DIR}/sgbackup/bin/sgbackup" ~/.local/bin/sgbackup
 
 cat > "${PYTHON_VENV_DIR}/sgbackup/bin/gsgbackup" << EOF
 #!/bin/bash
@@ -55,5 +56,5 @@ deactivate
 exit \$exit_code
 EOF
 chmod +x "${PYTHON_VENV_DIR}/sgbackup/bin/gsgbackup"
-ln -sv "${PYTHON_VENV_DIR}/sgbackup/bin/gsgbackup" ~/.local/bin/gsgbackup
+ln -snfv "${PYTHON_VENV_DIR}/sgbackup/bin/gsgbackup" ~/.local/bin/gsgbackup
 

@@ -225,19 +225,29 @@ class SettingsDialog(Gtk.Dialog):
         search_frame = self.create_frame('Search Settings')
         search_grid = self.create_grid()
         
+        label = self.create_label("Case sensitive search:")
+        page.search_casesensitive_switch = Gtk.Switch()
+        page.search_casesensitive_switch.set_active(settings.search_case_sensitive)
+        hbox = Gtk.Box.new(Gtk.Orientation.HORIZONTAL,0)
+        hbox.append(Gtk.Label(hexpand=True))
+        hbox.append(page.search_casesensitive_switch)
+        hbox.set_hexpand(True)
+        search_grid.attach(label,0,0,1,1)
+        search_grid.attach(hbox,1,0,1,1)
+        
         label = self.create_label("Minimum Characters:")
         page.search_minchars_spinbutton = Gtk.SpinButton.new_with_range(1,32,1)
         page.search_minchars_spinbutton.set_value(settings.search_min_chars)
         page.search_minchars_spinbutton.set_hexpand(True)
-        search_grid.attach(label,0,0,1,1)
-        search_grid.attach(page.search_minchars_spinbutton,1,0,1,1)
+        search_grid.attach(label,0,1,1,1)
+        search_grid.attach(page.search_minchars_spinbutton,1,1,1,1)
         
         label = self.create_label("Maximum Results:")
         page.search_maxresults_spinbutton = Gtk.SpinButton.new_with_range(1,100,1)
         page.search_maxresults_spinbutton.set_value(settings.search_max_results)
         page.search_maxresults_spinbutton.set_hexpand(True)
-        search_grid.attach(label,0,1,1,1)
-        search_grid.attach(page.search_maxresults_spinbutton,1,1,1,1)
+        search_grid.attach(label,0,2,1,1)
+        search_grid.attach(page.search_maxresults_spinbutton,1,2,1,1)
         
         search_frame.set_child(search_grid)        
         vbox.append(search_frame)
@@ -487,6 +497,7 @@ class SettingsDialog(Gtk.Dialog):
         settings.archiver = self.general_page.archiver_dropdown.get_selected_item().key
         settings.gui_autoclose_backup_dialog = self.general_page.gui_autoclose_backup_dialog_switch.get_active()
         settings.gui_autoclose_restore_dialog = self.general_page.gui_autoclose_restore_dialog_switch.get_active()
+        settings.search_case_sensitive = self.general_page.search_casesensitive_switch.get_active()
         settings.search_min_chars = self.general_page.search_minchars_spinbutton.get_value_as_int()
         settings.search_max_results = self.general_page.search_maxresults_spinbutton.get_value_as_int()
         settings.zipfile_compression = self.archiver_page.zf_compressor_dropdown.get_selected_item().compressor

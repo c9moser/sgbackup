@@ -514,10 +514,10 @@ class GameDialog(Gtk.Dialog):
         grid.attach(page.installdir_entry,1,2,1,1)
         vbox.append(grid)
         
-        page.filematch = self.__create_filematch_widget(_('Match Files'))
+        page.filematch = self.__create_file_matcher()
         vbox.append(page.filematch)
         
-        page.ignorematch = self.__create_filematch_widget(_('Ignore Files'))
+        page.ignorematch = self.__create_ignore_matcher()
         vbox.append(page.ignorematch)
         
         page.lookup_regkeys = self.__create_registry_key_widget(_("Lookup Registry keys"))
@@ -564,10 +564,10 @@ class GameDialog(Gtk.Dialog):
         grid.attach(page.binary_entry,1,2,1,1)
         vbox.append(grid)
         
-        page.filematch = self.__create_filematch_widget('Match Files')
+        page.filematch = self.__create_file_matcher()
         vbox.append(page.filematch)
         
-        page.ignorematch = self.__create_filematch_widget('Ignore Files')
+        page.ignorematch = self.__create_ignore_matcher()
         vbox.append(page.ignorematch)
         
         page.variables = self.__create_variables_widget()
@@ -607,10 +607,10 @@ class GameDialog(Gtk.Dialog):
         grid.attach(page.binary_entry,1,2,1,1)
         vbox.append(grid)
         
-        page.filematch = self.__create_filematch_widget('Match Files')
+        page.filematch = self.__create_file_matcher()
         vbox.append(page.filematch)
         
-        page.ignorematch = self.__create_filematch_widget('Ignore Files')
+        page.ignorematch = self.__create_ignore_matcher()
         vbox.append(page.ignorematch)
         
         page.variables = self.__create_variables_widget()
@@ -659,10 +659,10 @@ class GameDialog(Gtk.Dialog):
 
             nbvbox.append(nbgrid)
         
-            nbpage.filematch = self.__create_filematch_widget('Match Files')
+            nbpage.filematch = self.__create_file_matcher()
             nbvbox.append(nbpage.filematch)
         
-            nbpage.ignorematch = self.__create_filematch_widget('Ignore Files')
+            nbpage.ignorematch = self.__create_ignore_matcher()
             nbvbox.append(nbpage.ignorematch)
         
             nbpage.variables = self.__create_variables_widget()
@@ -741,10 +741,10 @@ class GameDialog(Gtk.Dialog):
 
             nbvbox.append(nbgrid)
         
-            nbpage.filematch = self.__create_filematch_widget('Match Files')
+            nbpage.filematch = self.__create_file_matcher()
             nbvbox.append(nbpage.filematch)
         
-            nbpage.ignorematch = self.__create_filematch_widget('Ignore Files')
+            nbpage.ignorematch = self.__create_ignore_matcher()
             nbvbox.append(nbpage.ignorematch)
         
             nbpage.variables = self.__create_variables_widget()
@@ -786,7 +786,10 @@ class GameDialog(Gtk.Dialog):
         widget.set_margin_bottom(margin)
         
     def __create_variables_widget(self):
-        widget = Gtk.Frame.new("Variables")
+        widget = Gtk.Frame()
+        widget.set_label_widget(
+            Gtk.Label(label="<span weight='bold'>{}</span>".format(GLib.markup_escape_text(_('Variables'))),
+                      use_markup=True))
         vbox = Gtk.Box.new(Gtk.Orientation.VERTICAL,0)
         
         model = Gio.ListStore.new(GameVariableData)
@@ -824,11 +827,11 @@ class GameDialog(Gtk.Dialog):
                                     widget.columnview)
         widget.actions.pack_start(widget.remove_button)
         
-        name_column = Gtk.ColumnViewColumn.new("Name",self.__variable_name_factory)
+        name_column = Gtk.ColumnViewColumn.new(_("Name"),self.__variable_name_factory)
         name_column.set_expand(True)
         widget.columnview.append_column(name_column)
         
-        value_column = Gtk.ColumnViewColumn.new("Value",self.__variable_value_factory)
+        value_column = Gtk.ColumnViewColumn.new(_("Value"),self.__variable_value_factory)
         value_column.set_expand(True)
         widget.columnview.append_column(value_column)
         
@@ -854,7 +857,10 @@ class GameDialog(Gtk.Dialog):
         return dropdown
         
     def __create_filematch_widget(self,title:str):
-        widget = Gtk.Frame.new(title)
+        widget = Gtk.Frame()
+        widget.set_label_widget(
+            Gtk.Label(label="<span weight='bold'>{}</span>".format(GLib.markup_escape_text(title)),
+                      use_markup=True))
         vbox = Gtk.Box.new(Gtk.Orientation.VERTICAL,2)
         
         widget.actions = Gtk.ActionBar()
@@ -891,8 +897,17 @@ class GameDialog(Gtk.Dialog):
         
         return widget
     
+    def __create_file_matcher(self):
+        return self.__create_filematch_widget(_("Match Files"))
+    
+    def __create_ignore_matcher(self):
+        return self.__create_filematch_widget(_("Match Files to ignore"))
+    
     def __create_registry_key_widget(self,title):
-        widget = Gtk.Frame.new(title)
+        widget = Gtk.Frame()
+        widget.set_label_widget(
+            Gtk.Label(label="<span weight='bold'>{}</span>".format(GLib.markup_escape_text(title)),
+                      use_markup=True))
         vbox=Gtk.Box.new(Gtk.Orientation.VERTICAL,2)
         
         widget.actions = Gtk.ActionBar()

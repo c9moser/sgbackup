@@ -129,7 +129,7 @@ class Epic(GObject):
         self.__ignored_apps[app.catalog_item_id] = app
         self.__write_ignore_file()
         
-    def remove_ignored_apps(self,app:str|EpicIgnoredApp):
+    def remove_ignored_app(self,app:str|EpicIgnoredApp):
         if isinstance(app,str):
             item_id = app
         elif isinstance(app,EpicIgnoredApp):

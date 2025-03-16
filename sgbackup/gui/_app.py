@@ -50,7 +50,11 @@ from ..steam import Steam
 from ..epic import Epic
 from ._epic import (
     EpicNewAppsDialog,
+    EpicNoIgnoredAppsDialog,
+    EpicNoNewAppsDialog,
+    EpicIgnoredAppsDialog,    
 )
+
 from ._backupdialog import BackupSingleDialog,BackupManyDialog
 from ..archiver import ArchiverManager
 from ._dialogs import (
@@ -416,18 +420,11 @@ class GameView(Gtk.Box):
     def _on_new_epic_games_button_clicked(self,button):
         epic = Epic()
         if not epic.find_new_apps():
-            dialog = Gtk.MessageDialog(
-                transient_for=self.get_root(),
-                message="No new Epic-Games applications found!",
-                buttons=Gtk.ButtonsType.OK,
-                modal=False
-            )
-            dialog.connect('response',lambda d,r: d.destroy())
-            dialog.present()
-            return
-        
-        dialog = EpicNewAppsDialog(self.get_root())
-        dialog.connect_after('response',self._on_new_apps_dialog_response)
+            dialog = EpicNewAppsDialog(self.get_root())
+        else:
+            dialog = EpicNewAppsDialog(self.get_root())
+            dialog.connect_after('response',self._on_new_apps_dialog_response)
+            
         dialog.present()
     
     def _on_backup_active_live_button_clicked(self,button):
@@ -449,10 +446,18 @@ class GameView(Gtk.Box):
             choices.append(item.name)
             item.fuzzy_match = 0.0
             
-        result = rapidfuzz.process.extract(query=search_name,
+        if settings.search_case_sensitive:
+            processor=None
+            query=search_name
+        else:
+            processor=lambda s: s.lower()
+            query=search_name.lower()
+            
+        result = rapidfuzz.process.extract(query=query,
                                            choices=choices,
                                            limit=settings.search_max_results,
-                                           scorer=rapidfuzz.fuzz.WRatio)
+                                           scorer=rapidfuzz.fuzz.WRatio,
+                                           processor=processor)
         
         
         for name,match,pos in result:
@@ -1572,18 +1577,24 @@ class Application(Gtk.Application):
     def _on_action_epic_new_apps(self,action,param):
         epic = Epic()
         if not epic.find_new_apps():
-            ### TODO #####################################
-            return
+            dialog = EpicNoNewAppsDialog(self.appwindow)
         else:
             dialog = EpicNewAppsDialog(self.appwindow)
-            dialog.connect_after("response",lambda d,r: self.appwindow.refresh())
+            dialog.connect_after('response',lambda d,r: self.appwindow.refresh())
             
         dialog.present()
         
     def _on_action_epic_manage_ignore(self,action,param):
-        ### TODO ##########################################
-        pass
+        epic = Epic()
+        if not epic.ignored_apps:
+            dialog = EpicNoIgnoredAppsDialog(self.appwindow)
+        else:
+            dialog = EpicIgnoredAppsDialog(self.appwindow)
+            dialog.connect_after('response',lambda d,r: self.appwindow.refresh())
         
+        dialog.present()
+        
+            
     def new_settings_dialog(self)->SettingsDialog:
         """
         new_settings_dialog Create a new `SettingsDialog`.

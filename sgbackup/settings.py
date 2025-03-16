@@ -359,6 +359,14 @@ class Settings(GObject.GObject):
     @search_min_chars.setter
     def search_min_chars(self,min_chars:int):
         self.set_integer('search','minChars',min_chars)
+        
+    @GObject.Property(type=bool,default=False)
+    def search_case_sensitive(self)->bool:
+        return self.get_boolean('search','caseSensitive',False)
+    
+    @search_case_sensitive.setter
+    def search_case_sensitive(self,case_sensitive):
+        self.set_boolean('search','caseSensitive',bool(case_sensitive))
     
     @GObject.Property(type=bool,default=False)
     def gui_autoclose_backup_dialog(self)->bool:

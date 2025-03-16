@@ -260,7 +260,7 @@ class EpicNewAppsDialog(Gtk.Dialog):
                                                 info.name,
                                                 dialog.reason_entry.get_text()))
             for i in range(self.__liststore.get_n_items()):
-                item = self.__liststore.get_item()
+                item = self.__liststore.get_item(i)
                 if item.catalog_item_id == info.catalog_item_id:
                     self.__liststore.remove(i)
                     break

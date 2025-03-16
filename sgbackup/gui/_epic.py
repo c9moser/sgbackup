@@ -249,7 +249,7 @@ class EpicNewAppsDialog(Gtk.Dialog):
                                  windows=windows)
         
         dialog = GameDialog(parent=self,game=game)
-        dialog.connect_after('response',self._on_dialog_reponse,info)
+        dialog.connect_after('response',self._on_dialog_response,info)
         dialog.present()
         
     

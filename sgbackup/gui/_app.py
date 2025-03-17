@@ -487,9 +487,14 @@ class GameView(Gtk.Box):
         elif len(search_name) >= settings.search_min_chars:
             self.__real_search(search_name)
         
+    def __set_column_widget_margin(self,widget:Gtk.Widget,margin:int=4):
+        widget.set_margin_start(margin)
+        widget.set_margin_end(margin)
+        
     def _on_icon_column_setup(self,factory,item):
         image = Gtk.Image()
         image.set_pixel_size(24)
+        self.__set_column_widget_margin(image)
         item.set_child(image)
         
     def _on_icon_column_bind(self,factory,item):
@@ -511,6 +516,7 @@ class GameView(Gtk.Box):
         label = Gtk.Label()
         label.set_xalign(0.0)
         label.set_use_markup(True)
+        self.__set_column_widget_margin(label)
         item.set_child(label)
         
     def _on_key_column_bind(self,factory,item):
@@ -523,6 +529,7 @@ class GameView(Gtk.Box):
         label = Gtk.Label()
         label.set_xalign(0.0)
         label.set_use_markup(True)
+        self.__set_column_widget_margin(label)
         item.set_child(label)
         
     def _on_name_column_bind(self,factory,item):
@@ -537,7 +544,9 @@ class GameView(Gtk.Box):
                                                                              GLib.markup_escape_text(s)))
 
     def _on_active_column_setup(self,factory,item):
-        item.set_child(Gtk.Switch())
+        child = Gtk.Switch()
+        self.__set_column_widget_margin(child)
+        item.set_child(child)
         
     def _on_active_column_bind(self,factory,item):
         switch = item.get_child()
@@ -556,7 +565,9 @@ class GameView(Gtk.Box):
         self.emit('game-active-changed',game)
         
     def _on_live_column_setup(self,factory,item):
-        item.set_child(Gtk.Switch())
+        child = Gtk.Switch()
+        self.__set_column_widget_margin(child)
+        item.set_child(child)
         
     def _on_live_column_bind(self,factory,item):
         switch = item.get_child()
@@ -1009,6 +1020,10 @@ class BackupView(Gtk.Box):
         self.__convert_to_steam_windows_action = Gio.SimpleAction.new("convert-to-steam-windows",None)
         self.__convert_to_steam_windows_action.connect('activate',self._on_action_convert_to_steam_windows)
         self.action_group.add_action(self.__convert_to_steam_windows_action)
+
+    def __set_column_widget_margin(self,widget:Gtk.Widget,margin:int=4):
+        widget.set_margin_start(margin)
+        widget.set_margin_end(margin)
         
     def _on_action_restore(self,action,param):
         pass
@@ -1063,6 +1078,7 @@ class BackupView(Gtk.Box):
     def _on_sgtype_column_setup(self,factory,item):
         icon = Gtk.Image()
         icon.set_pixel_size(24)
+        self.__set_column_widget_margin(icon)
         item.set_child(icon)
         
     def _on_sgtype_column_bind(self,factory,item):
@@ -1073,6 +1089,7 @@ class BackupView(Gtk.Box):
     def _on_sgos_column_setup(self,factory,item):
         icon = Gtk.Image()
         icon.set_pixel_size(24)
+        self.__set_column_widget_margin(icon)
         item.set_child(icon)
         
     def _on_sgos_column_bind(self,factory,item):
@@ -1092,7 +1109,8 @@ class BackupView(Gtk.Box):
         checkbutton.set_active(data.is_live)
     
     def _on_savegamename_column_setup(self,factory,item):
-        label = Gtk.Label()
+        label = Gtk.Label(xalign=0.0)
+        self.__set_column_widget_margin(label)
         item.set_child(label)
         
     def _on_savegamename_column_bind(self,factory,item):
@@ -1102,7 +1120,8 @@ class BackupView(Gtk.Box):
             GLib.markup_escape_text(data.savegame_name)))
         
     def _on_timestamp_column_setup(self,factory,item):
-        label = Gtk.Label()
+        label = Gtk.Label(xalign=0.0)
+        self.__set_column_widget_margin(label)
         item.set_child(label)
         
     def _on_timestamp_column_bind(self,factory,item):
@@ -1112,7 +1131,8 @@ class BackupView(Gtk.Box):
             GLib.markup_escape_text(data.timestamp.strftime(_("%m.%d.%Y %H:%M:%S")))))
         
     def _on_size_column_setup(self,factory,item):
-        label = Gtk.Label()
+        label = Gtk.Label(xalign=0.0)
+        self.__set_column_widget_margin(label)
         item.set_child(label)
         
     def _on_size_column_bind(self,factory,item):

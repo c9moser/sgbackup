@@ -16,7 +16,10 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.   #
 ###############################################################################
 
-import sys
+import os,sys
+from i18n import gettext as _
+from string import Template
+
 def _platform_is_linux():
     if sys.platform == 'linux':
         return True
@@ -48,3 +51,40 @@ def sanitize_path(path:str)->str:
     if (PLATFORM_WINDOWS):
         return sanitize_windows_path(path)
     return path
+
+def create_help_title(self,title:str):
+    help=_("HELP")
+
+    if (len(title) + 2) <= (40 - (len(help) / 2)):
+        ret = title + (" " * (40 - (len(help) / 2) - len(title))) + help + "\n"
+    else:
+        ret = title + "  " + help + "\n"
+
+    ret += 80 * "="
+
+    return ret    
+
+def get_help_from_template_string(self,text:str,variables:dict):
+    if not 'name' in variables:
+        variables['TITLE'] = self.create_help_title(_('sgbackup'))
+    else:
+        variables['TITLE'] = self.create_help_title(variables['name'])
+
+    template = Template(text)
+    return template.safe_substitute(variables)
+
+def get_help_from_template_file(self,filename,variables:dict):
+    with open(filename,'r',encoding='utf-8') as ifile:
+        return get_help_from_template_string(ifile.read(),variables)
+    
+def get_builtin_help(topic,variables:dict):
+    lang = _('help-lang:en')
+    if lang.sstartswith('help-lang:'):
+        lang = lang[len('help-lang:')]
+
+    help_dir = os.path.join(os.path.dirname(__file__),'help')
+    for i in (os.path.join(help_dir,lang,topic + '.help'), 
+              os.path.join(help_dir,'en', topic + '.help')):
+        if os.path.isfile(i):
+            return get_help_from_template_file(i,variables)
+    return ""

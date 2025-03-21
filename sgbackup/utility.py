@@ -17,7 +17,7 @@
 ###############################################################################
 
 import os,sys
-from i18n import gettext as _
+from .i18n import gettext as _
 from string import Template
 
 def _platform_is_linux():

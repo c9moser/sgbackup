@@ -420,7 +420,7 @@ class GameView(Gtk.Box):
     def _on_new_epic_games_button_clicked(self,button):
         epic = Epic()
         if not epic.find_new_apps():
-            dialog = EpicNewAppsDialog(self.get_root())
+            dialog = EpicNoNewAppsDialog(self.get_root())
         else:
             dialog = EpicNewAppsDialog(self.get_root())
             dialog.connect_after('response',self._on_new_apps_dialog_response)

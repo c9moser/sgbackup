@@ -1207,7 +1207,7 @@ class Game(GObject):
                 return None
             
             if ("windows" in conf['epic']):
-                windows = new_epic_platform_data(conf['windows'],EpicWindowsData)
+                windows = new_epic_platform_data(conf['epic']['windows'],EpicWindowsData)
             else:
                 windows = None
                 

@@ -219,9 +219,12 @@ class SteamLibrariesDialog(Gtk.Dialog):
 
 class NewSteamAppSorter(Gtk.Sorter):
     def do_compare(self,item1:SteamApp,item2:SteamApp):
-        if item1.name < item2.name:
+        s1=item1.name.lower()
+        s2=item2.name.lower()
+        
+        if s1 < s2:
             return Gtk.Ordering.SMALLER
-        elif item1.name > item2.name:
+        elif s1 > s2:
             return Gtk.Ordering.LARGER
         else:
             return Gtk.Ordering.EQUAL

@@ -1,6 +1,11 @@
 #!/bin/bash
 # vim: syn=sh ts=4 sts=4 sw=4 smartindent expandtab ff=unix
 
+: ${INSTALL_PACKAGES:="YES"}
+
+INSTALL_PACKAGES="$( echo "$INSTALL_PACKAGES" | tr '[:lower:]' '[:upper:]' )"
+
+
 SELF="$( realpath "$0" )"
 PROJECT_DIR="$( dirname "$SELF")"
 : ${PYTHON_VENV_DIR:=$(cygpath "$USERPROFILE")/python-venv}
@@ -8,15 +13,17 @@ venv="${PYTHON_VENV_DIR}/sgbackup"
 venv_bin="${venv}/bin"
 wvenv_bin="$(cygpath -w "$venv_bin")"
 
-PACKAGES="gtk4 gobject-introspection python-pip python-gobject python-rapidfuzz"
+if [ "$INSTALL_PACKAGES" = "YES" -o "$INSTALL_PACKAGES" = "TRUE" -o "$INSTALL_PACKAGES" = 1 ]; then
+    PACKAGES="gtk4 gobject-introspection python-pip python-gobject python-rapidfuzz"
 
-_install_pkg="base-devel"
-for i in $PACKAGES; do
-	_install_pkg="${_install_pkg} ${MINGW_PACKAGE_PREFIX}-$i"
-done
+    _install_pkg="base-devel"
+    for i in $PACKAGES; do
+	    _install_pkg="${_install_pkg} ${MINGW_PACKAGE_PREFIX}-$i"
+    done
 
-pacman -Sy
-pacman -S --noconfirm $_install_pkg
+    pacman -Sy
+    pacman -S --noconfirm $_install_pkg
+fi
 
 if [ ! -f "$venv/bin/activate" ]; then
     python -m venv --system-site-packages "$venv"

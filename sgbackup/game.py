@@ -1197,7 +1197,7 @@ class Game(GObject):
                 return cls(
                     savegame_root=data['savegame_root'],
                     savegame_dir=data['savegame_dir'],
-                    variables=dict(((v['name'],v['value']) for v in data['variables'])) if ('variables' in data and config['variables']) else None,
+                    variables=dict([(v['name'],v['value']) for v in data['variables']]) if ('variables' in data and config['variables']) else None,
                     file_match=file_match if 'file_match' in data else None ,
                     ignore_match=ignore_match if 'ignore_match' in data else None,
                     installdir=data['installdir'] if ('installdir' in data and data['installdir']) else None

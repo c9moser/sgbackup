@@ -188,3 +188,5 @@ apidoc/
 
 sgbackup/locale/*/*.po
 sgbackup/locale/*/*.mo
+
+.idea/

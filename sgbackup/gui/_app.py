@@ -1196,7 +1196,8 @@ class BackupView(Gtk.Box):
         
         
     def _on_restore_button_clicked(self,button,data:BackupViewData):
-        pass
+        am = ArchiverManager.get_global()
+        am.restore(data.filename)
     
     def _on_delete_button_clicked(self,button,data:BackupViewData):
         am = ArchiverManager.get_global()

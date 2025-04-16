@@ -63,7 +63,7 @@ class ZipfileArchiver(Archiver):
             raise RuntimeError("\"{filename}\" is not a valid sgbackup zipfile archive!")
         
         with zipfile.ZipFile(filename,"r") as zf:
-            zip_game = Game.new_from_dict(json.loads(zf.read('game.conf').decode("utf-8")))
+            zip_game = Game.new_from_dict(json.loads(zf.read('gameconf.json').decode("utf-8")))
             try:
                 game = GameManager.get_global().games[zip_game.key]
             except:
@@ -71,8 +71,9 @@ class ZipfileArchiver(Archiver):
                 
             if not os.path.isdir(game.savegame_root):
                 os.makedirs(game.savegame_root)
-                
-            extract_files = [i for i in zf.filelist if i.startswith(zip_game.savegame_dir + "/")]
+               
+            print("\n".join([i.filename for i in zf.filelist])) 
+            extract_files = [i for i in zf.filelist if i.filename.startswith(zip_game.savegame_dir + "/")]
             for file in extract_files:
                 zf.extract(file,game.savegame_root)
                 

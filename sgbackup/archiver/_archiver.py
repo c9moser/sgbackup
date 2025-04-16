@@ -32,6 +32,7 @@ import time
 from ..game import Game,SavegameType,VALID_SAVEGAME_TYPES,SAVEGAME_TYPE_ICONS
 from ..settings import settings
 from ..utility import sanitize_path,sanitize_windows_path
+from ..error import NotAnArchiveError
 
 import logging
 logger = logging.getLogger(__name__)
@@ -85,6 +86,9 @@ class Archiver(GObject):
             game=game.key,filename=filename))
         return self.emit('backup',game,filename)
     
+    def restore(self,filename:str):
+        self.emit('restore',filename)
+        
     def generate_new_backup_filename(self,game:Game)->str:
         dt = datetime.datetime.now()
         
@@ -138,7 +142,7 @@ class ArchiverManager(GObject):
 
         
     @staticmethod
-    def get_global():
+    def get_global()->"ArchiverManager":
         if ArchiverManager.__global_archiver_manager is None:
             ArchiverManager.__global_archiver_manager = ArchiverManager()
             
@@ -307,14 +311,35 @@ class ArchiverManager(GObject):
             flags=SignalFlags.RUN_FIRST)
     def do_backup(self,archiver,game,filename):
         return True
+    
+    def restore(self,filename:str):
+        archiver = self.get_archiver_for_file(filename)
+        return self.emit('restore',archiver,filename)
+    
+    @Signal(name="restore",return_type=bool,arg_types=(Archiver,str),
+            flags=SignalFlags.RUN_LAST)
+    def do_restore(self,archiver:Archiver,filename:str):
+        archiver.restore(filename)
+        return True
        
-    def is_archive(self,filename)->bool:
+    def is_archive(self,filename:str)->bool:
         if self.standard_archiver.is_archive(filename):
             return True
         for i in self.archivers.values():
             if i.is_archive(filename):
                 return True
         return False
+    
+    def get_archiver_for_file(self,filename:str)->Archiver:
+        if self.standard_archiver.is_archive(filename):
+            return self.standard_archiver
+        
+        for archiver in self.archivers.values():
+            if archiver.is_archive(filename):
+                return archiver
+            
+        raise NotAnArchiveError(f"\"{filename}\" seems not to be a valid archive!")
+            
         
     def get_live_backups(self,game:Game):
         ret = []
